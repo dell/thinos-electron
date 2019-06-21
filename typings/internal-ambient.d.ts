@@ -26,6 +26,7 @@ declare namespace NodeJS {
     isExtensionsEnabled(): boolean;
     isComponentBuild(): boolean;
     isWinDarkModeWindowUiEnabled(): boolean;
+    isPreloadLimitToAppEnabled(): boolean;
   }
 
   interface IpcRendererBinding {

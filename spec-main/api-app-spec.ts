@@ -1792,6 +1792,18 @@ describe('default behavior', () => {
       expect(webContents).to.equal(w.webContents);
     });
   });
+
+  xdescribe('blocks preload scripts outside of resources when app is bundled', () => {
+    it('without sandbox', async () => {
+      const output = await runTestApp('preload-script-blocking')
+      expect(output).to.be.equal(true)
+    })
+
+    it('with sandbox', async () => {
+      const output = await runTestApp('preload-script-blocking', '--sandbox')
+      expect(output).to.be.equal(true)
+    })
+  })
 });
 
 async function runTestApp (name: string, ...args: any[]) {

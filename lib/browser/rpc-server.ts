@@ -6,8 +6,10 @@ import { ipcMainInternal } from '@electron/internal/browser/ipc-main-internal';
 import * as ipcMainUtils from '@electron/internal/browser/ipc-main-internal-utils';
 import * as typeUtils from '@electron/internal/common/type-utils';
 import { IPC_MESSAGES } from '@electron/internal/common/ipc-messages';
+import { isPreloadAllowed } from '@electron/internal/common/preload-utils';
 
 const eventBinding = process._linkedBinding('electron_browser_event');
+const features = process._linkedBinding('electron_common_features');
 
 const emitCustomEvent = function (contents: WebContents, eventName: string, ...args: any[]) {
   const event = eventBinding.createWithSender(contents);
@@ -77,6 +79,9 @@ const getPreloadScript = async function (preloadPath: string) {
   let preloadSrc = null;
   let preloadError = null;
   try {
+    if (features.isPreloadLimitToAppEnabled() && !isPreloadAllowed(app.getAppPath(), preloadPath)) {
+      throw new Error('Preload scripts outside of app path are not allowed')
+    }
     preloadSrc = (await fs.promises.readFile(preloadPath)).toString();
   } catch (error) {
     preloadError = error;

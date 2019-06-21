@@ -90,6 +90,8 @@ void Initialize(v8::Local<v8::Object> exports,
   dict.SetMethod("isComponentBuild", &IsComponentBuild);
   dict.SetMethod("isExtensionsEnabled", &IsExtensionsEnabled);
   dict.SetMethod("isWinDarkModeWindowUiEnabled", &IsWinDarkModeWindowUiEnabled);
+  dict.SetMethod("isPreloadLimitToAppEnabled",
+                 &electron::fuses::IsPreloadLimitToAppEnabled);
 }
 
 }  // namespace

@@ -166,9 +166,15 @@ if (nodeIntegration) {
   }
 }
 
+const { isPreloadAllowed } = require('@electron/internal/common/preload-utils');
+const features = process._linkedBinding('electron_common_features');
+
 // Load the preload scripts.
 for (const preloadScript of preloadScripts) {
   try {
+    if (features.isPreloadLimitToAppEnabled() && !isPreloadAllowed(appPath, Module._resolveFilename(preloadScript, null, true))) {
+      throw new Error('Preload scripts outside of app path are not allowed')
+    }
     Module._load(preloadScript);
   } catch (error) {
     console.error(`Unable to load preload script: ${preloadScript}`);

@@ -74,7 +74,9 @@
   V(electron_renderer_ipc)               \
   V(electron_renderer_web_frame)
 
-#define ELECTRON_VIEWS_MODULES(V) V(electron_browser_image_view)
+#define ELECTRON_VIEWS_MODULES(V) \
+  V(electron_browser_image_view)  \
+  V(electron_browser_text_view)
 
 #define ELECTRON_DESKTOP_CAPTURER_MODULE(V) V(electron_browser_desktop_capturer)
 

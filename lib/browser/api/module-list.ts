@@ -41,6 +41,7 @@ if (BUILDFLAG(ENABLE_DESKTOP_CAPTURER)) {
 
 if (BUILDFLAG(ENABLE_VIEWS_API)) {
   browserModuleList.push(
-    { name: 'ImageView', loader: () => require('./views/image-view') }
+    { name: 'ImageView', loader: () => require('./views/image-view') },
+    { name: 'TextView', loader: () => require('./views/text-view') }
   );
 }

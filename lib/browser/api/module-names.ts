@@ -42,6 +42,7 @@ if (BUILDFLAG(ENABLE_DESKTOP_CAPTURER)) {
 
 if (BUILDFLAG(ENABLE_VIEWS_API)) {
   browserModuleNames.push(
-    'ImageView'
+    'ImageView',
+    'TextView'
   );
 }

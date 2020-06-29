@@ -620,6 +620,8 @@ source_set("electron_lib") {
     sources += [
       "shell/browser/api/views/electron_api_image_view.cc",
       "shell/browser/api/views/electron_api_image_view.h",
+      "shell/browser/api/views/electron_api_text_view.cc",
+      "shell/browser/api/views/electron_api_text_view.h",
     ]
   }
 

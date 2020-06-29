@@ -14,9 +14,7 @@ namespace electron {
 
 namespace api {
 
-ImageView::ImageView() : View(new views::ImageView()) {
-  view()->set_owned_by_client();
-}
+ImageView::ImageView() : View(new views::ImageView()) {}
 
 ImageView::~ImageView() {}
 

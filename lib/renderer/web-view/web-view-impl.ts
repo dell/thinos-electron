@@ -118,9 +118,11 @@ export class WebViewImpl {
   }
 
   createGuest () {
-    guestViewInternal.createGuest(this.buildParams()).then(guestInstanceId => {
-      this.attachGuestInstance(guestInstanceId);
-    });
+    this.internalInstanceId = getNextId();
+    guestViewInternal.createGuest(this.internalInstanceId, this.buildParams(), this.internalElement.contentWindow!)
+      .then(guestInstanceId => {
+        this.attachGuestInstance(guestInstanceId);
+      });
   }
 
   dispatchEvent (eventName: string, props: Record<string, any> = {}) {
@@ -187,20 +189,19 @@ export class WebViewImpl {
   }
 
   attachGuestInstance (guestInstanceId: number) {
-    if (!this.elementAttached) {
-      // The element could be detached before we got response from browser.
+    if (guestInstanceId === -1) {
+      // Do nothing
       return;
     }
-    this.internalInstanceId = getNextId();
+
+    if (!this.elementAttached) {
+      // The element could be detached before we got response from browser.
+      // Destroy the backing webContents to avoid any zombie nodes in the frame tree.
+      guestViewInternal.detachGuest(guestInstanceId);
+      return;
+    }
+
     this.guestInstanceId = guestInstanceId;
-
-    guestViewInternal.attachGuest(
-      this.internalInstanceId,
-      this.guestInstanceId,
-      this.buildParams(),
-      this.internalElement.contentWindow!
-    );
-
     // TODO(zcbenz): Should we deprecate the "resize" event? Wait, it is not
     // even documented.
     this.resizeObserver = new ResizeObserver(this.onElementResize.bind(this));

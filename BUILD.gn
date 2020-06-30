@@ -623,6 +623,8 @@ source_set("electron_lib") {
       "shell/browser/api/views/electron_api_image_view.h",
       "shell/browser/api/views/electron_api_text_view.cc",
       "shell/browser/api/views/electron_api_text_view.h",
+      "shell/browser/api/views/yoga_layout_manager.cc",
+      "shell/browser/api/views/yoga_layout_manager.h",
       "shell/browser/api/views/yoga_util.cc",
       "shell/browser/api/views/yoga_util.h",
     ]

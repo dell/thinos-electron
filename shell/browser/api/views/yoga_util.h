@@ -9,13 +9,20 @@
 
 typedef struct YGNode* YGNodeRef;
 
-namespace nu {
+namespace views {
+class View;
+}
+
+namespace electron {
 
 void SetYogaProperty(YGNodeRef node, const std::string& key, float value);
 void SetYogaProperty(YGNodeRef node,
                      const std::string& key,
                      const std::string& value);
 
-}  // namespace nu
+void AttachYogaNode(views::View* view, YGNodeRef node);
+YGNodeRef GetYogaNode(const views::View* view);
+
+}  // namespace electron
 
 #endif  // SHELL_BROWSER_API_VIEWS_YOGA_UTIL_H_

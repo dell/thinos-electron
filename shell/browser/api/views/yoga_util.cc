@@ -5,6 +5,7 @@
 #include "shell/browser/api/views/yoga_util.h"
 
 #include <algorithm>
+#include <map>
 #include <tuple>
 #include <utility>
 
@@ -12,7 +13,7 @@
 #include "base/strings/string_util.h"
 #include "third_party/yoga/yoga/Yoga.h"
 
-namespace nu {
+namespace electron {
 
 namespace {
 
@@ -382,4 +383,22 @@ void SetYogaProperty(YGNodeRef node,
   }
 }
 
-}  // namespace nu
+namespace {
+
+std::map<const views::View*, YGNodeRef> g_yoga_nodes;
+
+}  // namespace
+
+void AttachYogaNode(views::View* view, YGNodeRef node) {
+  g_yoga_nodes[view] = node;
+}
+
+YGNodeRef GetYogaNode(const views::View* view) {
+  auto it = g_yoga_nodes.find(view);
+  if (it != g_yoga_nodes.end())
+    return it->second;
+  else
+    return nullptr;
+}
+
+}  // namespace electron

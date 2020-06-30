@@ -21,6 +21,8 @@ vars = {
     '2c4ee8a32a299eada3cd6e468bbd0a473bfea96d',
   'squirrel.mac_version':
     '44468f858ce0d25c27bd5e674abfa104e0119738',
+  'yoga_version':
+    'd74a1069a03c5e184209a43e883b406786d8bbd0',
 
   'boto_version': 'f7574aa6cc2c819430c1f05e9a1a1a666ef8169b',
   'pyyaml_version': '3.12',
@@ -30,6 +32,7 @@ vars = {
   'chromium_git': 'https://chromium.googlesource.com',
   'electron_git': 'https://github.com/electron',
   'nodejs_git': 'https://github.com/nodejs',
+  'yoga_git': 'https://github.com/facebook',
   'requests_git': 'https://github.com/kennethreitz',
   'yaml_git': 'https://github.com/yaml',
   'squirrel_git': 'https://github.com/Squirrel',
@@ -48,6 +51,7 @@ vars = {
   'checkout_node': True,
   'checkout_nan': True,
   'checkout_pgo_profiles': True,
+  'checkout_yoga': True,
 
   # It's only needed to parse the native tests configurations.
   'checkout_pyyaml': False,
@@ -94,6 +98,10 @@ deps = {
   'src/third_party/electron_node': {
     'url': (Var("nodejs_git")) + '/node.git@' + (Var("node_version")),
     'condition': 'checkout_node and process_deps',
+  },
+  'src/third_party/yoga': {
+    'url': Var('yoga_git') + '/yoga.git' + '@' +  Var('yoga_version'),
+    'condition': 'checkout_yoga and process_deps',
   },
   'src/electron/vendor/pyyaml': {
     'url': (Var("yaml_git")) + '/pyyaml.git@' + (Var("pyyaml_version")),

@@ -1,4 +1,6 @@
 {
+  "src/electron/patches/yoga": "src/third_party/yoga",
+
   "src/electron/patches/chromium": "src",
 
   "src/electron/patches/boringssl": "src/third_party/boringssl/src",

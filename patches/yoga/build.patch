@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cheng Zhao <zcbenz@gmail.com>
+Date: Tue, 26 Feb 2019 17:07:45 -0800
+Subject: build: add GN build files
+
+Add GN build files for Yoga.
+
+diff --git a/BUILD.gn b/BUILD.gn
+new file mode 100644
+index 0000000000000000000000000000000000000000..3d322b2de0717cef005493c79144b751c79d81f6
+--- /dev/null
++++ b/BUILD.gn
+@@ -0,0 +1,48 @@
++config("yoga_config") {
++  include_dirs = [
++    "//third_party/yoga",
++    "//third_party/yoga/yoga",
++  ]
++
++  cflags_cc = [
++    # using namespace facebook
++    "-Wno-header-hygiene",
++    # extra ';' after member function definition
++    "-Wno-extra-semi",
++    # extra ';' outside of a function is incompatible with C++98
++    "-Wno-c++98-compat-extra-semi",
++  ]
++}
++
++source_set("yoga") {
++  sources = [
++    "yoga/event/event.cpp",
++    "yoga/event/event.h",
++    "yoga/log.cpp",
++    "yoga/log.h",
++    "yoga/Utils.cpp",
++    "yoga/Utils.h",
++    "yoga/YGConfig.cpp",
++    "yoga/YGConfig.h",
++    "yoga/YGEnums.cpp",
++    "yoga/YGEnums.h",
++    "yoga/YGFloatOptional.h",
++    "yoga/YGLayout.cpp",
++    "yoga/YGLayout.h",
++    "yoga/YGMacros.h",
++    "yoga/YGMarker.h",
++    "yoga/YGNode.cpp",
++    "yoga/YGNode.h",
++    "yoga/YGNodePrint.cpp",
++    "yoga/YGNodePrint.h",
++    "yoga/YGStyle.cpp",
++    "yoga/YGStyle.h",
++    "yoga/YGValue.cpp",
++    "yoga/YGValue.h",
++    "yoga/Yoga-internal.h",
++    "yoga/Yoga.cpp",
++    "yoga/Yoga.h",
++  ]
++
++  public_configs = [ ":yoga_config" ]
++}
+diff --git a/yoga/Utils.cpp b/yoga/Utils.cpp
+index c4281b60fc6e164b219d85296e1eb60e3ef1e0e4..4ec7c0c085a6d31b8b2ea5879305ed19aeb04337 100644
+--- a/yoga/Utils.cpp
++++ b/yoga/Utils.cpp
+@@ -74,5 +74,5 @@ YGFloatOptional YGFloatOptionalMax(YGFloatOptional op1, YGFloatOptional op2) {
+ }
+ 
+ void throwLogicalErrorWithMessage(const char* message) {
+-  throw std::logic_error(message);
++  assert(message);
+ }

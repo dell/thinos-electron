@@ -7,7 +7,7 @@ Add GN build files for Yoga.
 
 diff --git a/BUILD.gn b/BUILD.gn
 new file mode 100644
-index 0000000000000000000000000000000000000000..3d322b2de0717cef005493c79144b751c79d81f6
+index 00000000..3d322b2d
 --- /dev/null
 +++ b/BUILD.gn
 @@ -0,0 +1,48 @@
@@ -60,7 +60,7 @@ index 0000000000000000000000000000000000000000..3d322b2de0717cef005493c79144b751
 +  public_configs = [ ":yoga_config" ]
 +}
 diff --git a/yoga/Utils.cpp b/yoga/Utils.cpp
-index c4281b60fc6e164b219d85296e1eb60e3ef1e0e4..4ec7c0c085a6d31b8b2ea5879305ed19aeb04337 100644
+index c4281b60..4ec7c0c0 100644
 --- a/yoga/Utils.cpp
 +++ b/yoga/Utils.cpp
 @@ -74,5 +74,5 @@ YGFloatOptional YGFloatOptionalMax(YGFloatOptional op1, YGFloatOptional op2) {
@@ -70,3 +70,37 @@ index c4281b60fc6e164b219d85296e1eb60e3ef1e0e4..4ec7c0c085a6d31b8b2ea5879305ed19
 -  throw std::logic_error(message);
 +  assert(message);
  }
+diff --git a/yoga/YGNodePrint.cpp b/yoga/YGNodePrint.cpp
+index 26efa485..9126de65 100644
+--- a/yoga/YGNodePrint.cpp
++++ b/yoga/YGNodePrint.cpp
+@@ -5,7 +5,6 @@
+  * LICENSE file in the root directory of this source tree.
+  */
+ 
+-#ifdef DEBUG
+ #include "YGNodePrint.h"
+ #include <stdarg.h>
+ #include "YGEnums.h"
+@@ -222,4 +221,3 @@ void YGNodeToString(
+ }
+ } // namespace yoga
+ } // namespace facebook
+-#endif
+diff --git a/yoga/YGNodePrint.h b/yoga/YGNodePrint.h
+index 3db504b4..f1b8659d 100644
+--- a/yoga/YGNodePrint.h
++++ b/yoga/YGNodePrint.h
+@@ -5,7 +5,6 @@
+  * LICENSE file in the root directory of this source tree.
+  */
+ 
+-#ifdef DEBUG
+ #pragma once
+ #include <string>
+ 
+@@ -22,4 +21,3 @@ void YGNodeToString(
+ 
+ } // namespace yoga
+ } // namespace facebook
+-#endif

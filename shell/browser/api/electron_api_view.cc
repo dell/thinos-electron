@@ -11,9 +11,12 @@
 #if BUILDFLAG(ENABLE_VIEWS_API)
 #include "shell/browser/api/views/yoga_layout_manager.h"
 #include "shell/browser/api/views/yoga_util.h"
+#include "shell/common/color_util.h"
 #include "shell/common/gin_converters/value_converter.h"
+#include "third_party/yoga/yoga/YGNodePrint.h"
 #include "third_party/yoga/yoga/Yoga.h"
 #include "ui/base/layout.h"
+#include "ui/views/background.h"
 #include "ui/views/widget/widget.h"
 #endif
 
@@ -43,6 +46,7 @@ View::View(views::View* view) : view_(view) {
 #if BUILDFLAG(ENABLE_VIEWS_API)
   yoga_config_ = YGConfigNew();
   yoga_node_ = YGNodeNewWithConfig(yoga_config_);
+  YGNodeSetContext(yoga_node_, this);
   AttachYogaNode(view, yoga_node_);
 
   view_->SetLayoutManager(std::make_unique<YogaLayoutManager>());
@@ -81,15 +85,32 @@ void View::AddChildViewAt(gin::Handle<View> child, size_t index) {
   view()->Layout();
 }
 
+void View::SetBackgroundColor(const std::string& color_name) {
+  SkColor color = ParseHexColor(color_name);
+  view()->SetBackground(views::CreateSolidBackground(color));
+}
+
 void View::SetStyle(std::map<std::string, base::Value> dict) {
   for (const auto& it : dict) {
-    if (it.second.is_double())
+    if (it.first == "backgroundColor") {
+      if (it.second.is_string())
+        SetBackgroundColor(it.second.GetString());
+    } else if (it.second.is_double()) {
       SetYogaProperty(yoga_node_, it.first, it.second.GetDouble());
-    else if (it.second.is_int())
+    } else if (it.second.is_int()) {
       SetYogaProperty(yoga_node_, it.first, it.second.GetInt());
-    else if (it.second.is_string())
+    } else if (it.second.is_string()) {
       SetYogaProperty(yoga_node_, it.first, it.second.GetString());
+    }
   }
+}
+
+std::string View::GetComputedLayout() const {
+  std::string result;
+  auto options = static_cast<YGPrintOptions>(
+      YGPrintOptionsLayout | YGPrintOptionsStyle | YGPrintOptionsChildren);
+  facebook::yoga::YGNodeToString(result, yoga_node_, options, 0);
+  return result;
 }
 
 void View::OnViewVisibilityChanged(views::View* observed_view,
@@ -118,7 +139,9 @@ void View::BuildPrototype(v8::Isolate* isolate,
   gin_helper::ObjectTemplateBuilder(isolate, prototype->PrototypeTemplate())
       .SetMethod("addChildView", &View::AddChildView)
       .SetMethod("addChildViewAt", &View::AddChildViewAt)
-      .SetMethod("setStyle", &View::SetStyle);
+      .SetMethod("setBackgroundColor", &View::SetBackgroundColor)
+      .SetMethod("setStyle", &View::SetStyle)
+      .SetMethod("getComputedLayout", &View::GetComputedLayout);
 #endif
 }
 

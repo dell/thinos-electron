@@ -35,9 +35,14 @@ class View : public gin_helper::Wrappable<View>, public views::ViewObserver {
   void AddChildView(gin::Handle<View> view);
   void AddChildViewAt(gin::Handle<View> view, size_t index);
 
+  void SetBackgroundColor(const std::string& color_name);
   void SetStyle(std::map<std::string, base::Value> dict);
+  std::string GetComputedLayout() const;
 #endif
 
+#if BUILDFLAG(ENABLE_VIEWS_API)
+  YGNodeRef yoga_node() const { return yoga_node_; }
+#endif
   views::View* view() const { return view_; }
 
  protected:

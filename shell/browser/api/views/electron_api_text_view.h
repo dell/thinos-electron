@@ -21,6 +21,9 @@ class TextView : public View, public views::StyledLabelListener {
   static void BuildPrototype(v8::Isolate* isolate,
                              v8::Local<v8::FunctionTemplate> prototype);
 
+  void SetText(const base::string16& text);
+  const base::string16& GetText() const;
+
  protected:
   explicit TextView(const base::string16& text);
   ~TextView() override;

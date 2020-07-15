@@ -7,10 +7,10 @@ This adds GN build files for Node, so we don't have to build with GYP.
 
 diff --git a/BUILD.gn b/BUILD.gn
 new file mode 100644
-index 0000000000000000000000000000000000000000..b5ea846fd9fd46f34dd4260b67282186fddbc0be
+index 0000000000000000000000000000000000000000..57a155b5f9464046c96d6873b929454b3b923591
 --- /dev/null
 +++ b/BUILD.gn
-@@ -0,0 +1,360 @@
+@@ -0,0 +1,440 @@
 +import("//electron/build/asar.gni")
 +import("//v8/gni/v8.gni")
 +
@@ -287,6 +287,86 @@ index 0000000000000000000000000000000000000000..b5ea846fd9fd46f34dd4260b67282186
 +      "src/tls_wrap.h",
 +    ]
 +    cflags_cc += [ "-Wno-sign-compare" ]
++  }
++}
++
++##### cctest
++
++config("node_cctest_config") {
++  defines = [ "NODE_WANT_INTERNALS=1" ]
++
++  if (node_enable_inspector) {
++    defines += [ "HAVE_INSPECTOR=1" ]
++  }
++
++  if (target_os == "win") {
++    node_platform = "win32"
++  } else if (target_os == "mac") {
++    node_platform = "darwin"
++  } else {
++    node_platform = target_os
++  }
++
++  defines += [ "NODE_PLATFORM=\"$node_platform\"" ]
++
++  if (target_cpu == "x86") {
++    node_arch = "ia32"
++  } else {
++    node_arch = target_cpu
++  }
++
++  defines += [ "NODE_ARCH=\"$node_arch\"" ]
++}
++
++executable("node_cctest") {
++  deps = [
++    "//third_party/electron_node:node_lib",
++    "deps/histogram",
++    "deps/uvwasi",
++  ]
++
++  public_deps = [ "//v8" ]
++
++  configs += [ ":node_cctest_config" ]
++
++  include_dirs = [
++    "src",
++    "tools/msvs/genfiles",
++    "deps/cares/include",
++    "deps/uv/include",
++    "deps/uvwasi/include",
++    "test/cctest",
++  ]
++
++  cflags_cc = [ "-Wno-unused-variable" ]
++
++  sources = [
++    "src/node_snapshot_stub.cc",
++    "src/node_code_cache_stub.cc",
++    "test/cctest/gtest/gtest-all.cc",
++    "test/cctest/gtest/gtest_main.cc",
++    "test/cctest/node_test_fixture.cc",
++    "test/cctest/node_test_fixture.h",
++    "test/cctest/test_aliased_buffer.cc",
++    "test/cctest/test_base64.cc",
++    "test/cctest/test_base_object_ptr.cc",
++    "test/cctest/test_node_postmortem_metadata.cc",
++    "test/cctest/test_environment.cc",
++    "test/cctest/test_linked_binding.cc",
++    "test/cctest/test_per_process.cc",
++    "test/cctest/test_platform.cc",
++    "test/cctest/test_json_utils.cc",
++    "test/cctest/test_sockaddr.cc",
++    "test/cctest/test_traced_value.cc",
++    "test/cctest/test_util.cc",
++    "test/cctest/test_url.cc",
++  ]
++
++  if (node_enable_inspector) {
++    sources += [
++      "test/cctest/test_inspector_socket.cc",
++      "test/cctest/test_inspector_socket_server.cc",
++    ]
 +  }
 +}
 +

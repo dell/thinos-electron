@@ -1,0 +1,1158 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: deepak1556 <hop2deep@gmail.com>
+Date: Mon, 20 Jul 2020 03:44:58 -0700
+Subject: PDF generation with content shell
+
+
+diff --git a/content/shell/BUILD.gn b/content/shell/BUILD.gn
+index 8f162f7568c3976dee5aa71e2c6b6e0c527737cb..17117b29d13ac10c993d58369c816c88a218eff5 100644
+--- a/content/shell/BUILD.gn
++++ b/content/shell/BUILD.gn
+@@ -13,6 +13,7 @@ import("//gpu/vulkan/features.gni")
+ import("//media/media_options.gni")
+ import("//mojo/public/tools/bindings/mojom.gni")
+ import("//ppapi/buildflags/buildflags.gni")
++import("//printing/buildflags/buildflags.gni")
+ import("//tools/grit/grit_rule.gni")
+ import("//tools/grit/repack.gni")
+ import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
+@@ -630,6 +631,45 @@ static_library("content_shell_lib") {
+   if (use_ozone) {
+     deps += [ "//ui/ozone" ]
+   }
++
++  if (enable_basic_printing) {
++    sources += [
++      "browser/browser_process_impl.cc",
++      "browser/browser_process_impl.h",
++      "browser/printing/print_preview_message_handler.cc",
++      "browser/printing/print_preview_message_handler.h",
++      "renderer/printing/print_render_frame_helper_delegate.cc",
++      "renderer/printing/print_render_frame_helper_delegate.h",
++      "//chrome/browser/browser_process.cc",
++      "//chrome/browser/browser_process.h",
++      "//chrome/browser/printing/print_job.cc",
++      "//chrome/browser/printing/print_job.h",
++      "//chrome/browser/printing/print_job_manager.cc",
++      "//chrome/browser/printing/print_job_manager.h",
++      "//chrome/browser/printing/print_job_worker.cc",
++      "//chrome/browser/printing/print_job_worker.h",
++      "//chrome/browser/printing/print_view_manager_base.cc",
++      "//chrome/browser/printing/print_view_manager_base.h",
++      "//chrome/browser/printing/print_view_manager_basic.cc",
++      "//chrome/browser/printing/print_view_manager_basic.h",
++      "//chrome/browser/printing/printer_query.cc",
++      "//chrome/browser/printing/printer_query.h",
++      "//chrome/browser/printing/printing_message_filter.cc",
++      "//chrome/browser/printing/printing_message_filter.h",
++      "//chrome/browser/printing/printing_service.cc",
++      "//chrome/browser/printing/printing_service.h",
++    ]
++    deps += [
++      "//components/printing/browser",
++      "//components/printing/common",
++      "//components/printing/common:mojo_interfaces",
++      "//components/printing/renderer",
++      "//components/services/print_compositor",
++      "//components/services/print_compositor/public/cpp",
++      "//components/services/print_compositor/public/mojom",
++      "//printing",
++    ]
++  }
+ }
+ 
+ grit("content_shell_resources_grit") {
+@@ -663,6 +703,7 @@ repack("pak") {
+   testonly = true
+ 
+   sources = [
++    "$root_gen_dir/components/strings/components_strings_en-US.pak",
+     "$root_gen_dir/content/app/resources/content_resources_100_percent.pak",
+     "$root_gen_dir/content/browser/resources/media/media_internals_resources.pak",
+     "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
+@@ -684,6 +725,7 @@ repack("pak") {
+ 
+   deps = [
+     ":resources",
++    "//components/strings:components_strings",
+     "//content:content_resources",
+     "//content:dev_ui_content_resources",
+     "//content/app/resources",
+diff --git a/content/shell/browser/browser_process_impl.cc b/content/shell/browser/browser_process_impl.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..e3a81ae86894421dcd1d123482155df6c7576c28
+--- /dev/null
++++ b/content/shell/browser/browser_process_impl.cc
+@@ -0,0 +1,206 @@
++// Copyright (c) 2012 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "content/shell/browser/browser_process_impl.h"
++
++#include <memory>
++#include <utility>
++
++#include "base/notreached.h"
++
++#if BUILDFLAG(ENABLE_PRINTING)
++#include "chrome/browser/printing/print_job_manager.h"
++#endif
++
++BrowserProcessImpl::BrowserProcessImpl() {
++  g_browser_process = this;
++}
++
++BrowserProcessImpl::~BrowserProcessImpl() {
++  g_browser_process = nullptr;
++}
++
++BuildState* BrowserProcessImpl::GetBuildState() {
++  NOTIMPLEMENTED();
++  return nullptr;
++}
++
++bool BrowserProcessImpl::IsShuttingDown() {
++  return false;
++}
++
++metrics_services_manager::MetricsServicesManager*
++BrowserProcessImpl::GetMetricsServicesManager() {
++  return nullptr;
++}
++
++metrics::MetricsService* BrowserProcessImpl::metrics_service() {
++  return nullptr;
++}
++
++rappor::RapporServiceImpl* BrowserProcessImpl::rappor_service() {
++  return nullptr;
++}
++
++ProfileManager* BrowserProcessImpl::profile_manager() {
++  return nullptr;
++}
++
++PrefService* BrowserProcessImpl::local_state() {
++  return nullptr;
++}
++
++scoped_refptr<network::SharedURLLoaderFactory>
++BrowserProcessImpl::shared_url_loader_factory() {
++  return nullptr;
++}
++
++variations::VariationsService* BrowserProcessImpl::variations_service() {
++  return nullptr;
++}
++
++BrowserProcessPlatformPart* BrowserProcessImpl::platform_part() {
++  return nullptr;
++}
++
++extensions::EventRouterForwarder*
++BrowserProcessImpl::extension_event_router_forwarder() {
++  return nullptr;
++}
++
++NotificationUIManager* BrowserProcessImpl::notification_ui_manager() {
++  return nullptr;
++}
++
++NotificationPlatformBridge* BrowserProcessImpl::notification_platform_bridge() {
++  return nullptr;
++}
++
++SystemNetworkContextManager*
++BrowserProcessImpl::system_network_context_manager() {
++  return nullptr;
++}
++
++network::NetworkQualityTracker* BrowserProcessImpl::network_quality_tracker() {
++  return nullptr;
++}
++
++WatchDogThread* BrowserProcessImpl::watchdog_thread() {
++  return nullptr;
++}
++
++policy::ChromeBrowserPolicyConnector*
++BrowserProcessImpl::browser_policy_connector() {
++  return nullptr;
++}
++
++policy::PolicyService* BrowserProcessImpl::policy_service() {
++  return nullptr;
++}
++
++IconManager* BrowserProcessImpl::icon_manager() {
++  return nullptr;
++}
++
++GpuModeManager* BrowserProcessImpl::gpu_mode_manager() {
++  return nullptr;
++}
++
++printing::PrintPreviewDialogController*
++BrowserProcessImpl::print_preview_dialog_controller() {
++  return nullptr;
++}
++
++printing::BackgroundPrintingManager*
++BrowserProcessImpl::background_printing_manager() {
++  return nullptr;
++}
++
++IntranetRedirectDetector* BrowserProcessImpl::intranet_redirect_detector() {
++  return nullptr;
++}
++
++DownloadStatusUpdater* BrowserProcessImpl::download_status_updater() {
++  return nullptr;
++}
++
++DownloadRequestLimiter* BrowserProcessImpl::download_request_limiter() {
++  return nullptr;
++}
++
++BackgroundModeManager* BrowserProcessImpl::background_mode_manager() {
++  return nullptr;
++}
++
++StatusTray* BrowserProcessImpl::status_tray() {
++  return nullptr;
++}
++
++safe_browsing::SafeBrowsingService*
++BrowserProcessImpl::safe_browsing_service() {
++  return nullptr;
++}
++
++subresource_filter::RulesetService*
++BrowserProcessImpl::subresource_filter_ruleset_service() {
++  return nullptr;
++}
++
++federated_learning::FlocBlocklistService*
++BrowserProcessImpl::floc_blocklist_service() {
++  return nullptr;
++}
++
++optimization_guide::OptimizationGuideService*
++BrowserProcessImpl::optimization_guide_service() {
++  return nullptr;
++}
++
++component_updater::ComponentUpdateService*
++BrowserProcessImpl::component_updater() {
++  return nullptr;
++}
++
++MediaFileSystemRegistry* BrowserProcessImpl::media_file_system_registry() {
++  return nullptr;
++}
++
++WebRtcLogUploader* BrowserProcessImpl::webrtc_log_uploader() {
++  return nullptr;
++}
++
++network_time::NetworkTimeTracker* BrowserProcessImpl::network_time_tracker() {
++  return nullptr;
++}
++
++gcm::GCMDriver* BrowserProcessImpl::gcm_driver() {
++  return nullptr;
++}
++
++resource_coordinator::ResourceCoordinatorParts*
++BrowserProcessImpl::resource_coordinator_parts() {
++  return nullptr;
++}
++
++resource_coordinator::TabManager* BrowserProcessImpl::GetTabManager() {
++  return nullptr;
++}
++
++const std::string& BrowserProcessImpl::GetApplicationLocale() {
++  return locale_;
++}
++
++printing::PrintJobManager* BrowserProcessImpl::print_job_manager() {
++#if BUILDFLAG(ENABLE_PRINTING)
++  if (!print_job_manager_)
++    print_job_manager_ = std::make_unique<printing::PrintJobManager>();
++  return print_job_manager_.get();
++#else
++  return nullptr;
++#endif
++}
++
++StartupData* BrowserProcessImpl::startup_data() {
++  return nullptr;
++}
+diff --git a/content/shell/browser/browser_process_impl.h b/content/shell/browser/browser_process_impl.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..39a19c15606e00accce1b6f4ea17917f1f17e665
+--- /dev/null
++++ b/content/shell/browser/browser_process_impl.h
+@@ -0,0 +1,104 @@
++// Copyright (c) 2012 The Chromium Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// This interface is for managing the global services of the application. Each
++// service is lazily created when requested the first time. The service getters
++// will return NULL if the service is not available, so callers must check for
++// this condition.
++
++#ifndef CONTENT_SHELL_BROWSER_BROWSER_PROCESS_IMPL_H_
++#define CONTENT_SHELL_BROWSER_BROWSER_PROCESS_IMPL_H_
++
++#include <memory>
++#include <string>
++
++#include "base/command_line.h"
++#include "base/macros.h"
++#include "chrome/browser/browser_process.h"
++#include "printing/buildflags/buildflags.h"
++#include "services/network/public/cpp/shared_url_loader_factory.h"
++
++namespace printing {
++class PrintJobManager;
++}
++
++// Empty definition for std::unique_ptr
++class BackgroundModeManager {};
++
++// NOT THREAD SAFE, call only from the main thread.
++// These functions shouldn't return NULL unless otherwise noted.
++class BrowserProcessImpl : public BrowserProcess {
++ public:
++  BrowserProcessImpl();
++  ~BrowserProcessImpl() override;
++
++  BuildState* GetBuildState() override;
++  void EndSession() override {}
++  void FlushLocalStateAndReply(base::OnceClosure reply) override {}
++  bool IsShuttingDown() override;
++  metrics_services_manager::MetricsServicesManager* GetMetricsServicesManager()
++      override;
++  metrics::MetricsService* metrics_service() override;
++  rappor::RapporServiceImpl* rappor_service() override;
++  ProfileManager* profile_manager() override;
++  PrefService* local_state() override;
++  scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory()
++      override;
++  variations::VariationsService* variations_service() override;
++  BrowserProcessPlatformPart* platform_part() override;
++  extensions::EventRouterForwarder* extension_event_router_forwarder() override;
++  NotificationUIManager* notification_ui_manager() override;
++  NotificationPlatformBridge* notification_platform_bridge() override;
++  SystemNetworkContextManager* system_network_context_manager() override;
++  network::NetworkQualityTracker* network_quality_tracker() override;
++  WatchDogThread* watchdog_thread() override;
++  policy::ChromeBrowserPolicyConnector* browser_policy_connector() override;
++  policy::PolicyService* policy_service() override;
++  IconManager* icon_manager() override;
++  GpuModeManager* gpu_mode_manager() override;
++  printing::PrintPreviewDialogController* print_preview_dialog_controller()
++      override;
++  printing::BackgroundPrintingManager* background_printing_manager() override;
++  IntranetRedirectDetector* intranet_redirect_detector() override;
++  DownloadStatusUpdater* download_status_updater() override;
++  DownloadRequestLimiter* download_request_limiter() override;
++  BackgroundModeManager* background_mode_manager() override;
++  StatusTray* status_tray() override;
++  safe_browsing::SafeBrowsingService* safe_browsing_service() override;
++  subresource_filter::RulesetService* subresource_filter_ruleset_service()
++      override;
++  federated_learning::FlocBlocklistService* floc_blocklist_service() override;
++  optimization_guide::OptimizationGuideService* optimization_guide_service()
++      override;
++  component_updater::ComponentUpdateService* component_updater() override;
++  MediaFileSystemRegistry* media_file_system_registry() override;
++  WebRtcLogUploader* webrtc_log_uploader() override;
++  network_time::NetworkTimeTracker* network_time_tracker() override;
++  gcm::GCMDriver* gcm_driver() override;
++  resource_coordinator::ResourceCoordinatorParts* resource_coordinator_parts()
++      override;
++  resource_coordinator::TabManager* GetTabManager() override;
++  void CreateDevToolsProtocolHandler() override {}
++  void CreateDevToolsAutoOpener() override {}
++  void set_background_mode_manager_for_test(
++      std::unique_ptr<BackgroundModeManager> manager) override {}
++#if (defined(OS_WIN) || defined(OS_LINUX))
++  void StartAutoupdateTimer() override {}
++#endif
++  void SetApplicationLocale(const std::string& locale) override {}
++  const std::string& GetApplicationLocale() override;
++  printing::PrintJobManager* print_job_manager() override;
++  StartupData* startup_data() override;
++
++ private:
++#if BUILDFLAG(ENABLE_PRINTING)
++  std::unique_ptr<printing::PrintJobManager> print_job_manager_;
++#endif
++
++  std::string locale_;
++
++  DISALLOW_COPY_AND_ASSIGN(BrowserProcessImpl);
++};
++
++#endif  // CONTENT_SHELL_BROWSER_BROWSER_PROCESS_IMPL_H_
+diff --git a/content/shell/browser/printing/print_preview_message_handler.cc b/content/shell/browser/printing/print_preview_message_handler.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..0097e8bc3ccde91b6e886b7b918122206dfa2ace
+--- /dev/null
++++ b/content/shell/browser/printing/print_preview_message_handler.cc
+@@ -0,0 +1,243 @@
++#include "content/shell/browser/printing/print_preview_message_handler.h"
++
++#include <memory>
++#include <utility>
++
++#include "base/bind.h"
++#include "base/files/file_util.h"
++#include "base/memory/read_only_shared_memory_region.h"
++#include "base/memory/ref_counted.h"
++#include "base/memory/ref_counted_memory.h"
++#include "base/task/post_task.h"
++#include "base/threading/thread_restrictions.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/printing/print_job_manager.h"
++#include "chrome/browser/printing/printer_query.h"
++#include "components/printing/browser/print_composite_client.h"
++#include "components/printing/browser/print_manager_utils.h"
++#include "components/printing/common/print_messages.h"
++#include "components/services/print_compositor/public/cpp/print_service_mojo_types.h"
++#include "content/public/browser/browser_task_traits.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "mojo/public/cpp/bindings/callback_helpers.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
++
++using content::BrowserThread;
++
++namespace content {
++
++namespace {
++
++void StopWorker(int document_cookie) {
++  if (document_cookie <= 0)
++    return;
++  scoped_refptr<printing::PrintQueriesQueue> queue =
++      g_browser_process->print_job_manager()->queue();
++  std::unique_ptr<printing::PrinterQuery> printer_query =
++      queue->PopPrinterQuery(document_cookie);
++  if (printer_query.get()) {
++    base::PostTask(FROM_HERE, {BrowserThread::IO},
++                   base::BindOnce(&printing::PrinterQuery::StopWorker,
++                                  std::move(printer_query)));
++  }
++}
++
++}  // namespace
++
++PrintPreviewMessageHandler::PrintPreviewMessageHandler(
++    content::WebContents* web_contents)
++    : content::WebContentsObserver(web_contents), weak_ptr_factory_(this) {
++  DCHECK(web_contents);
++}
++
++PrintPreviewMessageHandler::~PrintPreviewMessageHandler() = default;
++
++bool PrintPreviewMessageHandler::OnMessageReceived(
++    const IPC::Message& message,
++    content::RenderFrameHost* render_frame_host) {
++  bool handled = true;
++  IPC_BEGIN_MESSAGE_MAP_WITH_PARAM(PrintPreviewMessageHandler, message,
++                                   render_frame_host)
++    IPC_MESSAGE_HANDLER(PrintHostMsg_MetafileReadyForPrinting,
++                        OnMetafileReadyForPrinting)
++    IPC_MESSAGE_HANDLER(PrintHostMsg_DidPreviewPage, OnDidPreviewPage)
++    IPC_MESSAGE_HANDLER(PrintHostMsg_DidPrepareDocumentForPreview,
++                        OnDidPrepareForDocumentToPdf)
++    IPC_MESSAGE_UNHANDLED(handled = false)
++  IPC_END_MESSAGE_MAP()
++  return handled;
++}
++
++void PrintPreviewMessageHandler::OnMetafileReadyForPrinting(
++    content::RenderFrameHost* render_frame_host,
++    const printing::mojom::DidPreviewDocumentParams& params,
++    const PrintHostMsg_PreviewIds& ids) {
++  // Always try to stop the worker.
++  StopWorker(params.document_cookie);
++
++  if (params.expected_pages_count == 0) {
++    LOG(ERROR) << "Zero page count";
++    return;
++  }
++
++  //const base::ReadOnlySharedMemoryRegion& metafile =
++  //    params.content->metafile_data_region;
++
++  if (printing::IsOopifEnabled()) {
++    auto* client =
++        printing::PrintCompositeClient::FromWebContents(web_contents());
++    DCHECK(client);
++
++    auto callback = base::BindOnce(
++        &PrintPreviewMessageHandler::OnCompositeDocumentToPdfDone,
++        weak_ptr_factory_.GetWeakPtr(), ids);
++
++    client->DoCompleteDocumentToPdf(
++        params.document_cookie, params.expected_pages_count,
++        mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            std::move(callback),
++            printing::mojom::PrintCompositor::Status::kCompositingFailure,
++            base::ReadOnlySharedMemoryRegion()));
++  }
++}
++
++void PrintPreviewMessageHandler::OnPrepareForDocumentToPdfDone(
++    const PrintHostMsg_PreviewIds& ids,
++    printing::mojom::PrintCompositor::Status status) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (status != printing::mojom::PrintCompositor::Status::kSuccess) {
++    LOG(ERROR) << "Preparing document for pdf failed with error " << status;
++  }
++}
++
++void PrintPreviewMessageHandler::OnDidPrepareForDocumentToPdf(
++    content::RenderFrameHost* render_frame_host,
++    int document_cookie,
++    const PrintHostMsg_PreviewIds& ids) {
++  if (printing::IsOopifEnabled()) {
++    auto* client =
++        printing::PrintCompositeClient::FromWebContents(web_contents());
++    DCHECK(client);
++
++    if (client->GetIsDocumentConcurrentlyComposited(document_cookie))
++      return;
++
++    client->DoPrepareForDocumentToPdf(
++        document_cookie, render_frame_host,
++        mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            base::BindOnce(
++                &PrintPreviewMessageHandler::OnPrepareForDocumentToPdfDone,
++                weak_ptr_factory_.GetWeakPtr(), ids),
++            printing::mojom::PrintCompositor::Status::kCompositingFailure));
++  }
++}
++
++void PrintPreviewMessageHandler::OnCompositeDocumentToPdfDone(
++    const PrintHostMsg_PreviewIds& ids,
++    printing::mojom::PrintCompositor::Status status,
++    base::ReadOnlySharedMemoryRegion region) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++
++  if (status != printing::mojom::PrintCompositor::Status::kSuccess) {
++    LOG(ERROR) << "Compositing pdf failed with error " << status;
++    return;
++  }
++
++  {
++    base::ThreadRestrictions::ScopedAllowIO allow_io;
++    base::FilePath temp_dir;
++    if (base::GetTempDir(&temp_dir)) {
++      auto temp_file = temp_dir.Append("001.pdf");
++      auto pdf_region =
++          base::RefCountedSharedMemoryMapping::CreateFromWholeRegion(region);
++      base::WriteFile(temp_file,
++          reinterpret_cast<const char*>(pdf_region->front()), pdf_region->size());
++      LOG(INFO) << "PDF successfully written to : " << temp_file.value();
++    }
++  }
++}
++
++void PrintPreviewMessageHandler::OnCompositePdfPageDone(
++    int page_number,
++    int document_cookie,
++    const PrintHostMsg_PreviewIds& ids,
++    printing::mojom::PrintCompositor::Status status,
++    base::ReadOnlySharedMemoryRegion region) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (status != printing::mojom::PrintCompositor::Status::kSuccess) {
++    LOG(ERROR) << "Compositing pdf failed on page: " << page_number
++               << " with error: " << status;
++  }
++}
++
++void PrintPreviewMessageHandler::OnDidPreviewPage(
++    content::RenderFrameHost* render_frame_host,
++    const printing::mojom::DidPreviewPageParams& params,
++    const PrintHostMsg_PreviewIds& ids) {
++  int page_number = params.page_number;
++  const printing::mojom::DidPrintContentParams& content = *params.content;
++
++  if (page_number < printing::FIRST_PAGE_INDEX ||
++      !content.metafile_data_region.IsValid()) {
++    LOG(ERROR) << "Invalid meta file region";
++    return;
++  }
++
++  if (printing::IsOopifEnabled()) {
++    auto* client =
++        printing::PrintCompositeClient::FromWebContents(web_contents());
++    DCHECK(client);
++
++    // Use utility process to convert skia metafile to pdf.
++    client->DoCompositePageToPdf(
++        params.document_cookie, render_frame_host, content,
++        mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            base::BindOnce(&PrintPreviewMessageHandler::OnCompositePdfPageDone,
++                           weak_ptr_factory_.GetWeakPtr(), page_number,
++                           params.document_cookie, ids),
++            printing::mojom::PrintCompositor::Status::kCompositingFailure,
++            base::ReadOnlySharedMemoryRegion()));
++  }
++}
++
++void PrintPreviewMessageHandler::PrintPreviewFailed(int32_t document_cookie,
++                                                    int32_t request_id) {
++  StopWorker(document_cookie);
++
++  LOG(ERROR) << "Print preview failed for id : " << request_id;
++}
++
++void PrintPreviewMessageHandler::PrintPreviewCancelled(int32_t document_cookie,
++                                                       int32_t request_id) {
++  StopWorker(document_cookie);
++
++  LOG(ERROR) << "Print preview cancelled for id : " << request_id;
++}
++
++void PrintPreviewMessageHandler::PrintToPDF(
++    base::DictionaryValue options) {
++  int request_id;
++  options.GetInteger(printing::kPreviewRequestID, &request_id);
++
++  LOG(INFO) << "Initiated Print preview for id : " << request_id;
++
++  auto* focused_frame = web_contents()->GetFocusedFrame();
++  auto* rfh = focused_frame && focused_frame->HasSelection()
++                  ? focused_frame
++                  : web_contents()->GetMainFrame();
++
++  if (!print_render_frame_.is_bound()) {
++    rfh->GetRemoteAssociatedInterfaces()->GetInterface(&print_render_frame_);
++  }
++  if (!receiver_.is_bound()) {
++    print_render_frame_->SetPrintPreviewUI(
++        receiver_.BindNewEndpointAndPassRemote());
++  }
++  print_render_frame_->PrintPreview(options.Clone());
++}
++
++WEB_CONTENTS_USER_DATA_KEY_IMPL(PrintPreviewMessageHandler)
++
++}  // namespace content
+diff --git a/content/shell/browser/printing/print_preview_message_handler.h b/content/shell/browser/printing/print_preview_message_handler.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..05059e3bce4844cde8840ba9becfa9d648e2fce2
+--- /dev/null
++++ b/content/shell/browser/printing/print_preview_message_handler.h
+@@ -0,0 +1,86 @@
++#ifndef CONTENT_SHELL_BROWSER_PRINTING_PRINT_PREVIEW_MESSAGE_HANDLER_H_
++#define CONTENT_SHELL_BROWSER_PRINTING_PRINT_PREVIEW_MESSAGE_HANDLER_H_
++
++#include <map>
++
++#include "base/memory/ref_counted_memory.h"
++#include "base/memory/weak_ptr.h"
++#include "components/printing/common/print.mojom.h"
++#include "components/printing/common/print_messages.h"
++#include "components/services/print_compositor/public/mojom/print_compositor.mojom.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "mojo/public/cpp/bindings/associated_receiver.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++
++namespace content {
++
++class RenderFrameHost;
++
++// Manages the print preview handling for a WebContents.
++class PrintPreviewMessageHandler
++    : public content::WebContentsObserver,
++      public printing::mojom::PrintPreviewUI,
++      public content::WebContentsUserData<PrintPreviewMessageHandler> {
++ public:
++  ~PrintPreviewMessageHandler() override;
++
++  void PrintToPDF(base::DictionaryValue options);
++
++ protected:
++  // content::WebContentsObserver implementation.
++  bool OnMessageReceived(const IPC::Message& message,
++                         content::RenderFrameHost* render_frame_host) override;
++
++ private:
++  friend class content::WebContentsUserData<PrintPreviewMessageHandler>;
++
++  explicit PrintPreviewMessageHandler(content::WebContents* web_contents);
++
++  void OnMetafileReadyForPrinting(
++      content::RenderFrameHost* render_frame_host,
++      const printing::mojom::DidPreviewDocumentParams& params,
++      const PrintHostMsg_PreviewIds& ids);
++  void OnCompositeDocumentToPdfDone(
++      const PrintHostMsg_PreviewIds& ids,
++      printing::mojom::PrintCompositor::Status status,
++      base::ReadOnlySharedMemoryRegion region);
++  void OnPrepareForDocumentToPdfDone(
++      const PrintHostMsg_PreviewIds& ids,
++      printing::mojom::PrintCompositor::Status status);
++  void OnDidPrepareForDocumentToPdf(content::RenderFrameHost* render_frame_host,
++                                    int document_cookie,
++                                    const PrintHostMsg_PreviewIds& ids);
++  void OnCompositePdfPageDone(int page_number,
++                              int document_cookie,
++                              const PrintHostMsg_PreviewIds& ids,
++                              printing::mojom::PrintCompositor::Status status,
++                              base::ReadOnlySharedMemoryRegion region);
++  void OnDidPreviewPage(content::RenderFrameHost* render_frame_host,
++                        const printing::mojom::DidPreviewPageParams& params,
++                        const PrintHostMsg_PreviewIds& ids);
++
++  // printing::mojo::PrintPreviewUI:
++  void SetOptionsFromDocument(
++      const printing::mojom::OptionsFromDocumentParamsPtr params,
++      int32_t request_id) override {}
++  void PrintPreviewFailed(int32_t document_cookie, int32_t request_id) override;
++  void PrintPreviewCancelled(int32_t document_cookie,
++                             int32_t request_id) override;
++  void PrinterSettingsInvalid(int32_t document_cookie,
++                              int32_t request_id) override {}
++
++  mojo::AssociatedRemote<printing::mojom::PrintRenderFrame> print_render_frame_;
++
++  mojo::AssociatedReceiver<printing::mojom::PrintPreviewUI> receiver_{this};
++
++  base::WeakPtrFactory<PrintPreviewMessageHandler> weak_ptr_factory_;
++
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++
++  DISALLOW_COPY_AND_ASSIGN(PrintPreviewMessageHandler);
++};
++
++}  // namespace content
++
++#endif  // CONTENT_SHELL_BROWSER_PRINTING_PRINT_PREVIEW_MESSAGE_HANDLER_H_
+diff --git a/content/shell/browser/shell.cc b/content/shell/browser/shell.cc
+index 7246c8ab288e9d217967dfd3477ee7ddbcb55806..6570937e05c9c3efa17dbe8fc93a6e984d0806ab 100644
+--- a/content/shell/browser/shell.cc
++++ b/content/shell/browser/shell.cc
+@@ -39,9 +39,17 @@
+ #include "content/shell/browser/shell_javascript_dialog_manager.h"
+ #include "content/shell/common/shell_switches.h"
+ #include "media/media_buildflags.h"
++#include "printing/buildflags/buildflags.h"
+ #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
+ #include "third_party/blink/public/mojom/renderer_preferences.mojom.h"
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++#include "chrome/browser/printing/print_view_manager_basic.h"
++#include "components/printing/browser/print_manager_utils.h"
++#include "content/shell/browser/printing/print_preview_message_handler.h"
++#include "printing/print_job_constants.h"
++#endif
++
+ namespace content {
+ 
+ // Null until/unless the default main message loop is running.
+@@ -145,6 +153,12 @@ Shell* Shell::CreateShell(std::unique_ptr<WebContents> web_contents,
+   g_platform->SetContents(shell);
+   g_platform->DidCreateOrAttachWebContents(shell, raw_web_contents);
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++  PrintPreviewMessageHandler::CreateForWebContents(raw_web_contents);
++  printing::PrintViewManagerBasic::CreateForWebContents(raw_web_contents);
++  printing::CreateCompositeClientIfNeeded(raw_web_contents, std::string());
++#endif
++
+   return shell;
+ }
+ 
+@@ -313,6 +327,35 @@ void Shell::Stop() {
+   web_contents_->Stop();
+ }
+ 
++void Shell::GeneratePDF() {
++#if BUILDFLAG(ENABLE_PRINTING)
++  base::DictionaryValue settings;
++  settings.SetKey(printing::kSettingLandscape, base::Value(false));
++  settings.SetKey(printing::kSettingHeaderFooterEnabled, base::Value(false));
++  settings.SetKey(printing::kSettingMarginsType, base::Value(0));
++  settings.SetKey(printing::kSettingScaleFactor, base::Value(100));
++  settings.SetKey(printing::kSettingShouldPrintBackgrounds, base::Value(false));
++  settings.SetKey(printing::kSettingShouldPrintSelectionOnly, base::Value(false));
++  settings.SetKey(printing::kSettingPagesPerSheet, base::Value(1));
++  settings.SetKey(printing::kIsFirstRequest, base::Value(false));
++  settings.SetKey(printing::kPreviewUIID, base::Value(0));
++  settings.SetKey(printing::kSettingPreviewModifiable, base::Value(true));
++  settings.SetKey(printing::kSettingDeviceName, base::Value("Save as PDF"));
++  settings.SetKey(printing::kSettingDpiHorizontal, base::Value(72));
++  settings.SetKey(printing::kSettingDpiVertical, base::Value(72));
++  settings.SetKey(printing::kSettingRasterizePdf, base::Value(false));
++  settings.SetKey(printing::kSettingDuplexMode, base::Value(0));
++  settings.SetKey(printing::kSettingCopies, base::Value(1));
++  settings.SetKey(printing::kSettingColor, base::Value(2));
++  settings.SetKey(printing::kSettingCollate, base::Value(true));
++  settings.SetKey(printing::kSettingPrinterType, base::Value(2));
++  static int request_id = 0;
++  settings.SetKey(printing::kPreviewRequestID, base::Value(++request_id));
++  PrintPreviewMessageHandler::FromWebContents(web_contents())
++      ->PrintToPDF(std::move(settings));
++#endif
++}
++
+ void Shell::UpdateNavigationControls(bool to_different_document) {
+   int current_index = web_contents_->GetController().GetCurrentEntryIndex();
+   int max_index = web_contents_->GetController().GetEntryCount() - 1;
+diff --git a/content/shell/browser/shell.h b/content/shell/browser/shell.h
+index f1a925b5d28c2729a8a43a0b3d5554ec14e646fd..ff0339bda389c45ae839bb4f8f6714eec9c315d6 100644
+--- a/content/shell/browser/shell.h
++++ b/content/shell/browser/shell.h
+@@ -60,6 +60,7 @@ class Shell : public WebContentsDelegate,
+   void Close();
+   void ShowDevTools();
+   void CloseDevTools();
++  void GeneratePDF();
+   // Resizes the web content view to the given dimensions.
+   void ResizeWebContentForTests(const gfx::Size& content_size);
+ 
+diff --git a/content/shell/browser/shell_browser_main_parts.cc b/content/shell/browser/shell_browser_main_parts.cc
+index 000f06a0e5bf0241876962b9b34cf61286e396ed..6d8ccab3252d397af47227eedb9a39605b1fd206 100644
+--- a/content/shell/browser/shell_browser_main_parts.cc
++++ b/content/shell/browser/shell_browser_main_parts.cc
+@@ -21,6 +21,7 @@
+ #include "content/public/common/main_function_params.h"
+ #include "content/public/common/url_constants.h"
+ #include "content/shell/android/shell_descriptors.h"
++#include "content/shell/browser/browser_process_impl.h"
+ #include "content/shell/browser/shell.h"
+ #include "content/shell/browser/shell_browser_context.h"
+ #include "content/shell/browser/shell_devtools_manager_delegate.h"
+@@ -107,7 +108,8 @@ scoped_refptr<base::RefCountedMemory> PlatformResourceProvider(int key) {
+ 
+ ShellBrowserMainParts::ShellBrowserMainParts(
+     const MainFunctionParams& parameters)
+-    : parameters_(parameters),
++    : fake_browser_process_(new BrowserProcessImpl),
++      parameters_(parameters),
+       run_message_loop_(true) {
+ }
+ 
+diff --git a/content/shell/browser/shell_browser_main_parts.h b/content/shell/browser/shell_browser_main_parts.h
+index 935065afe83092b203945e55c0232fe829299ff8..df41ccbeded77fd9e55fc1d051383ff143d57787 100644
+--- a/content/shell/browser/shell_browser_main_parts.h
++++ b/content/shell/browser/shell_browser_main_parts.h
+@@ -15,6 +15,8 @@
+ #include "content/shell/browser/shell_browser_context.h"
+ #include "ui/base/buildflags.h"
+ 
++class BrowserProcessImpl;
++
+ #if BUILDFLAG(USE_GTK)
+ namespace ui {
+ class GtkUiDelegate;
+@@ -62,6 +64,9 @@ class ShellBrowserMainParts : public BrowserMainParts {
+ 
+  private:
+ 
++  // A fake BrowserProcess object that used to feed the source code from chrome.
++  std::unique_ptr<BrowserProcessImpl> fake_browser_process_;
++
+   std::unique_ptr<ShellBrowserContext> browser_context_;
+   std::unique_ptr<ShellBrowserContext> off_the_record_browser_context_;
+ 
+diff --git a/content/shell/browser/shell_content_browser_client.cc b/content/shell/browser/shell_content_browser_client.cc
+index af1dd3a8ac4f7c2232ef07c63b96f06b21b9c25e..95a35fc927e8d6cf2c1aade26ac097511c81697b 100644
+--- a/content/shell/browser/shell_content_browser_client.cc
++++ b/content/shell/browser/shell_content_browser_client.cc
+@@ -45,6 +45,7 @@
+ #include "mojo/public/cpp/bindings/remote.h"
+ #include "mojo/public/cpp/bindings/self_owned_receiver.h"
+ #include "net/ssl/client_cert_identity.h"
++#include "printing/buildflags/buildflags.h"
+ #include "services/network/public/mojom/network_service.mojom.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+@@ -77,6 +78,10 @@
+ #include "media/mojo/services/media_service_factory.h"  // nogncheck
+ #endif
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++#include "chrome/browser/printing/printing_message_filter.h"
++#endif
++
+ namespace content {
+ 
+ namespace {
+@@ -445,6 +450,16 @@ void ShellContentBrowserClient::BindBrowserControlInterface(
+   }
+ }
+ 
++void ShellContentBrowserClient::RenderProcessWillLaunch(
++    content::RenderProcessHost* host) {
++#if BUILDFLAG(ENABLE_PRINTING)
++  auto* browser_context = host->GetBrowserContext();
++  int process_id = host->GetID();
++  host->AddFilter(
++      new printing::PrintingMessageFilter(process_id, browser_context));
++#endif
++}
++
+ ShellBrowserContext* ShellContentBrowserClient::browser_context() {
+   return shell_browser_main_parts_->browser_context();
+ }
+diff --git a/content/shell/browser/shell_content_browser_client.h b/content/shell/browser/shell_content_browser_client.h
+index 2203839ae6d2a508ec74e3e5137e1a3dc1f7b59b..35e3b6dd43ed906d41c7ef7067f03a3711ee2188 100644
+--- a/content/shell/browser/shell_content_browser_client.h
++++ b/content/shell/browser/shell_content_browser_client.h
+@@ -114,6 +114,7 @@ class ShellContentBrowserClient : public ContentBrowserClient {
+   std::vector<base::FilePath> GetNetworkContextsParentDirectory() override;
+   void BindBrowserControlInterface(
+       mojo::GenericPendingReceiver receiver) override;
++  void RenderProcessWillLaunch(content::RenderProcessHost* host) override;
+ 
+   ShellBrowserContext* browser_context();
+   ShellBrowserContext* off_the_record_browser_context();
+diff --git a/content/shell/browser/shell_platform_delegate_views.cc b/content/shell/browser/shell_platform_delegate_views.cc
+index fabc0a7f52091d1fc733e07a0c9bfeb801de817c..05c34ea14ec9d8e9a9c43b63631a23c08ec4903c 100644
+--- a/content/shell/browser/shell_platform_delegate_views.cc
++++ b/content/shell/browser/shell_platform_delegate_views.cc
+@@ -183,6 +183,14 @@ class ShellWindowDelegateView : public views::WidgetDelegateView,
+           views::GridLayout::CENTER, views::GridLayout::CENTER, 0,
+           ColumnSize::kFixed, refresh_button_size.width(),
+           refresh_button_size.width() / 2);
++      // Generate PDF button
++      auto pdf_button =
++          views::MdTextButton::Create(this, base::ASCIIToUTF16("Generate PDF"));
++      gfx::Size pdf_button_size = pdf_button->GetPreferredSize();
++      toolbar_column_set->AddColumn(
++          views::GridLayout::CENTER, views::GridLayout::CENTER, 0,
++          ColumnSize::kFixed, pdf_button_size.width(),
++          pdf_button_size.width() / 2);
+       // Stop button
+       auto stop_button =
+           views::MdTextButton::Create(this, base::ASCIIToUTF16("Stop"));
+@@ -207,6 +215,7 @@ class ShellWindowDelegateView : public views::WidgetDelegateView,
+       back_button_ = toolbar_layout->AddView(std::move(back_button));
+       forward_button_ = toolbar_layout->AddView(std::move(forward_button));
+       refresh_button_ = toolbar_layout->AddView(std::move(refresh_button));
++      pdf_button_ = toolbar_layout->AddView(std::move(pdf_button));
+       stop_button_ = toolbar_layout->AddView(std::move(stop_button));
+       url_entry_ = toolbar_layout->AddView(std::move(url_entry));
+ 
+@@ -264,6 +273,8 @@ class ShellWindowDelegateView : public views::WidgetDelegateView,
+       shell_->Reload();
+     else if (sender == stop_button_)
+       shell_->Stop();
++    else if (sender == pdf_button_)
++      shell_->GeneratePDF();
+   }
+ 
+   // Overridden from WidgetDelegateView
+@@ -305,6 +316,7 @@ class ShellWindowDelegateView : public views::WidgetDelegateView,
+   views::Button* back_button_ = nullptr;
+   views::Button* forward_button_ = nullptr;
+   views::Button* refresh_button_ = nullptr;
++  views::Button* pdf_button_ = nullptr;
+   views::Button* stop_button_ = nullptr;
+   views::Textfield* url_entry_ = nullptr;
+ 
+diff --git a/content/shell/renderer/printing/print_render_frame_helper_delegate.cc b/content/shell/renderer/printing/print_render_frame_helper_delegate.cc
+new file mode 100644
+index 0000000000000000000000000000000000000000..8d89f25b9779c2906bbe48ce45205afe4e95ee96
+--- /dev/null
++++ b/content/shell/renderer/printing/print_render_frame_helper_delegate.cc
+@@ -0,0 +1,28 @@
++#include "content/shell/renderer/printing/print_render_frame_helper_delegate.h"
++
++#include "content/public/renderer/render_frame.h"
++#include "third_party/blink/public/web/web_element.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++
++namespace content {
++
++PrintRenderFrameHelperDelegate::PrintRenderFrameHelperDelegate() = default;
++
++PrintRenderFrameHelperDelegate::~PrintRenderFrameHelperDelegate() = default;
++
++// Return the PDF object element if |frame| is the out of process PDF extension.
++blink::WebElement PrintRenderFrameHelperDelegate::GetPdfElement(
++    blink::WebLocalFrame* frame) {
++  return blink::WebElement();
++}
++
++bool PrintRenderFrameHelperDelegate::IsPrintPreviewEnabled() {
++  return false;
++}
++
++bool PrintRenderFrameHelperDelegate::OverridePrint(
++    blink::WebLocalFrame* frame) {
++  return false;
++}
++
++}  // namespace content
+diff --git a/content/shell/renderer/printing/print_render_frame_helper_delegate.h b/content/shell/renderer/printing/print_render_frame_helper_delegate.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..78e98e4a9ef7287d571e896dc81e6fad81c09932
+--- /dev/null
++++ b/content/shell/renderer/printing/print_render_frame_helper_delegate.h
+@@ -0,0 +1,26 @@
++#ifndef CONTENT_SHELL_RENDERER_PRINTING_PRINT_RENDER_FRAME_HELPER_DELEGATE_H_
++#define CONTENT_SHELL_RENDERER_PRINTING_PRINT_RENDER_FRAME_HELPER_DELEGATE_H_
++
++#include "base/macros.h"
++#include "components/printing/renderer/print_render_frame_helper.h"
++
++namespace content {
++
++class PrintRenderFrameHelperDelegate
++    : public printing::PrintRenderFrameHelper::Delegate {
++ public:
++  PrintRenderFrameHelperDelegate();
++  ~PrintRenderFrameHelperDelegate() override;
++
++ private:
++  // printing::PrintRenderFrameHelper::Delegate:
++  blink::WebElement GetPdfElement(blink::WebLocalFrame* frame) override;
++  bool IsPrintPreviewEnabled() override;
++  bool OverridePrint(blink::WebLocalFrame* frame) override;
++
++  DISALLOW_COPY_AND_ASSIGN(PrintRenderFrameHelperDelegate);
++};
++
++}  // namespace content
++
++#endif  // CONTENT_SHELL_RENDERER_PRINTING_PRINT_RENDER_FRAME_HELPER_DELEGATE_H_
+diff --git a/content/shell/renderer/shell_content_renderer_client.cc b/content/shell/renderer/shell_content_renderer_client.cc
+index 827171d2e1d234bd41af7b616db6c451db6f342f..8454fd4e02f431439a40d8583b53c3915323eab2 100644
+--- a/content/shell/renderer/shell_content_renderer_client.cc
++++ b/content/shell/renderer/shell_content_renderer_client.cc
+@@ -24,6 +24,7 @@
+ #include "mojo/public/cpp/system/message_pipe.h"
+ #include "net/base/net_errors.h"
+ #include "ppapi/buildflags/buildflags.h"
++#include "printing/buildflags/buildflags.h"
+ #include "sandbox/policy/sandbox.h"
+ #include "third_party/blink/public/platform/web_url_error.h"
+ #include "third_party/blink/public/web/web_testing_support.h"
+@@ -39,6 +40,12 @@
+ #include "media/base/media_switches.h"
+ #endif
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++#include "components/printing/renderer/print_render_frame_helper.h"
++#include "content/shell/renderer/printing/print_render_frame_helper_delegate.h"
++#include "printing/print_settings.h"  // nogncheck
++#endif
++
+ namespace content {
+ 
+ namespace {
+@@ -148,6 +155,18 @@ void ShellContentRendererClient::RenderFrameCreated(RenderFrame* render_frame) {
+   // browser tests. If we only create that for browser tests then the override
+   // of this method in WebTestContentRendererClient would not be needed.
+   new ShellRenderFrameObserver(render_frame);
++
++#if BUILDFLAG(ENABLE_PRINTING)
++  new printing::PrintRenderFrameHelper(
++      render_frame,
++      std::make_unique<content::PrintRenderFrameHelperDelegate>());
++#endif
++}
++
++void ShellContentRendererClient::DidSetUserAgent(const std::string& user_agent) {
++#if BUILDFLAG(ENABLE_PRINTING)
++  printing::SetAgent(user_agent);
++#endif
+ }
+ 
+ bool ShellContentRendererClient::HasErrorPage(int http_status_code) {
+diff --git a/content/shell/renderer/shell_content_renderer_client.h b/content/shell/renderer/shell_content_renderer_client.h
+index 218db9f47201a33eba9698fac33c706d5ed59cc7..8dd44926105ca9d5fb6c7d14118c813783303473 100644
+--- a/content/shell/renderer/shell_content_renderer_client.h
++++ b/content/shell/renderer/shell_content_renderer_client.h
+@@ -26,6 +26,7 @@ class ShellContentRendererClient : public ContentRendererClient {
+ 
+   // ContentRendererClient implementation.
+   void RenderThreadStarted() override;
++  void DidSetUserAgent(const std::string& user_agent) override;
+   void ExposeInterfacesToBrowser(mojo::BinderMap* binders) override;
+   void RenderFrameCreated(RenderFrame* render_frame) override;
+   bool HasErrorPage(int http_status_code) override;
+diff --git a/content/shell/utility/shell_content_utility_client.cc b/content/shell/utility/shell_content_utility_client.cc
+index 4db7feaa50369a247b9dac9382f73ea81eec461b..ab29c6007a7db5154409d4e24d38fb609d705ba5 100644
+--- a/content/shell/utility/shell_content_utility_client.cc
++++ b/content/shell/utility/shell_content_utility_client.cc
+@@ -31,6 +31,7 @@
+ #include "mojo/public/cpp/bindings/self_owned_receiver.h"
+ #include "mojo/public/cpp/bindings/service_factory.h"
+ #include "mojo/public/cpp/system/buffer.h"
++#include "printing/buildflags/buildflags.h"
+ #include "sandbox/policy/sandbox.h"
+ #include "services/test/echo/echo_service.h"
+ 
+@@ -38,6 +39,11 @@
+ #include "services/service_manager/tests/sandbox_status_service.h"
+ #endif
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++#include "components/services/print_compositor/print_compositor_impl.h"
++#include "components/services/print_compositor/public/mojom/print_compositor.mojom.h"  // nogncheck
++#endif
++
+ namespace content {
+ 
+ namespace {
+@@ -121,6 +127,15 @@ auto RunEchoService(mojo::PendingReceiver<echo::mojom::EchoService> receiver) {
+   return std::make_unique<echo::EchoService>(std::move(receiver));
+ }
+ 
++#if BUILDFLAG(ENABLE_PRINTING)
++auto RunPrintCompositor(
++    mojo::PendingReceiver<printing::mojom::PrintCompositor> receiver) {
++  return std::make_unique<printing::PrintCompositorImpl>(
++      std::move(receiver), true /* initialize_environment */,
++      content::UtilityThread::Get()->GetIOTaskRunner());
++}
++#endif
++
+ }  // namespace
+ 
+ ShellContentUtilityClient::ShellContentUtilityClient(bool is_browsertest) {
+@@ -172,6 +187,16 @@ bool ShellContentUtilityClient::HandleServiceRequest(
+   return false;
+ }
+ 
++mojo::ServiceFactory*
++ShellContentUtilityClient::GetMainThreadServiceFactory() {
++  static base::NoDestructor<mojo::ServiceFactory> factory {
++#if BUILDFLAG(ENABLE_PRINTING)
++        RunPrintCompositor
++#endif
++  };
++  return factory.get();
++}
++
+ mojo::ServiceFactory* ShellContentUtilityClient::GetIOThreadServiceFactory() {
+   static base::NoDestructor<mojo::ServiceFactory> factory{
+       RunEchoService,
+diff --git a/content/shell/utility/shell_content_utility_client.h b/content/shell/utility/shell_content_utility_client.h
+index df7adadc5750842d113db1ac3b9d78c540a21e3c..25ecc7b34a79ba84d791cb81723830a7282bf136 100644
+--- a/content/shell/utility/shell_content_utility_client.h
++++ b/content/shell/utility/shell_content_utility_client.h
+@@ -23,6 +23,7 @@ class ShellContentUtilityClient : public ContentUtilityClient {
+   bool HandleServiceRequest(
+       const std::string& service_name,
+       mojo::PendingReceiver<service_manager::mojom::Service> receiver) override;
++  mojo::ServiceFactory* GetMainThreadServiceFactory() override;
+   mojo::ServiceFactory* GetIOThreadServiceFactory() override;
+   void RegisterNetworkBinders(
+       service_manager::BinderRegistry* registry) override;

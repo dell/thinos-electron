@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/callback_forward.h"
+#include "base/optional.h"
 #include "base/strings/string16.h"
 #include "ui/gfx/image/image_skia.h"
 
@@ -31,6 +32,7 @@ struct MessageBoxSettings {
   electron::NativeWindow* parent_window = nullptr;
   MessageBoxType type = electron::MessageBoxType::kNone;
   std::vector<std::string> buttons;
+  base::Optional<std::string> id;
   int default_id;
   int cancel_id;
   bool no_link = false;
@@ -48,11 +50,13 @@ struct MessageBoxSettings {
 
 int ShowMessageBoxSync(const MessageBoxSettings& settings);
 
-typedef base::OnceCallback<void(int code, bool checkbox_checked)>
-    MessageBoxCallback;
+using MessageBoxCallback = base::OnceCallback<
+    void(const std::string& error, int code, bool checkbox_checked)>;
 
 void ShowMessageBox(const MessageBoxSettings& settings,
                     MessageBoxCallback callback);
+
+bool CloseMessageBox(const std::string& id, std::string* error);
 
 // Like ShowMessageBox with simplest settings, but safe to call at very early
 // stage of application.

@@ -14,8 +14,8 @@
 
 #include "base/lazy_instance.h"
 #include "base/strings/string_util.h"
-#include "base/synchronization/lock.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/synchronization/lock.h"
 #include "base/task/post_task.h"
 #include "base/win/scoped_gdi_object.h"
 #include "shell/browser/browser.h"
@@ -130,8 +130,8 @@ DialogResult ShowTaskDialogUTF16(NativeWindow* parent,
                                  const base::string16& checkbox_label,
                                  bool checkbox_checked,
                                  const gfx::ImageSkia& icon,
-                                 const base::Optional<std::string>& mb_id = nullptr,
-                                 HWND* hwnd = nullptr) {
+                                 const base::Optional<std::string>& mb_id,
+                                 HWND* hwnd) {
   TASKDIALOG_FLAGS flags =
       TDF_SIZE_TO_CONTENT |           // Show all content.
       TDF_ALLOW_DIALOG_CANCELLATION;  // Allow canceling the dialog.
@@ -260,8 +260,8 @@ DialogResult ShowTaskDialogUTF8(const MessageBoxSettings& settings,
   return ShowTaskDialogUTF16(
       settings.parent_window, settings.type, utf16_buttons, settings.default_id,
       settings.cancel_id, settings.no_link, title_16, message_16, detail_16,
-      checkbox_label_16, settings.checkbox_checked, settings.icon,
-      settings.id, hwnd);
+      checkbox_label_16, settings.checkbox_checked, settings.icon, settings.id,
+      hwnd);
 }
 
 }  // namespace
@@ -282,24 +282,22 @@ void ShowMessageBox(const MessageBoxSettings& settings,
       std::move(callback).Run("Duplicate ID found", 0, false);
       return;
     }
-    auto it = g_dialogs.emplace(*settings.id,
-                                std::make_unique<HWND>(kHwndReserve));
+    auto it =
+        g_dialogs.emplace(*settings.id, std::make_unique<HWND>(kHwndReserve));
     hwnd = it.first->second.get();
   }
 
-  dialog_thread::Run(base::BindOnce(&ShowTaskDialogUTF8,
-                                    settings, base::Unretained(hwnd)),
-                     base::BindOnce(
-                         [](MessageBoxCallback callback,
-                            base::Optional<std::string> id,
-                            DialogResult result) {
-                           if (id)
-                             g_dialogs.erase(*id);
-                           std::move(callback).Run(std::get<0>(result),
-                                                   std::get<1>(result),
-                                                   std::get<2>(result));
-                         },
-                         std::move(callback), settings.id));
+  dialog_thread::Run(
+      base::BindOnce(&ShowTaskDialogUTF8, settings, base::Unretained(hwnd)),
+      base::BindOnce(
+          [](MessageBoxCallback callback, base::Optional<std::string> id,
+             DialogResult result) {
+            if (id)
+              g_dialogs.erase(*id);
+            std::move(callback).Run(std::get<0>(result), std::get<1>(result),
+                                    std::get<2>(result));
+          },
+          std::move(callback), settings.id));
 }
 
 bool CloseMessageBox(const std::string& id, std::string* error) {
@@ -324,7 +322,8 @@ bool CloseMessageBox(const std::string& id, std::string* error) {
 void ShowErrorBox(const base::string16& title, const base::string16& content) {
   electron::UnresponsiveSuppressor suppressor;
   ShowTaskDialogUTF16(nullptr, MessageBoxType::kError, {}, -1, 0, false,
-                      L"Error", title, content, L"", false, gfx::ImageSkia());
+                      L"Error", title, content, L"", false, gfx::ImageSkia(),
+                      nullptr, nullptr);
 }
 
 }  // namespace electron

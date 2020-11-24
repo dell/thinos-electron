@@ -1068,6 +1068,29 @@ step-ts-compile: &step-ts-compile
       ninja -C out/Default electron:default_app_js -j $NUMBER_OF_NINJA_PROCESSES
       ninja -C out/Default electron:electron_js2c -j $NUMBER_OF_NINJA_PROCESSES
 
+step-maybe-install-deps: &step-maybe-install-deps
+  run:
+    name: Install dependencies for arm
+    command: |
+      if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
+        apt-get update 
+        DEBIAN_FRONTEND=noninteractive apt-get install -y \
+          gperf \
+          libasound2 \
+          libasound2-dev \
+          libc6:armhf \
+          libcap-dev \
+          libcups2-dev \
+          libdbus-1-dev \
+          libgtk2.0-dev \
+          libgtk-3-dev \
+          libnotify-bin \
+          libnss3-dev \
+          libstdc++6:armhf \
+          libxtst-dev \
+          libxtst6
+      fi
+
 step-maybe-install-dbusmock: &step-maybe-install-dbusmock
   run:
     name: Install dbusmock
@@ -1290,6 +1313,7 @@ steps-tests: &steps-tests
     - *step-restore-brew-cache
     - *step-fix-known-hosts-linux
     - *step-install-signing-cert-on-mac
+    - *step-maybe-install-deps
     - *step-maybe-install-dbusmock
 
     - run:

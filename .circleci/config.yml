@@ -1073,6 +1073,7 @@ step-maybe-install-deps: &step-maybe-install-deps
     name: Install dependencies for arm
     command: |
       if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
+        sudo dpkg --add-architecture armhf
         sudo apt-get update 
         DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
           gperf \

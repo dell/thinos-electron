@@ -1068,6 +1068,14 @@ step-ts-compile: &step-ts-compile
       ninja -C out/Default electron:default_app_js -j $NUMBER_OF_NINJA_PROCESSES
       ninja -C out/Default electron:electron_js2c -j $NUMBER_OF_NINJA_PROCESSES
 
+step-maybe-install-dbusmock: &step-maybe-install-dbusmock
+  run:
+    name: Install dbusmock
+    command: |
+      if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
+        pip install python-dbusmock
+      fi
+
 # Lists of steps.
 steps-lint: &steps-lint
   steps:
@@ -1282,6 +1290,7 @@ steps-tests: &steps-tests
     - *step-restore-brew-cache
     - *step-fix-known-hosts-linux
     - *step-install-signing-cert-on-mac
+    - *step-maybe-install-dbusmock
 
     - run:
         name: Run Electron tests
@@ -2366,6 +2375,7 @@ jobs:
     <<: *machine-linux-arm
     environment:
       <<: *env-linux-medium
+      <<: *env-arm
       <<: *env-headless-testing
       <<: *env-stack-dumping
     <<: *steps-tests
@@ -2374,6 +2384,7 @@ jobs:
     <<: *machine-linux-arm
     environment:
       <<: *env-linux-medium
+      <<: *env-arm64
       <<: *env-headless-testing
       <<: *env-stack-dumping
     <<: *steps-tests

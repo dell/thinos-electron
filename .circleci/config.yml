@@ -97,6 +97,11 @@ machine-mac-large-arm: &machine-mac-large-arm
   macos:
     xcode: "12.2.0"
 
+machine-linux-arm: &machine-linux-arm
+  machine:
+    image: ubuntu-2004:202011-01
+  resource_class: arm.medium
+
 # Build configurations options.
 env-testing-build: &env-testing-build
   GN_CONFIG: //electron/build/args/testing.gn
@@ -1909,7 +1914,7 @@ jobs:
       GCLIENT_EXTRA_ARGS: '--custom-var=checkout_arm=True --custom-var=checkout_arm64=True'
     steps:
       - electron-build:
-          persist: false
+          persist: true
           checkout: true
           use-out-cache: false
 
@@ -1967,7 +1972,7 @@ jobs:
       GCLIENT_EXTRA_ARGS: '--custom-var=checkout_arm=True --custom-var=checkout_arm64=True'
     steps:
       - electron-build:
-          persist: false
+          persist: true
           checkout: true
           use-out-cache: false
 
@@ -2354,6 +2359,22 @@ jobs:
       <<: *env-headless-testing
       <<: *env-send-slack-notifications
     <<: *steps-verify-ffmpeg
+
+  linux-arm-testing-tests:
+    <<: *machine-linux-arm
+    environment:
+      <<: *env-linux-medium
+      <<: *env-headless-testing
+      <<: *env-stack-dumping
+    <<: *steps-tests
+
+  linux-arm64-testing-tests:
+    <<: *machine-linux-arm
+    environment:
+      <<: *env-linux-medium
+      <<: *env-headless-testing
+      <<: *env-stack-dumping
+    <<: *steps-tests
 
   osx-testing-x64-tests:
     <<: *machine-mac-large

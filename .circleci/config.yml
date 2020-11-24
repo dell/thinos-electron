@@ -1089,15 +1089,8 @@ step-maybe-install-deps: &step-maybe-install-deps
           libnss3-dev \
           libstdc++6:armhf \
           libxtst-dev \
-          libxtst6
-      fi
-
-step-maybe-install-dbusmock: &step-maybe-install-dbusmock
-  run:
-    name: Install dbusmock
-    command: |
-      if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
-        pip install python-dbusmock
+          libxtst6 \
+          python-dbusmock
       fi
 
 # Lists of steps.
@@ -1315,7 +1308,6 @@ steps-tests: &steps-tests
     - *step-fix-known-hosts-linux
     - *step-install-signing-cert-on-mac
     - *step-maybe-install-deps
-    - *step-maybe-install-dbusmock
 
     - run:
         name: Run Electron tests

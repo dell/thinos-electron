@@ -2604,8 +2604,15 @@ workflows:
             - linux-ia32-testing
 
       - linux-arm-testing
+      - linux-arm-testing-tests:
+          requires:
+             - linux-arm-testing
 
       - linux-arm64-testing
+      - linux-arm64-testing-tests:
+          requires:
+             - linux-arm64-testing
+
       - linux-arm64-testing-gn-check:
           requires:
             - linux-checkout-fast

@@ -22,7 +22,7 @@ if (!feedUrl || !feedUrl.startsWith('http')) {
 }
 
 autoUpdater.setFeedURL({
-  url: feedUrl
+  url: feedUrl,
 });
 
 autoUpdater.checkForUpdates();

@@ -16,8 +16,8 @@ app.whenReady().then(() => {
   window = new BrowserWindow({
     show: false,
     webPreferences: {
-      nodeIntegration: true
-    }
+      nodeIntegration: true,
+    },
   });
 
   window.webContents.on('crashed', (event, killed) => {

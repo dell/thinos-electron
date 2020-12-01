@@ -14,14 +14,14 @@ describe('ipcRenderer module', () => {
   });
   after(async () => {
     await closeWindow(w);
-    w = null as unknown as BrowserWindow;
+    w = (null as unknown) as BrowserWindow;
   });
 
   describe('send()', () => {
     it('should work when sending an object containing id property', async () => {
       const obj = {
         id: 1,
-        name: 'ly'
+        name: 'ly',
       };
       w.webContents.executeJavaScript(`{
         const { ipcRenderer } = require('electron')
@@ -53,14 +53,17 @@ describe('ipcRenderer module', () => {
     });
 
     it('throws when sending objects with DOM class prototypes', async () => {
-      await expect(w.webContents.executeJavaScript(`{
+      await expect(
+        w.webContents.executeJavaScript(`{
         const { ipcRenderer } = require('electron')
         ipcRenderer.send('message', document.location)
-      }`)).to.eventually.be.rejected();
+      }`),
+      ).to.eventually.be.rejected();
     });
 
     it('does not crash when sending external objects', async () => {
-      await expect(w.webContents.executeJavaScript(`{
+      await expect(
+        w.webContents.executeJavaScript(`{
         const { ipcRenderer } = require('electron')
         const http = require('http')
 
@@ -68,7 +71,8 @@ describe('ipcRenderer module', () => {
         const stream = request.agent.sockets['127.0.0.1:5000:'][0]._handle._externalStream
 
         ipcRenderer.send('message', stream)
-      }`)).to.eventually.be.rejected();
+      }`),
+      ).to.eventually.be.rejected();
     });
 
     it('can send objects that both reference the same object', async () => {
@@ -137,7 +141,7 @@ describe('ipcRenderer module', () => {
         before(async () => {
           contents = (webContents as any).create({
             preload: path.join(fixtures, 'module', 'preload-ipc-ping-pong.js'),
-            ...webPreferences
+            ...webPreferences,
           });
 
           await contents.loadURL('about:blank');
@@ -145,7 +149,7 @@ describe('ipcRenderer module', () => {
 
         after(() => {
           (contents as any).destroy();
-          contents = null as unknown as WebContents;
+          contents = (null as unknown) as WebContents;
         });
 
         it('sends message to WebContents', async () => {
@@ -185,20 +189,22 @@ describe('ipcRenderer module', () => {
 
   describe('after context is released', () => {
     it('throws an exception', async () => {
-      const error = await w.webContents.executeJavaScript(`(${() => {
-        const child = window.open('', 'child', 'show=no,nodeIntegration=yes')! as any;
-        const childIpc = child.require('electron').ipcRenderer;
-        child.close();
-        return new Promise(resolve => {
-          setInterval(() => {
-            try {
-              childIpc.send('hello');
-            } catch (e) {
-              resolve(e);
-            }
-          }, 16);
-        });
-      }})()`);
+      const error = await w.webContents.executeJavaScript(
+        `(${() => {
+          const child = window.open('', 'child', 'show=no,nodeIntegration=yes')! as any;
+          const childIpc = child.require('electron').ipcRenderer;
+          child.close();
+          return new Promise((resolve) => {
+            setInterval(() => {
+              try {
+                childIpc.send('hello');
+              } catch (e) {
+                resolve(e);
+              }
+            }, 16);
+          });
+        }})()`,
+      );
       expect(error).to.have.property('message', 'IPC method called after context was released');
     });
   });

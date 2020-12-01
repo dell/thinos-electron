@@ -3,27 +3,26 @@
 let value = 'old';
 
 class BaseClass {
-  method () {
+  method() {
     return 'method';
   }
 
-  get readonly () {
+  get readonly() {
     return 'readonly';
   }
 
-  get value () {
+  get value() {
     return value;
   }
 
-  set value (val) {
+  set value(val) {
     value = val;
   }
 }
 
-class DerivedClass extends BaseClass {
-}
+class DerivedClass extends BaseClass {}
 
 module.exports = {
   base: new BaseClass(),
-  derived: new DerivedClass()
+  derived: new DerivedClass(),
 };

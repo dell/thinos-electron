@@ -2,7 +2,7 @@ const args = require('minimist')(process.argv.slice(2));
 const nugget = require('nugget');
 const request = require('request');
 
-async function makeRequest (requestOptions, parseResponse) {
+async function makeRequest(requestOptions, parseResponse) {
   return new Promise((resolve, reject) => {
     request(requestOptions, (err, res, body) => {
       if (!err && res.statusCode >= 200 && res.statusCode < 300) {
@@ -31,24 +31,27 @@ async function makeRequest (requestOptions, parseResponse) {
   });
 }
 
-async function downloadArtifact (name, buildNum, dest) {
+async function downloadArtifact(name, buildNum, dest) {
   const circleArtifactUrl = `https://circleci.com/api/v1.1/project/github/electron/electron/${args.buildNum}/artifacts?circle-token=${process.env.CIRCLE_TOKEN}`;
-  const artifacts = await makeRequest({
-    method: 'GET',
-    url: circleArtifactUrl,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    }
-  }, true).catch(err => {
+  const artifacts = await makeRequest(
+    {
+      method: 'GET',
+      url: circleArtifactUrl,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    },
+    true,
+  ).catch((err) => {
     if (args.verbose) {
       console.log('Error calling CircleCI:', err);
     } else {
       console.error('Error calling CircleCI to get artifact details');
     }
   });
-  const artifactToDownload = artifacts.find(artifact => {
-    return (artifact.path === name);
+  const artifactToDownload = artifacts.find((artifact) => {
+    return artifact.path === name;
   });
   if (!artifactToDownload) {
     console.log(`Could not find artifact called ${name} to download for build #${buildNum}.`);
@@ -56,7 +59,7 @@ async function downloadArtifact (name, buildNum, dest) {
   } else {
     console.log(`Downloading ${artifactToDownload.url}.`);
     let downloadError = false;
-    await downloadWithRetry(artifactToDownload.url, dest).catch(err => {
+    await downloadWithRetry(artifactToDownload.url, dest).catch((err) => {
       if (args.verbose) {
         console.log(`${artifactToDownload.url} could not be successfully downloaded.  Error was:`, err);
       } else {
@@ -70,11 +73,11 @@ async function downloadArtifact (name, buildNum, dest) {
   }
 }
 
-async function downloadWithRetry (url, directory) {
+async function downloadWithRetry(url, directory) {
   let lastError;
   const downloadURL = `${url}?circle-token=${process.env.CIRCLE_TOKEN}`;
   for (let i = 0; i < 5; i++) {
-    console.log(`Attempting to download ${url} - attempt #${(i + 1)}`);
+    console.log(`Attempting to download ${url} - attempt #${i + 1}`);
     try {
       return await downloadFile(downloadURL, directory);
     } catch (err) {
@@ -85,11 +88,11 @@ async function downloadWithRetry (url, directory) {
   throw lastError;
 }
 
-function downloadFile (url, directory) {
+function downloadFile(url, directory) {
   return new Promise((resolve, reject) => {
     const nuggetOpts = {
       dir: directory,
-      quiet: args.verbose
+      quiet: args.verbose,
     };
     nugget(url, nuggetOpts, (err) => {
       if (err) {

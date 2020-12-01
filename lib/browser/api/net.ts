@@ -3,12 +3,7 @@ import { Readable, Writable } from 'stream';
 import { app } from 'electron/main';
 import type { ClientRequestConstructorOptions, UploadProgress } from 'electron/main';
 
-const {
-  isOnline,
-  isValidHeaderName,
-  isValidHeaderValue,
-  createURLLoader
-} = process._linkedBinding('electron_browser_net');
+const { isOnline, isValidHeaderName, isValidHeaderValue, createURLLoader } = process._linkedBinding('electron_browser_net');
 
 const kSupportedProtocols = new Set(['http:', 'https:']);
 
@@ -32,7 +27,7 @@ const discardableDuplicateHeaders = new Set([
   'last-modified',
   'server',
   'age',
-  'expires'
+  'expires',
 ]);
 
 class IncomingMessage extends Readable {
@@ -41,7 +36,7 @@ class IncomingMessage extends Readable {
   _responseHead: NodeJS.ResponseHead;
   _resume: (() => void) | null;
 
-  constructor (responseHead: NodeJS.ResponseHead) {
+  constructor(responseHead: NodeJS.ResponseHead) {
     super();
     this._shouldPush = false;
     this._data = [];
@@ -49,20 +44,19 @@ class IncomingMessage extends Readable {
     this._resume = null;
   }
 
-  get statusCode () {
+  get statusCode() {
     return this._responseHead.statusCode;
   }
 
-  get statusMessage () {
+  get statusMessage() {
     return this._responseHead.statusMessage;
   }
 
-  get headers () {
+  get headers() {
     const filteredHeaders: Record<string, string | string[]> = {};
     const { rawHeaders } = this._responseHead;
-    rawHeaders.forEach(header => {
-      if (Object.prototype.hasOwnProperty.call(filteredHeaders, header.key) &&
-          discardableDuplicateHeaders.has(header.key)) {
+    rawHeaders.forEach((header) => {
+      if (Object.prototype.hasOwnProperty.call(filteredHeaders, header.key) && discardableDuplicateHeaders.has(header.key)) {
         // do nothing with discardable duplicate headers
       } else {
         if (header.key === 'set-cookie') {
@@ -86,34 +80,34 @@ class IncomingMessage extends Readable {
     return filteredHeaders;
   }
 
-  get httpVersion () {
+  get httpVersion() {
     return `${this.httpVersionMajor}.${this.httpVersionMinor}`;
   }
 
-  get httpVersionMajor () {
+  get httpVersionMajor() {
     return this._responseHead.httpVersion.major;
   }
 
-  get httpVersionMinor () {
+  get httpVersionMinor() {
     return this._responseHead.httpVersion.minor;
   }
 
-  get rawTrailers () {
+  get rawTrailers() {
     throw new Error('HTTP trailers are not supported');
   }
 
-  get trailers () {
+  get trailers() {
     throw new Error('HTTP trailers are not supported');
   }
 
-  _storeInternalData (chunk: Buffer | null, resume: (() => void) | null) {
+  _storeInternalData(chunk: Buffer | null, resume: (() => void) | null) {
     // save the network callback for use in _pushInternalData
     this._resume = resume;
     this._data.push(chunk);
     this._pushInternalData();
   }
 
-  _pushInternalData () {
+  _pushInternalData() {
     while (this._shouldPush && this._data.length > 0) {
       const chunk = this._data.shift();
       this._shouldPush = this.push(chunk);
@@ -126,7 +120,7 @@ class IncomingMessage extends Readable {
     }
   }
 
-  _read () {
+  _read() {
     this._shouldPush = true;
     this._pushInternalData();
   }
@@ -135,17 +129,19 @@ class IncomingMessage extends Readable {
 /** Writable stream that buffers up everything written to it. */
 class SlurpStream extends Writable {
   _data: Buffer;
-  constructor () {
+  constructor() {
     super();
     this._data = Buffer.alloc(0);
   }
 
-  _write (chunk: Buffer, encoding: string, callback: () => void) {
+  _write(chunk: Buffer, encoding: string, callback: () => void) {
     this._data = Buffer.concat([this._data, chunk]);
     callback();
   }
 
-  data () { return this._data; }
+  data() {
+    return this._data;
+  }
 }
 
 class ChunkedBodyStream extends Writable {
@@ -154,12 +150,12 @@ class ChunkedBodyStream extends Writable {
   _pendingCallback?: (error?: Error) => void;
   _clientRequest: ClientRequest;
 
-  constructor (clientRequest: ClientRequest) {
+  constructor(clientRequest: ClientRequest) {
     super();
     this._clientRequest = clientRequest;
   }
 
-  _write (chunk: Buffer, encoding: string, callback: () => void) {
+  _write(chunk: Buffer, encoding: string, callback: () => void) {
     if (this._downstream) {
       this._downstream.write(chunk).then(callback, callback);
     } else {
@@ -173,12 +169,12 @@ class ChunkedBodyStream extends Writable {
     }
   }
 
-  _final (callback: () => void) {
+  _final(callback: () => void) {
     this._downstream!.done();
     callback();
   }
 
-  startReading (pipe: NodeJS.DataPipe) {
+  startReading(pipe: NodeJS.DataPipe) {
     if (this._downstream) {
       throw new Error('two startReading calls???');
     }
@@ -197,7 +193,9 @@ class ChunkedBodyStream extends Writable {
 
 type RedirectPolicy = 'manual' | 'follow' | 'error';
 
-function parseOptions (optionsIn: ClientRequestConstructorOptions | string): NodeJS.CreateURLLoaderOptions & { redirectPolicy: RedirectPolicy, headers: Record<string, { name: string, value: string | string[] }> } {
+function parseOptions(
+  optionsIn: ClientRequestConstructorOptions | string,
+): NodeJS.CreateURLLoaderOptions & { redirectPolicy: RedirectPolicy; headers: Record<string, { name: string; value: string | string[] }> } {
   const options: any = typeof optionsIn === 'string' ? url.parse(optionsIn) : { ...optionsIn };
 
   let urlStr: string = options.url;
@@ -249,7 +247,10 @@ function parseOptions (optionsIn: ClientRequestConstructorOptions | string): Nod
     throw new TypeError('headers must be an object');
   }
 
-  const urlLoaderOptions: NodeJS.CreateURLLoaderOptions & { redirectPolicy: RedirectPolicy, headers: Record<string, { name: string, value: string | string[] }> } = {
+  const urlLoaderOptions: NodeJS.CreateURLLoaderOptions & {
+    redirectPolicy: RedirectPolicy;
+    headers: Record<string, { name: string; value: string | string[] }>;
+  } = {
     method: (options.method || 'GET').toUpperCase(),
     url: urlStr,
     redirectPolicy,
@@ -257,7 +258,7 @@ function parseOptions (optionsIn: ClientRequestConstructorOptions | string): Nod
     body: null as any,
     useSessionCookies: options.useSessionCookies,
     credentials: options.credentials,
-    origin: options.origin
+    origin: options.origin,
   };
   const headers: Record<string, string | string[]> = options.headers || {};
   for (const [name, value] of Object.entries(headers)) {
@@ -293,14 +294,14 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
   _aborted: boolean = false;
   _chunkedEncoding: boolean | undefined;
   _body: Writable | undefined;
-  _urlLoaderOptions: NodeJS.CreateURLLoaderOptions & { headers: Record<string, { name: string, value: string | string[] }> };
+  _urlLoaderOptions: NodeJS.CreateURLLoaderOptions & { headers: Record<string, { name: string; value: string | string[] }> };
   _redirectPolicy: RedirectPolicy;
   _followRedirectCb?: () => void;
-  _uploadProgress?: { active: boolean, started: boolean, current: number, total: number };
+  _uploadProgress?: { active: boolean; started: boolean; current: number; total: number };
   _urlLoader?: NodeJS.URLLoader;
   _response?: IncomingMessage;
 
-  constructor (options: ClientRequestConstructorOptions | string, callback?: (message: IncomingMessage) => void) {
+  constructor(options: ClientRequestConstructorOptions | string, callback?: (message: IncomingMessage) => void) {
     super({ autoDestroy: true });
 
     if (!app.isReady()) {
@@ -316,11 +317,11 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     this._redirectPolicy = redirectPolicy;
   }
 
-  get chunkedEncoding () {
+  get chunkedEncoding() {
     return this._chunkedEncoding || false;
   }
 
-  set chunkedEncoding (value: boolean) {
+  set chunkedEncoding(value: boolean) {
     if (this._started) {
       throw new Error('chunkedEncoding can only be set before the request is started');
     }
@@ -336,7 +337,7 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     }
   }
 
-  setHeader (name: string, value: string) {
+  setHeader(name: string, value: string) {
     if (typeof name !== 'string') {
       throw new TypeError('`name` should be a string in setHeader(name, value)');
     }
@@ -344,7 +345,7 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
       throw new Error('`value` required in setHeader("' + name + '", value)');
     }
     if (this._started || this._firstWrite) {
-      throw new Error('Can\'t set headers after they are sent');
+      throw new Error("Can't set headers after they are sent");
     }
     if (!isValidHeaderName(name)) {
       throw new Error(`Invalid header name: '${name}'`);
@@ -357,30 +358,30 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     this._urlLoaderOptions.headers[key] = { name, value };
   }
 
-  getHeader (name: string) {
+  getHeader(name: string) {
     if (name == null) {
       throw new Error('`name` is required for getHeader(name)');
     }
 
     const key = name.toLowerCase();
     const header = this._urlLoaderOptions.headers[key];
-    return header && header.value as any;
+    return header && (header.value as any);
   }
 
-  removeHeader (name: string) {
+  removeHeader(name: string) {
     if (name == null) {
       throw new Error('`name` is required for removeHeader(name)');
     }
 
     if (this._started || this._firstWrite) {
-      throw new Error('Can\'t remove headers after they are sent');
+      throw new Error("Can't remove headers after they are sent");
     }
 
     const key = name.toLowerCase();
     delete this._urlLoaderOptions.headers[key];
   }
 
-  _write (chunk: Buffer, encoding: BufferEncoding, callback: () => void) {
+  _write(chunk: Buffer, encoding: BufferEncoding, callback: () => void) {
     this._firstWrite = true;
     if (!this._body) {
       this._body = new SlurpStream();
@@ -393,7 +394,7 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     this._body.write(chunk, encoding, callback);
   }
 
-  _final (callback: () => void) {
+  _final(callback: () => void) {
     if (this._body) {
       // TODO: is this the right way to forward to another stream?
       this._body.end(callback);
@@ -404,9 +405,9 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     }
   }
 
-  _startRequest () {
+  _startRequest() {
     this._started = true;
-    const stringifyValues = (obj: Record<string, { name: string, value: string | string[] }>) => {
+    const stringifyValues = (obj: Record<string, { name: string; value: string | string[] }>) => {
       const ret: Record<string, string> = {};
       for (const k of Object.keys(obj)) {
         const kv = obj[k];
@@ -422,14 +423,16 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     const opts = { ...this._urlLoaderOptions, extraHeaders: stringifyValues(this._urlLoaderOptions.headers) };
     this._urlLoader = createURLLoader(opts);
     this._urlLoader.on('response-started', (event, finalUrl, responseHead) => {
-      const response = this._response = new IncomingMessage(responseHead);
+      const response = (this._response = new IncomingMessage(responseHead));
       this.emit('response', response);
     });
     this._urlLoader.on('data', (event, data, resume) => {
       this._response!._storeInternalData(Buffer.from(data), resume);
     });
     this._urlLoader.on('complete', () => {
-      if (this._response) { this._response._storeInternalData(null, null); }
+      if (this._response) {
+        this._response._storeInternalData(null, null);
+      }
     });
     this._urlLoader.on('error', (event, netErrorString) => {
       const error = new Error(netErrorString);
@@ -448,10 +451,12 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     this._urlLoader.on('redirect', (event, redirectInfo, headers) => {
       const { statusCode, newMethod, newUrl } = redirectInfo;
       if (this._redirectPolicy === 'error') {
-        this._die(new Error('Attempted to redirect, but redirect policy was \'error\''));
+        this._die(new Error("Attempted to redirect, but redirect policy was 'error'"));
       } else if (this._redirectPolicy === 'manual') {
         let _followRedirect = false;
-        this._followRedirectCb = () => { _followRedirect = true; };
+        this._followRedirectCb = () => {
+          _followRedirect = true;
+        };
         try {
           this.emit('redirect', statusCode, newMethod, newUrl, headers);
         } finally {
@@ -487,7 +492,7 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     });
   }
 
-  followRedirect () {
+  followRedirect() {
     if (this._followRedirectCb) {
       this._followRedirectCb();
     } else {
@@ -495,15 +500,17 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     }
   }
 
-  abort () {
+  abort() {
     if (!this._aborted) {
-      process.nextTick(() => { this.emit('abort'); });
+      process.nextTick(() => {
+        this.emit('abort');
+      });
     }
     this._aborted = true;
     this._die();
   }
 
-  _die (err?: Error) {
+  _die(err?: Error) {
     // Node.js assumes that any stream which is ended is no longer capable of emitted events
     // which is a faulty assumption for the case of an object that is acting like a stream
     // (our urlRequest). If we don't emit here, this causes errors since we *do* expect
@@ -519,17 +526,17 @@ export class ClientRequest extends Writable implements Electron.ClientRequest {
     }
   }
 
-  getUploadProgress (): UploadProgress {
+  getUploadProgress(): UploadProgress {
     return this._uploadProgress ? { ...this._uploadProgress } : { active: false, started: false, current: 0, total: 0 };
   }
 }
 
-export function request (options: ClientRequestConstructorOptions | string, callback?: (message: IncomingMessage) => void) {
+export function request(options: ClientRequestConstructorOptions | string, callback?: (message: IncomingMessage) => void) {
   return new ClientRequest(options, callback);
 }
 
 exports.isOnline = isOnline;
 
 Object.defineProperty(exports, 'online', {
-  get: () => isOnline()
+  get: () => isOnline(),
 });

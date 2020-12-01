@@ -23,7 +23,7 @@ if (!feedUrl || !feedUrl.startsWith('http')) {
 
 autoUpdater.setFeedURL({
   url: feedUrl,
-  serverType: 'json'
+  serverType: 'json',
 });
 
 autoUpdater.checkForUpdates();

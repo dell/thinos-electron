@@ -49,7 +49,7 @@ describe('webRequest module', () => {
     protocol.unregisterProtocol('neworigin');
   });
 
-  let contents: WebContents = null as unknown as WebContents;
+  let contents: WebContents = (null as unknown) as WebContents;
   // NB. sandbox: true is used because it makes navigations much (~8x) faster.
   before(async () => {
     contents = (webContents as any).create({ sandbox: true });
@@ -57,7 +57,7 @@ describe('webRequest module', () => {
   });
   after(() => (contents as any).destroy());
 
-  async function ajax (url: string, options = {}) {
+  async function ajax(url: string, options = {}) {
     return contents.executeJavaScript(`ajax("${url}", ${JSON.stringify(options)})`);
   }
 
@@ -69,7 +69,7 @@ describe('webRequest module', () => {
     it('can cancel the request', async () => {
       ses.webRequest.onBeforeRequest((details, callback) => {
         callback({
-          cancel: true
+          cancel: true,
         });
       });
       await expect(ajax(defaultURL)).to.eventually.be.rejectedWith('404');
@@ -103,7 +103,7 @@ describe('webRequest module', () => {
     it('receives post data in details object', async () => {
       const postData = {
         name: 'post test',
-        type: 'string'
+        type: 'string',
       };
       ses.webRequest.onBeforeRequest((details, callback) => {
         expect(details.url).to.equal(defaultURL);
@@ -113,10 +113,12 @@ describe('webRequest module', () => {
         expect(data).to.deep.equal(postData);
         callback({ cancel: true });
       });
-      await expect(ajax(defaultURL, {
-        type: 'POST',
-        data: postData
-      })).to.eventually.be.rejectedWith('404');
+      await expect(
+        ajax(defaultURL, {
+          type: 'POST',
+          data: postData,
+        }),
+      ).to.eventually.be.rejectedWith('404');
     });
 
     it('can redirect the request', async () => {
@@ -146,7 +148,7 @@ describe('webRequest module', () => {
       const fileURL = url.format({
         pathname: path.join(fixturesPath, 'blank.html').replace(/\\/g, '/'),
         protocol: 'file',
-        slashes: true
+        slashes: true,
       });
       await expect(ajax(fileURL)).to.eventually.be.rejectedWith('404');
     });
@@ -200,7 +202,7 @@ describe('webRequest module', () => {
 
     it('resets the whole headers', async () => {
       const requestHeaders = {
-        Test: 'header'
+        Test: 'header',
       };
       ses.webRequest.onBeforeSendHeaders((details, callback) => {
         callback({ requestHeaders: requestHeaders });
@@ -213,7 +215,7 @@ describe('webRequest module', () => {
 
     it('works with file:// protocol', async () => {
       const requestHeaders = {
-        Test: 'header'
+        Test: 'header',
       };
       let onSendHeadersCalled = false;
       ses.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -223,11 +225,13 @@ describe('webRequest module', () => {
         expect(details.requestHeaders).to.deep.equal(requestHeaders);
         onSendHeadersCalled = true;
       });
-      await ajax(url.format({
-        pathname: path.join(fixturesPath, 'blank.html').replace(/\\/g, '/'),
-        protocol: 'file',
-        slashes: true
-      }));
+      await ajax(
+        url.format({
+          pathname: path.join(fixturesPath, 'blank.html').replace(/\\/g, '/'),
+          protocol: 'file',
+          slashes: true,
+        }),
+      );
       expect(onSendHeadersCalled).to.be.true();
     });
   });
@@ -325,7 +329,7 @@ describe('webRequest module', () => {
         const responseHeaders = details.responseHeaders;
         callback({
           responseHeaders: responseHeaders,
-          statusLine: 'HTTP/1.1 404 Not Found'
+          statusLine: 'HTTP/1.1 404 Not Found',
         });
       });
       const { headers } = await contents.executeJavaScript(`new Promise((resolve, reject) => {
@@ -424,39 +428,39 @@ describe('webRequest module', () => {
   describe('WebSocket connections', () => {
     it('can be proxyed', async () => {
       // Setup server.
-      const reqHeaders : { [key: string] : any } = {};
+      const reqHeaders: { [key: string]: any } = {};
       const server = http.createServer((req, res) => {
         reqHeaders[req.url!] = req.headers;
         res.setHeader('foo1', 'bar1');
         res.end('ok');
       });
       const wss = new WebSocket.Server({ noServer: true });
-      wss.on('connection', function connection (ws) {
-        ws.on('message', function incoming (message) {
+      wss.on('connection', function connection(ws) {
+        ws.on('message', function incoming(message) {
           if (message === 'foo') {
             ws.send('bar');
           }
         });
       });
-      server.on('upgrade', function upgrade (request, socket, head) {
+      server.on('upgrade', function upgrade(request, socket, head) {
         const pathname = require('url').parse(request.url).pathname;
         if (pathname === '/websocket') {
           reqHeaders[request.url] = request.headers;
-          wss.handleUpgrade(request, socket, head, function done (ws) {
+          wss.handleUpgrade(request, socket, head, function done(ws) {
             wss.emit('connection', ws, request);
           });
         }
       });
 
       // Start server.
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const port = String((server.address() as AddressInfo).port);
 
       // Use a separate session for testing.
       const ses = session.fromPartition('WebRequestWebSocket');
 
       // Setup listeners.
-      const receivedHeaders : { [key: string] : any } = {};
+      const receivedHeaders: { [key: string]: any } = {};
       ses.webRequest.onBeforeSendHeaders((details, callback) => {
         details.requestHeaders.foo = 'bar';
         callback({ requestHeaders: details.requestHeaders });
@@ -492,7 +496,7 @@ describe('webRequest module', () => {
       const contents = (webContents as any).create({
         session: ses,
         nodeIntegration: true,
-        webSecurity: false
+        webSecurity: false,
       });
 
       // Cleanup.

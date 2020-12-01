@@ -6,31 +6,31 @@ if ('getAppLevelAppearance' in systemPreferences) {
   const nativeALASetter = systemPreferences.setAppLevelAppearance;
   Object.defineProperty(systemPreferences, 'appLevelAppearance', {
     get: () => nativeALAGetter.call(systemPreferences),
-    set: (appearance) => nativeALASetter.call(systemPreferences, appearance)
+    set: (appearance) => nativeALASetter.call(systemPreferences, appearance),
   });
 }
 
 if ('getEffectiveAppearance' in systemPreferences) {
   const nativeEAGetter = systemPreferences.getAppLevelAppearance;
   Object.defineProperty(systemPreferences, 'effectiveAppearance', {
-    get: () => nativeEAGetter.call(systemPreferences)
+    get: () => nativeEAGetter.call(systemPreferences),
   });
 }
 
 systemPreferences.isDarkMode = deprecate.moveAPI(
   systemPreferences.isDarkMode,
   'systemPreferences.isDarkMode()',
-  'nativeTheme.shouldUseDarkColors'
+  'nativeTheme.shouldUseDarkColors',
 );
 systemPreferences.isInvertedColorScheme = deprecate.moveAPI(
   systemPreferences.isInvertedColorScheme,
   'systemPreferences.isInvertedColorScheme()',
-  'nativeTheme.shouldUseInvertedColorScheme'
+  'nativeTheme.shouldUseInvertedColorScheme',
 );
 systemPreferences.isHighContrastColorScheme = deprecate.moveAPI(
   systemPreferences.isHighContrastColorScheme,
   'systemPreferences.isHighContrastColorScheme()',
-  'nativeTheme.shouldUseHighContrastColors'
+  'nativeTheme.shouldUseHighContrastColors',
 );
 
 export default systemPreferences;

@@ -18,7 +18,7 @@ const defineWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof 
   return class WebViewElement extends HTMLElement {
     public internalInstanceId?: number;
 
-    static get observedAttributes () {
+    static get observedAttributes() {
       return [
         WEB_VIEW_CONSTANTS.ATTRIBUTE_PARTITION,
         WEB_VIEW_CONSTANTS.ATTRIBUTE_SRC,
@@ -33,11 +33,11 @@ const defineWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof 
         WEB_VIEW_CONSTANTS.ATTRIBUTE_PRELOAD,
         WEB_VIEW_CONSTANTS.ATTRIBUTE_BLINKFEATURES,
         WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEBLINKFEATURES,
-        WEB_VIEW_CONSTANTS.ATTRIBUTE_WEBPREFERENCES
+        WEB_VIEW_CONSTANTS.ATTRIBUTE_WEBPREFERENCES,
       ];
     }
 
-    constructor () {
+    constructor() {
       super();
       const internal = new WebViewImpl(this);
       internal.dispatchEventInMainWorld = (eventName, props) => {
@@ -48,7 +48,7 @@ const defineWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof 
       v8Util.setHiddenValue(this, 'internal', internal);
     }
 
-    connectedCallback () {
+    connectedCallback() {
       const internal = v8Util.getHiddenValue<IWebViewImpl>(this, 'internal');
       if (!internal) {
         return;
@@ -60,14 +60,14 @@ const defineWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof 
       }
     }
 
-    attributeChangedCallback (name: string, oldValue: any, newValue: any) {
+    attributeChangedCallback(name: string, oldValue: any, newValue: any) {
       const internal = v8Util.getHiddenValue<IWebViewImpl>(this, 'internal');
       if (internal) {
         internal.handleWebviewAttributeMutation(name, oldValue, newValue);
       }
     }
 
-    disconnectedCallback () {
+    disconnectedCallback() {
       const internal = v8Util.getHiddenValue<IWebViewImpl>(this, 'internal');
       if (!internal) {
         return;
@@ -87,7 +87,7 @@ const defineWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof 
 const registerWebViewElement = (v8Util: NodeJS.V8UtilBinding, webViewImpl: typeof webViewImplModule) => {
   // I wish eslint wasn't so stupid, but it is
   // eslint-disable-next-line
-  const WebViewElement = defineWebViewElement(v8Util, webViewImpl) as unknown as typeof ElectronInternal.WebViewElement
+  const WebViewElement = (defineWebViewElement(v8Util, webViewImpl) as unknown) as typeof ElectronInternal.WebViewElement;
 
   webViewImpl.setupMethods(WebViewElement);
 

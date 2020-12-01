@@ -30,7 +30,7 @@ const spawnUpdate = function (args: string[], detached: boolean, callback: Funct
     } else if (!spawnedProcess) {
       spawnedProcess = spawn(updateExe, args, {
         detached: detached,
-        windowsHide: true
+        windowsHide: true,
       });
       spawnedArgs = args || [];
     }
@@ -46,8 +46,12 @@ const spawnUpdate = function (args: string[], detached: boolean, callback: Funct
   stdout = '';
   stderr = '';
 
-  spawnedProcess.stdout.on('data', (data) => { stdout += data; });
-  spawnedProcess.stderr.on('data', (data) => { stderr += data; });
+  spawnedProcess.stdout.on('data', (data) => {
+    stdout += data;
+  });
+  spawnedProcess.stderr.on('data', (data) => {
+    stderr += data;
+  });
 
   errorEmitted = false;
   spawnedProcess.on('error', (error) => {
@@ -77,12 +81,12 @@ const spawnUpdate = function (args: string[], detached: boolean, callback: Funct
 };
 
 // Start an instance of the installed app.
-export function processStart () {
+export function processStart() {
   return spawnUpdate(['--processStartAndWait', exeName], true, function () {});
 }
 
 // Download the releases specified by the URL and write new results to stdout.
-export function checkForUpdate (updateURL: string, callback: (error: Error | null, update?: any) => void) {
+export function checkForUpdate(updateURL: string, callback: (error: Error | null, update?: any) => void) {
   return spawnUpdate(['--checkForUpdate', updateURL], false, function (error: Error, stdout: string) {
     let ref, ref1, update;
     if (error != null) {
@@ -91,7 +95,14 @@ export function checkForUpdate (updateURL: string, callback: (error: Error | nul
     try {
       // Last line of output is the JSON details about the releases
       const json = stdout.trim().split('\n').pop();
-      update = (ref = JSON.parse(json!)) != null ? (ref1 = ref.releasesToApply) != null ? typeof ref1.pop === 'function' ? ref1.pop() : undefined : undefined : undefined;
+      update =
+        (ref = JSON.parse(json!)) != null
+          ? (ref1 = ref.releasesToApply) != null
+            ? typeof ref1.pop === 'function'
+              ? ref1.pop()
+              : undefined
+            : undefined
+          : undefined;
     } catch {
       // Disabled for backwards compatibility:
       // eslint-disable-next-line standard/no-callback-literal
@@ -102,12 +113,12 @@ export function checkForUpdate (updateURL: string, callback: (error: Error | nul
 }
 
 // Update the application to the latest remote version specified by URL.
-export function update (updateURL: string, callback: (error: Error) => void) {
+export function update(updateURL: string, callback: (error: Error) => void) {
   return spawnUpdate(['--update', updateURL], false, callback);
 }
 
 // Is the Update.exe installed with the current application?
-export function supported () {
+export function supported() {
   try {
     fs.accessSync(updateExe, fs.constants.R_OK);
     return true;

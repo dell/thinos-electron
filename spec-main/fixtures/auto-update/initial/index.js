@@ -10,7 +10,7 @@ const feedUrl = process.argv[1];
 console.log('Setting Feed URL');
 
 autoUpdater.setFeedURL({
-  url: feedUrl
+  url: feedUrl,
 });
 
 console.log('Feed URL Set:', feedUrl);

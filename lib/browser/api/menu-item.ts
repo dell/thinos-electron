@@ -46,8 +46,7 @@ const MenuItem = function (this: any, options: any) {
   const click = options.click;
   this.click = (event: Event, focusedWindow: BrowserWindow, focusedWebContents: WebContents) => {
     // Manually flip the checked flags when clicked.
-    if (!roles.shouldOverrideCheckStatus(this.role) &&
-        (this.type === 'checkbox' || this.type === 'radio')) {
+    if (!roles.shouldOverrideCheckStatus(this.role) && (this.type === 'checkbox' || this.type === 'radio')) {
       this.checked = !this.checked;
     }
 
@@ -83,7 +82,7 @@ MenuItem.prototype.overrideReadOnlyProperty = function (name: string, defaultVal
   Object.defineProperty(this, name, {
     enumerable: true,
     writable: false,
-    value: this[name]
+    value: this[name],
   });
 };
 

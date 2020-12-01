@@ -8,7 +8,11 @@ const semver = require('semver');
 const { ELECTRON_DIR } = require('../../lib/utils');
 const notesGenerator = require('./notes.js');
 
-const semverify = version => version.replace(/^origin\//, '').replace(/[xy]/g, '0').replace(/-/g, '.');
+const semverify = (version) =>
+  version
+    .replace(/^origin\//, '')
+    .replace(/[xy]/g, '0')
+    .replace(/-/g, '.');
 
 const runGit = async (args) => {
   console.info(`Running: git ${args.join(' ')}`);
@@ -19,16 +23,17 @@ const runGit = async (args) => {
   return response.stdout.trim();
 };
 
-const tagIsSupported = tag => tag && !tag.includes('nightly') && !tag.includes('unsupported');
-const tagIsBeta = tag => tag && tag.includes('beta');
-const tagIsStable = tag => tagIsSupported(tag) && !tagIsBeta(tag);
+const tagIsSupported = (tag) => tag && !tag.includes('nightly') && !tag.includes('unsupported');
+const tagIsBeta = (tag) => tag && tag.includes('beta');
+const tagIsStable = (tag) => tagIsSupported(tag) && !tagIsBeta(tag);
 
 const getTagsOf = async (point) => {
   try {
     const tags = await runGit(['tag', '--merged', point]);
-    return tags.split('\n')
-      .map(tag => tag.trim())
-      .filter(tag => semver.valid(tag))
+    return tags
+      .split('\n')
+      .map((tag) => tag.trim())
+      .filter((tag) => semver.valid(tag))
       .sort(semver.compare);
   } catch (err) {
     console.error(`Failed to fetch tags for point ${point}`);
@@ -43,16 +48,16 @@ const getTagsOnBranch = async (point) => {
   }
 
   const masterTagsSet = new Set(masterTags);
-  return (await getTagsOf(point)).filter(tag => !masterTagsSet.has(tag));
+  return (await getTagsOf(point)).filter((tag) => !masterTagsSet.has(tag));
 };
 
 const getBranchOf = async (point) => {
   try {
     const branches = (await runGit(['branch', '-a', '--contains', point]))
       .split('\n')
-      .map(branch => branch.trim())
-      .filter(branch => !!branch);
-    const current = branches.find(branch => branch.startsWith('* '));
+      .map((branch) => branch.trim())
+      .filter((branch) => !!branch);
+    const current = branches.find((branch) => branch.startsWith('* '));
     return current ? current.slice(2) : branches.shift();
   } catch (err) {
     console.error(`Failed to fetch branch for ${point}: `, err);
@@ -63,10 +68,11 @@ const getBranchOf = async (point) => {
 const getAllBranches = async () => {
   try {
     const branches = await runGit(['branch', '--remote']);
-    return branches.split('\n')
-      .map(branch => branch.trim())
-      .filter(branch => !!branch)
-      .filter(branch => branch !== 'origin/HEAD -> origin/master')
+    return branches
+      .split('\n')
+      .map((branch) => branch.trim())
+      .filter((branch) => !!branch)
+      .filter((branch) => branch !== 'origin/HEAD -> origin/master')
       .sort();
   } catch (err) {
     console.error('Failed to fetch all branches');
@@ -75,13 +81,11 @@ const getAllBranches = async () => {
 };
 
 const getStabilizationBranches = async () => {
-  return (await getAllBranches())
-    .filter(branch => /^origin\/\d+-\d+-x$/.test(branch) || /^origin\/\d+-x-y$/.test(branch));
+  return (await getAllBranches()).filter((branch) => /^origin\/\d+-\d+-x$/.test(branch) || /^origin\/\d+-x-y$/.test(branch));
 };
 
 const getPreviousStabilizationBranch = async (current) => {
-  const stabilizationBranches = (await getStabilizationBranches())
-    .filter(branch => branch !== current && branch !== `origin/${current}`);
+  const stabilizationBranches = (await getStabilizationBranches()).filter((branch) => branch !== current && branch !== `origin/${current}`);
 
   if (!semver.valid(current)) {
     // since we don't seem to be on a stabilization branch right now,
@@ -105,15 +109,15 @@ const getPreviousStabilizationBranch = async (current) => {
 
 const getPreviousPoint = async (point) => {
   const currentBranch = await getBranchOf(point);
-  const currentTag = (await getTagsOf(point)).filter(tag => tagIsSupported(tag)).pop();
+  const currentTag = (await getTagsOf(point)).filter((tag) => tagIsSupported(tag)).pop();
   const currentIsStable = tagIsStable(currentTag);
 
   try {
     // First see if there's an earlier tag on the same branch
     // that can serve as a reference point.
-    let tags = (await getTagsOnBranch(`${point}^`)).filter(tag => tagIsSupported(tag));
+    let tags = (await getTagsOnBranch(`${point}^`)).filter((tag) => tagIsSupported(tag));
     if (currentIsStable) {
-      tags = tags.filter(tag => tagIsStable(tag));
+      tags = tags.filter((tag) => tagIsStable(tag));
     }
     if (tags.length) {
       return tags.pop();
@@ -128,7 +132,7 @@ const getPreviousPoint = async (point) => {
   let branch = currentBranch;
   while (branch) {
     const prevBranch = await getPreviousStabilizationBranch(branch);
-    const tags = (await getTagsOnBranch(prevBranch)).filter(tag => tagIsStable(tag));
+    const tags = (await getTagsOnBranch(prevBranch)).filter((tag) => tagIsStable(tag));
     if (tags.length) {
       return tags.pop();
     }
@@ -136,7 +140,7 @@ const getPreviousPoint = async (point) => {
   }
 };
 
-async function getReleaseNotes (range, newVersion) {
+async function getReleaseNotes(range, newVersion) {
   const rangeList = range.split('..') || ['HEAD'];
   const to = rangeList.pop();
   const from = rangeList.pop() || (await getPreviousPoint(to));
@@ -147,7 +151,7 @@ async function getReleaseNotes (range, newVersion) {
 
   const notes = await notesGenerator.get(from, to, newVersion);
   const ret = {
-    text: notesGenerator.render(notes)
+    text: notesGenerator.render(notes),
   };
 
   if (notes.unknown.length) {
@@ -157,10 +161,10 @@ async function getReleaseNotes (range, newVersion) {
   return ret;
 }
 
-async function main () {
+async function main() {
   const opts = minimist(process.argv.slice(2), {
     boolean: ['help'],
-    string: ['version']
+    string: ['version'],
   });
   opts.range = opts._.shift();
   if (opts.help || !opts.range) {

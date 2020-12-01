@@ -15,7 +15,7 @@ describe('Notification module', () => {
       body: 'body',
       replyPlaceholder: 'replyPlaceholder',
       sound: 'sound',
-      closeButtonText: 'closeButtonText'
+      closeButtonText: 'closeButtonText',
     });
 
     expect(n.title).to.equal('title');
@@ -48,7 +48,7 @@ describe('Notification module', () => {
       title: 'title',
       body: 'body',
       silent: true,
-      hasReply: true
+      hasReply: true,
     });
 
     expect(n.silent).to.be.true('silent');
@@ -67,12 +67,13 @@ describe('Notification module', () => {
       actions: [
         {
           type: 'button',
-          text: '1'
-        }, {
+          text: '1',
+        },
+        {
           type: 'button',
-          text: '2'
-        }
-      ]
+          text: '2',
+        },
+      ],
     });
 
     expect(n.actions.length).to.equal(2);
@@ -84,11 +85,12 @@ describe('Notification module', () => {
     n.actions = [
       {
         type: 'button',
-        text: '3'
-      }, {
+        text: '3',
+      },
+      {
         type: 'button',
-        text: '4'
-      }
+        text: '4',
+      },
     ];
 
     expect(n.actions.length).to.equal(2);
@@ -102,7 +104,7 @@ describe('Notification module', () => {
     const n = new Notification({
       title: 'test notification',
       body: 'test body',
-      silent: true
+      silent: true,
     });
     n.show();
     n.close();
@@ -110,7 +112,7 @@ describe('Notification module', () => {
 
   ifit(process.platform === 'win32')('inits, gets and sets custom xml', () => {
     const n = new Notification({
-      toastXml: '<xml/>'
+      toastXml: '<xml/>',
     });
 
     expect(n.toastXml).to.equal('<xml/>');
@@ -120,7 +122,7 @@ describe('Notification module', () => {
     const n = new Notification({
       title: 'test notification',
       body: 'test body',
-      silent: true
+      silent: true,
     });
     {
       const e = emittedOnce(n, 'show');
@@ -136,7 +138,7 @@ describe('Notification module', () => {
 
   ifit(process.platform === 'win32')('emits failed event', async () => {
     const n = new Notification({
-      toastXml: 'not xml'
+      toastXml: 'not xml',
     });
     {
       const e = emittedOnce(n, 'failed');

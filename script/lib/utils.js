@@ -11,7 +11,7 @@ require('colors');
 const pass = '✓'.green;
 const fail = '✗'.red;
 
-function getElectronExec () {
+function getElectronExec() {
   const OUT_DIR = getOutDir();
   switch (process.platform) {
     case 'darwin':
@@ -25,7 +25,7 @@ function getElectronExec () {
   }
 }
 
-function getOutDir (options = {}) {
+function getOutDir(options = {}) {
   const shouldLog = options.shouldLog || false;
   const presetDirs = ['Testing', 'Release', 'Default', 'Debug'];
 
@@ -56,11 +56,11 @@ function getOutDir (options = {}) {
   throw new Error(`No valid out directory found; use one of ${presetDirs.join(',')} or set process.env.ELECTRON_OUT_DIR`);
 }
 
-function getAbsoluteElectronExec () {
+function getAbsoluteElectronExec() {
   return path.resolve(SRC_DIR, getElectronExec());
 }
 
-async function handleGitCall (args, gitDir) {
+async function handleGitCall(args, gitDir) {
   const details = await GitProcess.exec(args, gitDir);
   if (details.exitCode === 0) {
     return details.stdout.replace(/^\*|\s+|\s+$/, '');
@@ -71,18 +71,13 @@ async function handleGitCall (args, gitDir) {
   }
 }
 
-async function getCurrentBranch (gitDir) {
+async function getCurrentBranch(gitDir) {
   let branch = await handleGitCall(['rev-parse', '--abbrev-ref', 'HEAD'], gitDir);
   if (branch !== 'master' && !RELEASE_BRANCH_PATTERN.test(branch)) {
     const lastCommit = await handleGitCall(['rev-parse', 'HEAD'], gitDir);
-    const branches = (await handleGitCall([
-      'branch',
-      '--contains',
-      lastCommit,
-      '--remote'
-    ], gitDir)).split('\n');
+    const branches = (await handleGitCall(['branch', '--contains', lastCommit, '--remote'], gitDir)).split('\n');
 
-    branch = branches.filter(b => b.trim() === 'master' || b.trim() === 'origin/master' || RELEASE_BRANCH_PATTERN.test(b.trim()))[0];
+    branch = branches.filter((b) => b.trim() === 'master' || b.trim() === 'origin/master' || RELEASE_BRANCH_PATTERN.test(b.trim()))[0];
     if (!branch) {
       console.log(`${fail} no release branch exists for this ref`);
       process.exit(1);
@@ -98,5 +93,5 @@ module.exports = {
   getOutDir,
   getAbsoluteElectronExec,
   ELECTRON_DIR,
-  SRC_DIR
+  SRC_DIR,
 };

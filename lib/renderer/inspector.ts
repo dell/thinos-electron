@@ -14,7 +14,7 @@ window.onload = function () {
 };
 
 // Extra / is needed as a result of MacOS requiring absolute paths
-function completeURL (project: string, path: string) {
+function completeURL(project: string, path: string) {
   project = 'file:///';
   return `${project}${path}`;
 }
@@ -25,16 +25,17 @@ window.confirm = function (message?: string, title?: string) {
 };
 
 const useEditMenuItems = function (x: number, y: number, items: ContextMenuItem[]) {
-  return items.length === 0 && document.elementsFromPoint(x, y).some(function (element) {
-    return element.nodeName === 'INPUT' ||
-      element.nodeName === 'TEXTAREA' ||
-      (element as HTMLElement).isContentEditable;
-  });
+  return (
+    items.length === 0 &&
+    document.elementsFromPoint(x, y).some(function (element) {
+      return element.nodeName === 'INPUT' || element.nodeName === 'TEXTAREA' || (element as HTMLElement).isContentEditable;
+    })
+  );
 };
 
 const createMenu = function (x: number, y: number, items: ContextMenuItem[]) {
   const isEditMenu = useEditMenuItems(x, y, items);
-  ipcRendererInternal.invoke<number>(IPC_MESSAGES.INSPECTOR_CONTEXT_MENU, items, isEditMenu).then(id => {
+  ipcRendererInternal.invoke<number>(IPC_MESSAGES.INSPECTOR_CONTEXT_MENU, items, isEditMenu).then((id) => {
     if (typeof id === 'number') {
       window.DevToolsAPI!.contextMenuItemSelected(id);
     }
@@ -43,7 +44,7 @@ const createMenu = function (x: number, y: number, items: ContextMenuItem[]) {
 };
 
 const showFileChooserDialog = function (callback: (blob: File) => void) {
-  ipcRendererInternal.invoke<[ string, any ]>(IPC_MESSAGES.INSPECTOR_SELECT_FILE).then(([path, data]) => {
+  ipcRendererInternal.invoke<[string, any]>(IPC_MESSAGES.INSPECTOR_SELECT_FILE).then(([path, data]) => {
     if (path && data) {
       callback(dataToHtml5FileObject(path, data));
     }

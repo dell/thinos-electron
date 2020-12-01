@@ -15,25 +15,25 @@ const isWindowsOnArm = process.platform === 'win32' && process.arch === 'arm64';
 const isLinuxOnArm = process.platform === 'linux' && process.arch.includes('arm');
 
 type CrashInfo = {
-  prod: string
-  ver: string
-  process_type: string // eslint-disable-line camelcase
-  ptype: string
-  platform: string
-  _productName: string
-  _version: string
-  upload_file_minidump: Buffer // eslint-disable-line camelcase
-  guid: string
-  mainProcessSpecific: 'mps' | undefined
-  rendererSpecific: 'rs' | undefined
-  globalParam: 'globalValue' | undefined
-  addedThenRemoved: 'to-be-removed' | undefined
-  longParam: string | undefined
-  'electron.v8-fatal.location': string | undefined
-  'electron.v8-fatal.message': string | undefined
-}
+  prod: string;
+  ver: string;
+  process_type: string; // eslint-disable-line camelcase
+  ptype: string;
+  platform: string;
+  _productName: string;
+  _version: string;
+  upload_file_minidump: Buffer; // eslint-disable-line camelcase
+  guid: string;
+  mainProcessSpecific: 'mps' | undefined;
+  rendererSpecific: 'rs' | undefined;
+  globalParam: 'globalValue' | undefined;
+  addedThenRemoved: 'to-be-removed' | undefined;
+  longParam: string | undefined;
+  'electron.v8-fatal.location': string | undefined;
+  'electron.v8-fatal.message': string | undefined;
+};
 
-function checkCrash (expectedProcessType: string, fields: CrashInfo) {
+function checkCrash(expectedProcessType: string, fields: CrashInfo) {
   expect(String(fields.prod)).to.equal('Electron', 'prod');
   expect(String(fields.ver)).to.equal(process.versions.electron, 'ver');
   expect(String(fields.ptype)).to.equal(expectedProcessType, 'ptype');
@@ -52,10 +52,12 @@ function checkCrash (expectedProcessType: string, fields: CrashInfo) {
 
 const startServer = async () => {
   const crashes: CrashInfo[] = [];
-  function getCrashes () { return crashes; }
+  function getCrashes() {
+    return crashes;
+  }
   const emitter = new EventEmitter();
-  function waitForCrash (): Promise<CrashInfo> {
-    return new Promise(resolve => {
+  function waitForCrash(): Promise<CrashInfo> {
+    return new Promise((resolve) => {
       emitter.once('crash', (crash) => {
         resolve(crash);
       });
@@ -89,35 +91,35 @@ const startServer = async () => {
     req.pipe(busboy);
   });
 
-  await new Promise(resolve => {
-    server.listen(0, '127.0.0.1', () => { resolve(); });
+  await new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      resolve();
+    });
   });
 
   const port = (server.address() as AddressInfo).port;
 
-  defer(() => { server.close(); });
+  defer(() => {
+    server.close();
+  });
 
   return { getCrashes, port, waitForCrash };
 };
 
-function runApp (appPath: string, args: Array<string> = []) {
+function runApp(appPath: string, args: Array<string> = []) {
   const appProcess = childProcess.spawn(process.execPath, [appPath, ...args]);
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     appProcess.once('exit', resolve);
   });
 }
 
-function runCrashApp (crashType: string, port: number, extraArgs: Array<string> = []) {
+function runCrashApp(crashType: string, port: number, extraArgs: Array<string> = []) {
   const appPath = path.join(__dirname, 'fixtures', 'apps', 'crash');
-  return runApp(appPath, [
-    `--crash-type=${crashType}`,
-    `--crash-reporter-url=http://127.0.0.1:${port}`,
-    ...extraArgs
-  ]);
+  return runApp(appPath, [`--crash-type=${crashType}`, `--crash-reporter-url=http://127.0.0.1:${port}`, ...extraArgs]);
 }
 
-function waitForNewFileInDir (dir: string): Promise<string[]> {
-  function readdirIfPresent (dir: string): string[] {
+function waitForNewFileInDir(dir: string): Promise<string[]> {
+  function readdirIfPresent(dir: string): string[] {
     try {
       return fs.readdirSync(dir);
     } catch (e) {
@@ -125,9 +127,9 @@ function waitForNewFileInDir (dir: string): Promise<string[]> {
     }
   }
   const initialFiles = readdirIfPresent(dir);
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const ivl = setInterval(() => {
-      const newCrashFiles = readdirIfPresent(dir).filter(f => !initialFiles.includes(f));
+      const newCrashFiles = readdirIfPresent(dir).filter((f) => !initialFiles.includes(f));
       if (newCrashFiles.length) {
         clearInterval(ivl);
         resolve(newCrashFiles);
@@ -229,19 +231,22 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
         const { remotely } = await startRemoteControlApp();
         const { port, waitForCrash } = await startServer();
 
-        await remotely((port: number) => {
-          require('electron').crashReporter.start({
-            submitURL: `http://127.0.0.1:${port}`,
-            compress: false,
-            ignoreSystemCrashHandler: true
-          });
-        }, [port]);
+        await remotely(
+          (port: number) => {
+            require('electron').crashReporter.start({
+              submitURL: `http://127.0.0.1:${port}`,
+              compress: false,
+              ignoreSystemCrashHandler: true,
+            });
+          },
+          [port],
+        );
 
         remotely(() => {
           const { BrowserWindow } = require('electron');
           const bw = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true } });
           bw.loadURL('about:blank');
-          bw.webContents.executeJavaScript('process._linkedBinding(\'electron_common_v8_util\').triggerFatalErrorForTesting()');
+          bw.webContents.executeJavaScript("process._linkedBinding('electron_common_v8_util').triggerFatalErrorForTesting()");
         });
 
         const crash = await waitForCrash();
@@ -255,7 +260,7 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
   });
 
   ifdescribe(!isLinuxOnArm)('extra parameter limits', () => {
-    function stitchLongCrashParam (crash: any, paramKey: string) {
+    function stitchLongCrashParam(crash: any, paramKey: string) {
       if (crash[paramKey]) return crash[paramKey];
       let chunk = 1;
       let stitched = '';
@@ -274,7 +279,7 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
           submitURL: `http://127.0.0.1:${port}`,
           compress: false,
           ignoreSystemCrashHandler: true,
-          extra: { longParam: 'a'.repeat(100000) }
+          extra: { longParam: 'a'.repeat(100000) },
         });
         setTimeout(() => process.crash());
       }, port);
@@ -286,20 +291,24 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       const kKeyLengthMax = 39;
       const { port, waitForCrash } = await startServer();
       const { remotely } = await startRemoteControlApp();
-      remotely((port: number, kKeyLengthMax: number) => {
-        require('electron').crashReporter.start({
-          submitURL: `http://127.0.0.1:${port}`,
-          compress: false,
-          ignoreSystemCrashHandler: true,
-          extra: {
-            ['a'.repeat(kKeyLengthMax + 10)]: 'value',
-            ['b'.repeat(kKeyLengthMax)]: 'value',
-            'not-long': 'not-long-value'
-          }
-        });
-        require('electron').crashReporter.addExtraParameter('c'.repeat(kKeyLengthMax + 10), 'value');
-        setTimeout(() => process.crash());
-      }, port, kKeyLengthMax);
+      remotely(
+        (port: number, kKeyLengthMax: number) => {
+          require('electron').crashReporter.start({
+            submitURL: `http://127.0.0.1:${port}`,
+            compress: false,
+            ignoreSystemCrashHandler: true,
+            extra: {
+              ['a'.repeat(kKeyLengthMax + 10)]: 'value',
+              ['b'.repeat(kKeyLengthMax)]: 'value',
+              'not-long': 'not-long-value',
+            },
+          });
+          require('electron').crashReporter.addExtraParameter('c'.repeat(kKeyLengthMax + 10), 'value');
+          setTimeout(() => process.crash());
+        },
+        port,
+        kKeyLengthMax,
+      );
       const crash = await waitForCrash();
       expect(crash).not.to.have.property('a'.repeat(kKeyLengthMax + 10));
       expect(crash).not.to.have.property('a'.repeat(kKeyLengthMax));
@@ -366,11 +375,13 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
 
     it('can be called twice', async () => {
       const { remotely } = await startRemoteControlApp();
-      await expect(remotely(() => {
-        const { crashReporter } = require('electron');
-        crashReporter.start({ submitURL: 'http://127.0.0.1' });
-        crashReporter.start({ submitURL: 'http://127.0.0.1' });
-      })).to.be.fulfilled();
+      await expect(
+        remotely(() => {
+          const { crashReporter } = require('electron');
+          crashReporter.start({ submitURL: 'http://127.0.0.1' });
+          crashReporter.start({ submitURL: 'http://127.0.0.1' });
+        }),
+      ).to.be.fulfilled();
     });
   });
 
@@ -396,16 +407,21 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       try {
         fs.rmdirSync(dir, { recursive: true });
         fs.mkdirSync(dir);
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
 
       // 1. start the crash reporter.
-      await remotely((port: number) => {
-        require('electron').crashReporter.start({
-          submitURL: `http://127.0.0.1:${port}`,
-          compress: false,
-          ignoreSystemCrashHandler: true
-        });
-      }, [port]);
+      await remotely(
+        (port: number) => {
+          require('electron').crashReporter.start({
+            submitURL: `http://127.0.0.1:${port}`,
+            compress: false,
+            ignoreSystemCrashHandler: true,
+          });
+        },
+        [port],
+      );
       // 2. generate a crash in the renderer.
       remotely(() => {
         const { BrowserWindow } = require('electron');
@@ -418,7 +434,7 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       const firstReport = await remotely(() => require('electron').crashReporter.getLastCrashReport());
       expect(firstReport).to.not.be.null();
       expect(firstReport.date).to.be.an.instanceOf(Date);
-      expect((+new Date()) - (+firstReport.date)).to.be.lessThan(30000);
+      expect(+new Date() - +firstReport.date).to.be.lessThan(30000);
     });
   });
 
@@ -426,24 +442,34 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
     it('returns true when uploadToServer is set to true (by default)', async () => {
       const { remotely } = await startRemoteControlApp();
 
-      await remotely(() => { require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1' }); });
+      await remotely(() => {
+        require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1' });
+      });
       const uploadToServer = await remotely(() => require('electron').crashReporter.getUploadToServer());
       expect(uploadToServer).to.be.true();
     });
 
     it('returns false when uploadToServer is set to false in init', async () => {
       const { remotely } = await startRemoteControlApp();
-      await remotely(() => { require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1', uploadToServer: false }); });
+      await remotely(() => {
+        require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1', uploadToServer: false });
+      });
       const uploadToServer = await remotely(() => require('electron').crashReporter.getUploadToServer());
       expect(uploadToServer).to.be.false();
     });
 
     it('is updated by setUploadToServer', async () => {
       const { remotely } = await startRemoteControlApp();
-      await remotely(() => { require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1' }); });
-      await remotely(() => { require('electron').crashReporter.setUploadToServer(false); });
+      await remotely(() => {
+        require('electron').crashReporter.start({ submitURL: 'http://127.0.0.1' });
+      });
+      await remotely(() => {
+        require('electron').crashReporter.setUploadToServer(false);
+      });
       expect(await remotely(() => require('electron').crashReporter.getUploadToServer())).to.be.false();
-      await remotely(() => { require('electron').crashReporter.setUploadToServer(true); });
+      await remotely(() => {
+        require('electron').crashReporter.setUploadToServer(true);
+      });
       expect(await remotely(() => require('electron').crashReporter.getUploadToServer())).to.be.true();
     });
   });
@@ -454,7 +480,7 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       await remotely(() => {
         require('electron').crashReporter.start({
           submitURL: 'http://127.0.0.1',
-          extra: { extra1: 'hi' }
+          extra: { extra1: 'hi' },
         });
       });
       const parameters = await remotely(() => require('electron').crashReporter.getParameters());
@@ -472,7 +498,9 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
         expect(parameters).to.have.property('hello', 'world');
       }
 
-      await remotely(() => { require('electron').crashReporter.removeExtraParameter('hello'); });
+      await remotely(() => {
+        require('electron').crashReporter.removeExtraParameter('hello');
+      });
 
       {
         const parameters = await remotely(() => require('electron').crashReporter.getParameters());
@@ -487,8 +515,8 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
         crashReporter.start({ submitURL: 'http://' });
         const bw = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true } });
         bw.loadURL('about:blank');
-        await bw.webContents.executeJavaScript('require(\'electron\').crashReporter.addExtraParameter(\'hello\', \'world\')');
-        return bw.webContents.executeJavaScript('require(\'electron\').crashReporter.getParameters()');
+        await bw.webContents.executeJavaScript("require('electron').crashReporter.addExtraParameter('hello', 'world')");
+        return bw.webContents.executeJavaScript("require('electron').crashReporter.getParameters()");
       });
       if (process.platform === 'linux') {
         // On Linux, 'getParameters' will also include the global parameters,
@@ -500,12 +528,14 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
     });
 
     it('can be called in a node child process', async () => {
-      function slurp (stream: NodeJS.ReadableStream): Promise<string> {
+      function slurp(stream: NodeJS.ReadableStream): Promise<string> {
         return new Promise((resolve, reject) => {
           const chunks: Buffer[] = [];
-          stream.on('data', chunk => { chunks.push(chunk); });
+          stream.on('data', (chunk) => {
+            chunks.push(chunk);
+          });
           stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-          stream.on('error', e => reject(e));
+          stream.on('error', (e) => reject(e));
         });
       }
       const child = childProcess.fork(path.join(__dirname, 'fixtures', 'module', 'print-crash-parameters.js'), [], { silent: true });
@@ -523,10 +553,12 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       expect(app.getPath('crashDumps')).to.include(app.getPath('userData'));
     });
 
-    function crash (processType: string, remotely: Function) {
+    function crash(processType: string, remotely: Function) {
       if (processType === 'main') {
         return remotely(() => {
-          setTimeout(() => { process.crash(); });
+          setTimeout(() => {
+            process.crash();
+          });
         });
       } else if (processType === 'renderer') {
         return remotely(() => {
@@ -554,8 +586,8 @@ ifdescribe(!isLinuxOnArm && !process.mas && !process.env.DISABLE_CRASH_REPORTER_
       }
     }
 
-    const processList = process.platform === 'linux' ? ['main', 'renderer', 'sandboxed-renderer']
-      : ['main', 'renderer', 'sandboxed-renderer', 'node'];
+    const processList =
+      process.platform === 'linux' ? ['main', 'renderer', 'sandboxed-renderer'] : ['main', 'renderer', 'sandboxed-renderer', 'node'];
     for (const crashingProcess of processList) {
       describe(`when ${crashingProcess} crashes`, () => {
         it('stores crashes in the crash dump directory when uploadToServer: false', async () => {

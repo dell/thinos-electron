@@ -31,7 +31,7 @@ describe('session.serviceWorkers', () => {
       }
       res.end(fs.readFileSync(path.resolve(__dirname, 'fixtures', 'api', 'service-workers', file)));
     });
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       server.listen(0, '127.0.0.1', () => {
         baseUrl = `http://localhost:${(server.address() as AddressInfo).port}/${uuid}`;
         resolve();
@@ -61,7 +61,7 @@ describe('session.serviceWorkers', () => {
     it('should report one as running once you load a page with a service worker', async () => {
       await emittedOnce(ses.serviceWorkers, 'console-message', () => w.loadURL(`${baseUrl}/index.html`));
       const workers = ses.serviceWorkers.getAllRunning();
-      const ids = Object.keys(workers) as any[] as number[];
+      const ids = (Object.keys(workers) as any[]) as number[];
       expect(ids).to.have.lengthOf(1, 'should have one worker running');
     });
   });

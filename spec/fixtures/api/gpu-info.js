@@ -14,7 +14,7 @@ app.whenReady().then(() => {
       (error) => {
         console.error(error);
         setImmediate(() => app.exit(1));
-      }
+      },
     );
   });
   w.loadURL('data:text/html;<canvas></canvas>');

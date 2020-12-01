@@ -32,5 +32,5 @@ export const webViewEvents: Record<string, string[]> = {
   'media-paused': [],
   'found-in-page': ['result'],
   'did-change-theme-color': ['themeColor'],
-  'update-target-url': ['url']
+  'update-target-url': ['url'],
 };

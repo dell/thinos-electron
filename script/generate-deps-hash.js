@@ -9,7 +9,7 @@ const HASH_VERSION = 3;
 const filesToHash = [
   path.resolve(__dirname, '../DEPS'),
   path.resolve(__dirname, '../yarn.lock'),
-  path.resolve(__dirname, '../script/sysroots.json')
+  path.resolve(__dirname, '../script/sysroots.json'),
 ];
 
 const addAllFiles = (dir) => {
@@ -45,7 +45,10 @@ fs.writeFileSync(path.resolve(__dirname, '../.depshash'), hasher.digest('hex'));
 let targetContent = `${effectivePlatform}\n${process.env.TARGET_ARCH}\n${process.env.GN_CONFIG}\n${undefined}\n${process.env.GN_EXTRA_ARGS}\n${process.env.GN_BUILDFLAG_ARGS}`;
 const argsDir = path.resolve(__dirname, '../build/args');
 for (const argFile of fs.readdirSync(argsDir).sort()) {
-  targetContent += `\n${argFile}--${crypto.createHash('SHA1').update(fs.readFileSync(path.resolve(argsDir, argFile))).digest('hex')}`;
+  targetContent += `\n${argFile}--${crypto
+    .createHash('SHA1')
+    .update(fs.readFileSync(path.resolve(argsDir, argFile)))
+    .digest('hex')}`;
 }
 
 fs.writeFileSync(path.resolve(__dirname, '../.depshash-target'), targetContent);

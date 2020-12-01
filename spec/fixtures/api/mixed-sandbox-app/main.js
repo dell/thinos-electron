@@ -13,14 +13,14 @@ if (process.argv.includes('--app-enable-sandbox')) {
 let currentWindowSandboxed = false;
 
 app.whenReady().then(() => {
-  function testWindow (isSandboxed, callback) {
+  function testWindow(isSandboxed, callback) {
     currentWindowSandboxed = isSandboxed;
     const currentWindow = new BrowserWindow({
       show: false,
       webPreferences: {
         preload: path.join(__dirname, 'electron-app-mixed-sandbox-preload.js'),
-        sandbox: isSandboxed
-      }
+        sandbox: isSandboxed,
+      },
     });
     currentWindow.loadURL('about:blank');
     currentWindow.webContents.once('devtools-opened', () => {
@@ -41,7 +41,7 @@ app.whenReady().then(() => {
     sandbox: null,
     noSandbox: null,
     sandboxDevtools: null,
-    noSandboxDevtools: null
+    noSandboxDevtools: null,
   };
 
   let connected = false;
@@ -50,9 +50,8 @@ app.whenReady().then(() => {
     testWindow();
   });
 
-  function finish () {
-    if (connected && argv.sandbox != null && argv.noSandbox != null &&
-        argv.noSandboxDevtools != null && argv.sandboxDevtools != null) {
+  function finish() {
+    if (connected && argv.sandbox != null && argv.noSandbox != null && argv.noSandboxDevtools != null && argv.sandboxDevtools != null) {
       client.once('end', () => {
         app.exit(0);
       });

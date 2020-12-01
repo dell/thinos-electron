@@ -42,11 +42,10 @@ describe('webFrame module', function () {
     it('executeJavaScript() yields results via a promise and a sync callback', async () => {
       let callbackResult, callbackError;
 
-      const executeJavaScript = childFrame
-        .executeJavaScript('1 + 1', (result, error) => {
-          callbackResult = result;
-          callbackError = error;
-        });
+      const executeJavaScript = childFrame.executeJavaScript('1 + 1', (result, error) => {
+        callbackResult = result;
+        callbackError = error;
+      });
 
       expect(callbackResult).to.equal(2);
       expect(callbackError).to.be.undefined();
@@ -58,11 +57,10 @@ describe('webFrame module', function () {
     it('executeJavaScriptInIsolatedWorld() yields results via a promise and a sync callback', async () => {
       let callbackResult, callbackError;
 
-      const executeJavaScriptInIsolatedWorld = childFrame
-        .executeJavaScriptInIsolatedWorld(999, [{ code: '1 + 1' }], (result, error) => {
-          callbackResult = result;
-          callbackError = error;
-        });
+      const executeJavaScriptInIsolatedWorld = childFrame.executeJavaScriptInIsolatedWorld(999, [{ code: '1 + 1' }], (result, error) => {
+        callbackResult = result;
+        callbackError = error;
+      });
 
       expect(callbackResult).to.equal(2);
       expect(callbackError).to.be.undefined();
@@ -74,11 +72,10 @@ describe('webFrame module', function () {
     it('executeJavaScript() yields errors via a promise and a sync callback', async () => {
       let callbackResult, callbackError;
 
-      const executeJavaScript = childFrame
-        .executeJavaScript('thisShouldProduceAnError()', (result, error) => {
-          callbackResult = result;
-          callbackError = error;
-        });
+      const executeJavaScript = childFrame.executeJavaScript('thisShouldProduceAnError()', (result, error) => {
+        callbackResult = result;
+        callbackError = error;
+      });
 
       expect(callbackResult).to.be.undefined();
       expect(callbackError).to.be.an('error');

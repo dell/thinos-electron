@@ -6,7 +6,11 @@ import { ifdescribe, delay } from './spec-helpers';
 
 // FIXME: The tests are skipped on arm/arm64.
 ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.arch)))('contentTracing', () => {
-  const record = async (options: TraceConfig | TraceCategoriesAndOptions, outputFilePath: string | undefined, recordTimeInMilliseconds = 1e1) => {
+  const record = async (
+    options: TraceConfig | TraceCategoriesAndOptions,
+    outputFilePath: string | undefined,
+    recordTimeInMilliseconds = 1e1,
+  ) => {
     await app.whenReady();
 
     await contentTracing.startRecording(options);
@@ -40,15 +44,14 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
       expect(fs.existsSync(outputFilePath)).to.be.true('output exists');
 
       const fileSizeInKiloBytes = getFileSizeInKiloBytes(outputFilePath);
-      expect(fileSizeInKiloBytes).to.be.above(0,
-        `the trace output file is empty, check "${outputFilePath}"`);
+      expect(fileSizeInKiloBytes).to.be.above(0, `the trace output file is empty, check "${outputFilePath}"`);
     });
 
     it('accepts a trace config', async () => {
       // (alexeykuzmin): All categories are excluded on purpose,
       // so only metadata gets into the output file.
       const config = {
-        excluded_categories: ['*']
+        excluded_categories: ['*'],
       };
       await record(config, outputFilePath);
 
@@ -59,11 +62,12 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
       const fileSizeInKiloBytes = getFileSizeInKiloBytes(outputFilePath);
       const expectedMaximumFileSize = 10; // Depends on a platform.
 
-      expect(fileSizeInKiloBytes).to.be.above(0,
-        `the trace output file is empty, check "${outputFilePath}"`);
-      expect(fileSizeInKiloBytes).to.be.below(expectedMaximumFileSize,
+      expect(fileSizeInKiloBytes).to.be.above(0, `the trace output file is empty, check "${outputFilePath}"`);
+      expect(fileSizeInKiloBytes).to.be.below(
+        expectedMaximumFileSize,
         `the trace output file is suspiciously large (${fileSizeInKiloBytes}KB),
-        check "${outputFilePath}"`);
+        check "${outputFilePath}"`,
+      );
     });
 
     it('accepts "categoryFilter" and "traceOptions" as a config', async () => {
@@ -71,7 +75,7 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
       // so only metadata gets into the output file.
       const config = {
         categoryFilter: '__ThisIsANonexistentCategory__',
-        traceOptions: ''
+        traceOptions: '',
       };
       await record(config, outputFilePath);
 
@@ -82,11 +86,12 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
       const fileSizeInKiloBytes = getFileSizeInKiloBytes(outputFilePath);
       const expectedMaximumFileSize = 10; // Depends on a platform.
 
-      expect(fileSizeInKiloBytes).to.be.above(0,
-        `the trace output file is empty, check "${outputFilePath}"`);
-      expect(fileSizeInKiloBytes).to.be.below(expectedMaximumFileSize,
+      expect(fileSizeInKiloBytes).to.be.above(0, `the trace output file is empty, check "${outputFilePath}"`);
+      expect(fileSizeInKiloBytes).to.be.below(
+        expectedMaximumFileSize,
         `the trace output file is suspiciously large (${fileSizeInKiloBytes}KB),
-        check "${outputFilePath}"`);
+        check "${outputFilePath}"`,
+      );
     });
   });
 
@@ -96,7 +101,7 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
     it('does not crash on empty string', async () => {
       const options = {
         categoryFilter: '*',
-        traceOptions: 'record-until-full,enable-sampling'
+        traceOptions: 'record-until-full,enable-sampling',
       };
 
       await contentTracing.startRecording(options);
@@ -132,7 +137,7 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
 
       await contentTracing.startRecording({
         categoryFilter: 'disabled-by-default-v8.cpu_profiler',
-        traceOptions: 'record-until-full'
+        traceOptions: 'record-until-full',
       });
       {
         const start = +new Date();
@@ -147,7 +152,9 @@ ifdescribe(!(process.platform !== 'win32' && ['arm', 'arm64'].includes(process.a
       const path = await contentTracing.stopRecording();
       const data = fs.readFileSync(path, 'utf8');
       const parsed = JSON.parse(data);
-      expect(parsed.traceEvents.some((x: any) => x.cat === 'disabled-by-default-v8.cpu_profiler' && x.name === 'ProfileChunk')).to.be.true();
+      expect(
+        parsed.traceEvents.some((x: any) => x.cat === 'disabled-by-default-v8.cpu_profiler' && x.name === 'ProfileChunk'),
+      ).to.be.true();
     });
   });
 });

@@ -9,7 +9,7 @@
  * @return {!Promise<!Event>}
  */
 const waitForEvent = (target, eventName) => {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     target.addEventListener(eventName, resolve, { once: true });
   });
 };
@@ -25,7 +25,7 @@ const emittedOnce = (emitter, eventName) => {
 
 const emittedNTimes = (emitter, eventName, times) => {
   const events = [];
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const handler = (...args) => {
       events.push(args);
       if (events.length === times) {

@@ -8,7 +8,11 @@ import { BaseWindow, WebContentsView } from 'electron/main';
 
 describe('WebContentsView', () => {
   let w: BaseWindow;
-  afterEach(() => closeWindow(w as any).then(() => { w = null as unknown as BaseWindow; }));
+  afterEach(() =>
+    closeWindow(w as any).then(() => {
+      w = (null as unknown) as BaseWindow;
+    }),
+  );
 
   it('can be used as content view', () => {
     w = new BaseWindow({ show: false });
@@ -21,8 +25,12 @@ describe('WebContentsView', () => {
       const electronPath = process.execPath;
       const appProcess = ChildProcess.spawn(electronPath, ['--enable-logging', appPath]);
       let output = '';
-      appProcess.stdout.on('data', data => { output += data; });
-      appProcess.stderr.on('data', data => { output += data; });
+      appProcess.stdout.on('data', (data) => {
+        output += data;
+      });
+      appProcess.stderr.on('data', (data) => {
+        output += data;
+      });
       const [code] = await emittedOnce(appProcess, 'exit');
       if (code !== 0) {
         console.log(code, output);
@@ -31,7 +39,7 @@ describe('WebContentsView', () => {
     });
   });
 
-  function triggerGCByAllocation () {
+  function triggerGCByAllocation() {
     const arr = [];
     for (let i = 0; i < 1000000; i++) {
       arr.push([]);
@@ -39,7 +47,7 @@ describe('WebContentsView', () => {
     return arr;
   }
 
-  it('doesn\'t crash when GCed during allocation', (done) => {
+  it("doesn't crash when GCed during allocation", (done) => {
     // eslint-disable-next-line no-new
     new WebContentsView({});
     setTimeout(() => {

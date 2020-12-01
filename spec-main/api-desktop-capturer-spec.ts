@@ -112,7 +112,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
 
     w2.destroy();
     expect(isEmpties).to.be.an('array').that.is.not.empty();
-    expect(isEmpties.every(e => e === true)).to.be.true();
+    expect(isEmpties.every((e) => e === true)).to.be.true();
   });
 
   it('getMediaSourceId should match DesktopCapturerSource.id', async () => {
@@ -127,7 +127,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
     const mediaSourceId = w.getMediaSourceId();
     const sources = await getSources({
       types: ['window'],
-      thumbnailSize: { width: 0, height: 0 }
+      thumbnailSize: { width: 0, height: 0 },
     });
     w.destroy();
 
@@ -172,7 +172,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
       // background, i.e. top to bottom.
       let sources = await getSources({
         types: ['window'],
-        thumbnailSize: { width: 0, height: 0 }
+        thumbnailSize: { width: 0, height: 0 },
       });
 
       // TODO(julien.isorce): investigate why |sources| is empty on the linux
@@ -198,8 +198,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
 
       // Check that the sources and wList are sorted in the reverse order.
       const wListReversed = wList.slice(0).reverse();
-      const canGoFurther = sources.every(
-        (source, index) => source.id === wListReversed[index].getMediaSourceId());
+      const canGoFurther = sources.every((source, index) => source.id === wListReversed[index].getMediaSourceId());
       if (!canGoFurther) {
         // Skip remaining checks because either focus or window placement are
         // not reliable in the running test environment. So there is no point
@@ -210,7 +209,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
       // Do the real work, i.e. move each window above the next one so that
       // wList is sorted from foreground to background.
       wList.forEach(async (w, index) => {
-        if (index < (wList.length - 1)) {
+        if (index < wList.length - 1) {
           const wNext = wList[index + 1];
           w.moveAbove(wNext.getMediaSourceId());
         }
@@ -218,7 +217,7 @@ ifdescribe(!process.arch.includes('arm') && process.platform !== 'win32')('deskt
 
       sources = await getSources({
         types: ['window'],
-        thumbnailSize: { width: 0, height: 0 }
+        thumbnailSize: { width: 0, height: 0 },
       });
       // Only keep our windows again.
       sources.splice(MAX_WIN, sources.length - MAX_WIN);

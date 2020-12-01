@@ -136,7 +136,7 @@ describe('node feature', () => {
       });
 
       child = childProcess.spawn(process.execPath, ['--force-fips'], {
-        env: { ELECTRON_RUN_AS_NODE: 'true' }
+        env: { ELECTRON_RUN_AS_NODE: 'true' },
       });
       exitPromise = emittedOnce(child, 'exit');
 
@@ -183,7 +183,7 @@ describe('node feature', () => {
 
     it('Supports starting the v8 inspector with --inspect/--inspect-brk', (done) => {
       child = childProcess.spawn(process.execPath, ['--inspect-brk', path.join(fixtures, 'module', 'run-as-node.js')], {
-        env: { ELECTRON_RUN_AS_NODE: 'true' }
+        env: { ELECTRON_RUN_AS_NODE: 'true' },
       });
 
       let output = '';
@@ -206,12 +206,14 @@ describe('node feature', () => {
 
     it('Supports starting the v8 inspector with --inspect and a provided port', async () => {
       child = childProcess.spawn(process.execPath, ['--inspect=17364', path.join(fixtures, 'module', 'run-as-node.js')], {
-        env: { ELECTRON_RUN_AS_NODE: 'true' }
+        env: { ELECTRON_RUN_AS_NODE: 'true' },
       });
       exitPromise = emittedOnce(child, 'exit');
 
       let output = '';
-      const listener = (data: Buffer) => { output += data; };
+      const listener = (data: Buffer) => {
+        output += data;
+      };
       const cleanup = () => {
         child.stderr.removeListener('data', listener);
         child.stdout.removeListener('data', listener);
@@ -233,7 +235,9 @@ describe('node feature', () => {
       exitPromise = emittedOnce(child, 'exit');
 
       let output = '';
-      const listener = (data: Buffer) => { output += data; };
+      const listener = (data: Buffer) => {
+        output += data;
+      };
       child.stderr.on('data', listener);
       child.stdout.on('data', listener);
       await emittedOnce(child, 'exit');
@@ -245,7 +249,7 @@ describe('node feature', () => {
     // IPC Electron child process not supported on Windows
     ifit(process.platform !== 'win32')('does not crash when quitting with the inspector connected', function (done) {
       child = childProcess.spawn(process.execPath, [path.join(fixtures, 'module', 'delay-exit'), '--inspect=0'], {
-        stdio: ['ipc']
+        stdio: ['ipc'],
       }) as childProcess.ChildProcessWithoutNullStreams;
       exitPromise = emittedOnce(child, 'exit');
 
@@ -256,7 +260,7 @@ describe('node feature', () => {
 
       let output = '';
       const success = false;
-      function listener (data: Buffer) {
+      function listener(data: Buffer) {
         output += data;
         console.log(data.toString()); // NOTE: temporary debug logging to try to catch flake.
         const match = /^Debugger listening on (ws:\/\/.+:\d+\/.+)\n/m.exec(output.trim());
@@ -267,13 +271,15 @@ describe('node feature', () => {
           child.stdout.on('data', (m) => console.log(m.toString()));
           const w = (webContents as any).create({}) as WebContents;
           w.loadURL('about:blank')
-            .then(() => w.executeJavaScript(`new Promise(resolve => {
+            .then(() =>
+              w.executeJavaScript(`new Promise(resolve => {
               const connection = new WebSocket(${JSON.stringify(match[1])})
               connection.onopen = () => {
                 connection.onclose = () => resolve()
                 connection.close()
               }
-            })`))
+            })`),
+            )
             .then(() => {
               (w as any).destroy();
               child.send('plz-quit');
@@ -292,7 +298,7 @@ describe('node feature', () => {
     it('Supports js binding', async () => {
       child = childProcess.spawn(process.execPath, ['--inspect', path.join(fixtures, 'module', 'inspector-binding.js')], {
         env: { ELECTRON_RUN_AS_NODE: 'true' },
-        stdio: ['ipc']
+        stdio: ['ipc'],
       }) as childProcess.ChildProcessWithoutNullStreams;
       exitPromise = emittedOnce(child, 'exit');
 
@@ -311,7 +317,7 @@ describe('node feature', () => {
   ifit(features.isRunAsNodeEnabled())('handles Promise timeouts correctly', async () => {
     const scriptPath = path.join(fixtures, 'module', 'node-promise-timer.js');
     const child = childProcess.spawn(process.execPath, [scriptPath], {
-      env: { ELECTRON_RUN_AS_NODE: 'true' }
+      env: { ELECTRON_RUN_AS_NODE: 'true' },
     });
     const [code, signal] = await emittedOnce(child, 'exit');
     expect(code).to.equal(0);

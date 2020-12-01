@@ -13,7 +13,7 @@ autoUpdater.on('error', (err) => {
 const feedUrl = process.argv[1];
 
 autoUpdater.setFeedURL({
-  url: feedUrl
+  url: feedUrl,
 });
 
 autoUpdater.checkForUpdates();

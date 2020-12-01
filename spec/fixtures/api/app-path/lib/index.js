@@ -1,7 +1,7 @@
 const { app } = require('electron');
 
 const payload = {
-  appPath: app.getAppPath()
+  appPath: app.getAppPath(),
 };
 
 process.stdout.write(JSON.stringify(payload));

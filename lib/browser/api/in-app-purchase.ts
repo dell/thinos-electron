@@ -13,7 +13,7 @@ if (process.platform === 'darwin') {
       throw new Error('The inAppPurchase module can only be used on macOS');
     },
     canMakePayments: () => false,
-    getReceiptURL: () => ''
+    getReceiptURL: () => '',
   });
 }
 

@@ -15,13 +15,11 @@ if (!features.isRemoteModuleEnabled()) {
 }
 
 // The internal properties of Function.
-const FUNCTION_PROPERTIES = [
-  'length', 'name', 'arguments', 'caller', 'prototype'
-];
+const FUNCTION_PROPERTIES = ['length', 'name', 'arguments', 'caller', 'prototype'];
 
-type RendererFunctionId = [string, number] // [contextId, funcId]
-type FinalizerInfo = { id: RendererFunctionId, webContents: electron.WebContents, frameId: number };
-type CallIntoRenderer = (...args: any[]) => void
+type RendererFunctionId = [string, number]; // [contextId, funcId]
+type FinalizerInfo = { id: RendererFunctionId; webContents: electron.WebContents; frameId: number };
+type CallIntoRenderer = (...args: any[]) => void;
 
 // The remote functions in renderer processes.
 const rendererFunctionCache = new Map<string, WeakRef<CallIntoRenderer>>();
@@ -31,11 +29,13 @@ const finalizationRegistry = new FinalizationRegistry((fi: FinalizerInfo) => {
   const ref = rendererFunctionCache.get(mapKey);
   if (ref !== undefined && ref.deref() === undefined) {
     rendererFunctionCache.delete(mapKey);
-    if (!fi.webContents.isDestroyed()) { fi.webContents.sendToFrame(fi.frameId, IPC_MESSAGES.RENDERER_RELEASE_CALLBACK, fi.id[0], fi.id[1]); }
+    if (!fi.webContents.isDestroyed()) {
+      fi.webContents.sendToFrame(fi.frameId, IPC_MESSAGES.RENDERER_RELEASE_CALLBACK, fi.id[0], fi.id[1]);
+    }
   }
 });
 
-function getCachedRendererFunction (id: RendererFunctionId): CallIntoRenderer | undefined {
+function getCachedRendererFunction(id: RendererFunctionId): CallIntoRenderer | undefined {
   const mapKey = id[0] + '~' + id[1];
   const ref = rendererFunctionCache.get(mapKey);
   if (ref !== undefined) {
@@ -43,7 +43,7 @@ function getCachedRendererFunction (id: RendererFunctionId): CallIntoRenderer | 
     if (deref !== undefined) return deref;
   }
 }
-function setCachedRendererFunction (id: RendererFunctionId, wc: electron.WebContents, frameId: number, value: CallIntoRenderer) {
+function setCachedRendererFunction(id: RendererFunctionId, wc: electron.WebContents, frameId: number, value: CallIntoRenderer) {
   // eslint-disable-next-line no-undef
   const wr = new WeakRef<CallIntoRenderer>(value);
   const mapKey = id[0] + '~' + id[1];
@@ -51,7 +51,7 @@ function setCachedRendererFunction (id: RendererFunctionId, wc: electron.WebCont
   finalizationRegistry.register(value, {
     id,
     webContents: wc,
-    frameId
+    frameId,
   } as FinalizerInfo);
   return value;
 }
@@ -89,7 +89,7 @@ const getObjectPrototype = function (object: any): ObjProtoDescriptor {
   if (proto === null || proto === Object.prototype) return null;
   return {
     members: getObjectMembers(proto),
-    proto: getObjectPrototype(proto)
+    proto: getObjectPrototype(proto),
   };
 };
 
@@ -135,7 +135,7 @@ const valueToMeta = function (sender: electron.WebContents, contextId: string, v
   if (type === 'array') {
     return {
       type,
-      members: value.map((el: any) => valueToMeta(sender, contextId, el, optimizeSimpleObject))
+      members: value.map((el: any) => valueToMeta(sender, contextId, el, optimizeSimpleObject)),
     };
   } else if (type === 'nativeimage') {
     return { type, value: serialize(value) };
@@ -148,40 +148,43 @@ const valueToMeta = function (sender: electron.WebContents, contextId: string, v
       // it.
       id: objectsRegistry.add(sender, contextId, value),
       members: getObjectMembers(value),
-      proto: getObjectPrototype(value)
+      proto: getObjectPrototype(value),
     };
   } else if (type === 'buffer') {
     return { type, value };
   } else if (type === 'promise') {
     // Add default handler to prevent unhandled rejections in main process
     // Instead they should appear in the renderer process
-    value.then(function () {}, function () {});
+    value.then(
+      function () {},
+      function () {},
+    );
 
     return {
       type,
       then: valueToMeta(sender, contextId, function (onFulfilled: Function, onRejected: Function) {
         value.then(onFulfilled, onRejected);
-      })
+      }),
     };
   } else if (type === 'error') {
     return {
       type,
       value,
-      members: Object.keys(value).map(name => ({
+      members: Object.keys(value).map((name) => ({
         name,
-        value: valueToMeta(sender, contextId, value[name])
-      }))
+        value: valueToMeta(sender, contextId, value[name]),
+      })),
     };
   } else {
     return {
       type: 'value',
-      value
+      value,
     };
   }
 };
 
 const throwRPCError = function (message: string) {
-  const error = new Error(message) as Error & {code: string, errno: number};
+  const error = new Error(message) as Error & { code: string; errno: number };
   error.code = 'EBADRPC';
   error.errno = -72;
   throw error;
@@ -189,8 +192,8 @@ const throwRPCError = function (message: string) {
 
 const removeRemoteListenersAndLogWarning = (sender: any, callIntoRenderer: (...args: any[]) => void) => {
   const location = locationInfo.get(callIntoRenderer);
-  let message = 'Attempting to call a function in a renderer window that has been closed or released.' +
-    `\nFunction provided here: ${location}`;
+  let message =
+    'Attempting to call a function in a renderer window that has been closed or released.' + `\nFunction provided here: ${location}`;
 
   if (sender instanceof EventEmitter) {
     const remoteEvents = sender.eventNames().filter((eventName) => {
@@ -210,13 +213,13 @@ const removeRemoteListenersAndLogWarning = (sender: any, callIntoRenderer: (...a
 
 const fakeConstructor = (constructor: Function, name: string) =>
   new Proxy(Object, {
-    get (target, prop, receiver) {
+    get(target, prop, receiver) {
       if (prop === 'name') {
         return name;
       } else {
         return Reflect.get(target, prop, receiver);
       }
-    }
+    },
   });
 
 // Convert array of meta data from renderer into array of real values.
@@ -235,12 +238,15 @@ const unwrapArgs = function (sender: electron.WebContents, frameId: number, cont
         return Buffer.from(meta.value.buffer, meta.value.byteOffset, meta.value.byteLength);
       case 'promise':
         return Promise.resolve({
-          then: metaToValue(meta.then)
+          then: metaToValue(meta.then),
         });
       case 'object': {
-        const ret: any = meta.name !== 'Object' ? Object.create({
-          constructor: fakeConstructor(Object, meta.name)
-        }) : {};
+        const ret: any =
+          meta.name !== 'Object'
+            ? Object.create({
+                constructor: fakeConstructor(Object, meta.name),
+              })
+            : {};
 
         for (const { name, value } of meta.members) {
           ret[name] = metaToValue(value);
@@ -260,12 +266,20 @@ const unwrapArgs = function (sender: electron.WebContents, frameId: number, cont
 
         // Cache the callbacks in renderer.
         const cachedFunction = getCachedRendererFunction(objectId);
-        if (cachedFunction !== undefined) { return cachedFunction; }
+        if (cachedFunction !== undefined) {
+          return cachedFunction;
+        }
 
         const callIntoRenderer = function (this: any, ...args: any[]) {
           let succeed = false;
           if (!sender.isDestroyed()) {
-            succeed = sender._sendToFrameInternal(frameId, IPC_MESSAGES.RENDERER_CALLBACK, contextId, meta.id, valueToMeta(sender, contextId, args));
+            succeed = sender._sendToFrameInternal(
+              frameId,
+              IPC_MESSAGES.RENDERER_CALLBACK,
+              contextId,
+              meta.id,
+              valueToMeta(sender, contextId, args),
+            );
           }
           if (!succeed) {
             removeRemoteListenersAndLogWarning(this, callIntoRenderer);
@@ -299,7 +313,10 @@ export const isRemoteModuleEnabled = function (contents: electron.WebContents) {
   return isRemoteModuleEnabledCache.get(contents);
 };
 
-const handleRemoteCommand = function (channel: string, handler: (event: ElectronInternal.IpcMainInternalEvent, contextId: string, ...args: any[]) => void) {
+const handleRemoteCommand = function (
+  channel: string,
+  handler: (event: ElectronInternal.IpcMainInternalEvent, contextId: string, ...args: any[]) => void,
+) {
   ipcMainInternal.on(channel, (event, contextId: string, ...args: any[]) => {
     let returnValue;
     if (!isRemoteModuleEnabled(event.sender)) {
@@ -312,7 +329,7 @@ const handleRemoteCommand = function (channel: string, handler: (event: Electron
     } catch (error) {
       returnValue = {
         type: 'exception',
-        value: valueToMeta(event.sender, contextId, error)
+        value: valueToMeta(event.sender, contextId, error),
       };
     }
 
@@ -444,7 +461,11 @@ handleRemoteCommand(IPC_MESSAGES.BROWSER_FUNCTION_CALL, function (event, context
   try {
     return valueToMeta(event.sender, contextId, func(...args), true);
   } catch (error) {
-    const err = new Error(`Could not call remote function '${func.name || 'anonymous'}'. Check that the function signature is correct. Underlying error: ${error.message}\nUnderlying stack: ${error.stack}\n`);
+    const err = new Error(
+      `Could not call remote function '${func.name || 'anonymous'}'. Check that the function signature is correct. Underlying error: ${
+        error.message
+      }\nUnderlying stack: ${error.stack}\n`,
+    );
     (err as any).cause = error;
     throw err;
   }
@@ -472,7 +493,9 @@ handleRemoteCommand(IPC_MESSAGES.BROWSER_MEMBER_CALL, function (event, contextId
   try {
     return valueToMeta(event.sender, contextId, object[method](...args), true);
   } catch (error) {
-    const err = new Error(`Could not call remote method '${method}'. Check that the method signature is correct. Underlying error: ${error.message}\nUnderlying stack: ${error.stack}\n`);
+    const err = new Error(
+      `Could not call remote method '${method}'. Check that the method signature is correct. Underlying error: ${error.message}\nUnderlying stack: ${error.stack}\n`,
+    );
     (err as any).cause = error;
     throw err;
   }

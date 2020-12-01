@@ -27,12 +27,11 @@ process.on('uncaughtException', function (error) {
   // We can't import { dialog } at the top of this file as this file is
   // responsible for setting up the require hook for the "electron" module
   // so we import it inside the handler down here
-  import('electron')
-    .then(({ dialog }) => {
-      const stack = error.stack ? error.stack : `${error.name}: ${error.message}`;
-      const message = 'Uncaught Exception:\n' + stack;
-      dialog.showErrorBox('A JavaScript error occurred in the main process', message);
-    });
+  import('electron').then(({ dialog }) => {
+    const stack = error.stack ? error.stack : `${error.name}: ${error.message}`;
+    const message = 'Uncaught Exception:\n' + stack;
+    dialog.showErrorBox('A JavaScript error occurred in the main process', message);
+  });
 });
 
 // Emit 'exit' event on quit.
@@ -62,7 +61,10 @@ if (process.platform === 'win32') {
   if (fs.existsSync(updateDotExe)) {
     const packageDir = path.dirname(path.resolve(updateDotExe));
     const packageName = path.basename(packageDir).replace(/\s/g, '');
-    const exeName = path.basename(process.execPath).replace(/\.exe$/i, '').replace(/\s/g, '');
+    const exeName = path
+      .basename(process.execPath)
+      .replace(/\.exe$/i, '')
+      .replace(/\s/g, '');
 
     app.setAppUserModelId(`com.squirrel.${packageName}.${exeName}`);
   }
@@ -147,7 +149,7 @@ const mainStartupScript = packageJson.main || 'index.js';
 
 const KNOWN_XDG_DESKTOP_VALUES = ['Pantheon', 'Unity:Unity7', 'pop:GNOME'];
 
-function currentPlatformSupportsAppIndicator () {
+function currentPlatformSupportsAppIndicator() {
   if (process.platform !== 'linux') return false;
   const currentDesktop = process.env.XDG_CURRENT_DESKTOP;
 
@@ -155,7 +157,7 @@ function currentPlatformSupportsAppIndicator () {
   if (KNOWN_XDG_DESKTOP_VALUES.includes(currentDesktop)) return true;
   // ubuntu based or derived session (default ubuntu one, communitheme…) supports
   // indicator too.
-  if (/ubuntu/ig.test(currentDesktop)) return true;
+  if (/ubuntu/gi.test(currentDesktop)) return true;
 
   return false;
 }
@@ -187,5 +189,5 @@ if (packagePath) {
   Module._load(path.join(packagePath, mainStartupScript), Module, true);
 } else {
   console.error('Failed to locate a valid package to load (app, app.asar or default_app.asar)');
-  console.error('This normally means you\'ve damaged the Electron package somehow');
+  console.error("This normally means you've damaged the Electron package somehow");
 }

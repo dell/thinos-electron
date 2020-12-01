@@ -3,13 +3,8 @@
 if (!process.env.CI) require('dotenv-safe').load();
 
 const args = require('minimist')(process.argv.slice(2), {
-  boolean: [
-    'validateRelease',
-    'skipVersionCheck',
-    'automaticRelease',
-    'verboseNugget'
-  ],
-  default: { verboseNugget: false }
+  boolean: ['validateRelease', 'skipVersionCheck', 'automaticRelease', 'verboseNugget'],
+  default: { verboseNugget: false },
 });
 const fs = require('fs');
 const { execSync } = require('child_process');
@@ -31,20 +26,20 @@ const fail = '✗'.red;
 const { ELECTRON_DIR } = require('../lib/utils');
 
 const octokit = new Octokit({
-  auth: process.env.ELECTRON_GITHUB_TOKEN
+  auth: process.env.ELECTRON_GITHUB_TOKEN,
 });
 
 const targetRepo = pkgVersion.indexOf('nightly') > 0 ? 'nightlies' : 'electron';
 let failureCount = 0;
 
-async function getDraftRelease (version, skipValidation) {
+async function getDraftRelease(version, skipValidation) {
   const releaseInfo = await octokit.repos.listReleases({
     owner: 'electron',
-    repo: targetRepo
+    repo: targetRepo,
   });
 
   const versionToCheck = version || pkgVersion;
-  const drafts = releaseInfo.data.filter(release => {
+  const drafts = releaseInfo.data.filter((release) => {
     return release.tag_name === versionToCheck && release.draft === true;
   });
 
@@ -56,37 +51,36 @@ async function getDraftRelease (version, skipValidation) {
       check(draft.prerelease, 'draft is a prerelease');
     }
     check(draft.body.length > 50 && !draft.body.includes('(placeholder)'), 'draft has release notes');
-    check((failureCount === 0), 'Draft release looks good to go.', true);
+    check(failureCount === 0, 'Draft release looks good to go.', true);
   }
   return draft;
 }
 
-async function validateReleaseAssets (release, validatingRelease) {
+async function validateReleaseAssets(release, validatingRelease) {
   const requiredAssets = assetsForVersion(release.tag_name, validatingRelease).sort();
-  const extantAssets = release.assets.map(asset => asset.name).sort();
-  const downloadUrls = release.assets.map(asset => asset.browser_download_url).sort();
+  const extantAssets = release.assets.map((asset) => asset.name).sort();
+  const downloadUrls = release.assets.map((asset) => asset.browser_download_url).sort();
 
   failureCount = 0;
-  requiredAssets.forEach(asset => {
+  requiredAssets.forEach((asset) => {
     check(extantAssets.includes(asset), asset);
   });
-  check((failureCount === 0), 'All required GitHub assets exist for release', true);
+  check(failureCount === 0, 'All required GitHub assets exist for release', true);
 
   if (!validatingRelease || !release.draft) {
     if (release.draft) {
       await verifyAssets(release);
     } else {
-      await verifyShasums(downloadUrls)
-        .catch(err => {
-          console.log(`${fail} error verifyingShasums`, err);
-        });
+      await verifyShasums(downloadUrls).catch((err) => {
+        console.log(`${fail} error verifyingShasums`, err);
+      });
     }
     const s3Urls = s3UrlsForVersion(release.tag_name);
     await verifyShasums(s3Urls, true);
   }
 }
 
-function check (condition, statement, exitIfFail = false) {
+function check(condition, statement, exitIfFail = false) {
   if (condition) {
     console.log(`${pass} ${statement}`);
   } else {
@@ -96,7 +90,7 @@ function check (condition, statement, exitIfFail = false) {
   }
 }
 
-function assetsForVersion (version, validatingRelease) {
+function assetsForVersion(version, validatingRelease) {
   const patterns = [
     `chromedriver-${version}-darwin-x64.zip`,
     `chromedriver-${version}-darwin-arm64.zip`,
@@ -166,7 +160,7 @@ function assetsForVersion (version, validatingRelease) {
     `mksnapshot-${version}-win32-arm64-x64.zip`,
     `electron-${version}-win32-ia32-toolchain-profile.zip`,
     `electron-${version}-win32-x64-toolchain-profile.zip`,
-    `electron-${version}-win32-arm64-toolchain-profile.zip`
+    `electron-${version}-win32-arm64-toolchain-profile.zip`,
   ];
   if (!validatingRelease) {
     patterns.push('SHASUMS256.txt');
@@ -174,7 +168,7 @@ function assetsForVersion (version, validatingRelease) {
   return patterns;
 }
 
-function s3UrlsForVersion (version) {
+function s3UrlsForVersion(version) {
   const bucket = 'https://gh-contractor-zcbenz.s3.amazonaws.com/';
   const patterns = [
     `${bucket}atom-shell/dist/${version}/iojs-${version}-headers.tar.gz`,
@@ -186,15 +180,15 @@ function s3UrlsForVersion (version) {
     `${bucket}atom-shell/dist/${version}/x64/node.lib`,
     `${bucket}atom-shell/dist/${version}/SHASUMS.txt`,
     `${bucket}atom-shell/dist/${version}/SHASUMS256.txt`,
-    `${bucket}atom-shell/dist/index.json`
+    `${bucket}atom-shell/dist/index.json`,
   ];
   return patterns;
 }
 
-function runScript (scriptName, scriptArgs, cwd) {
+function runScript(scriptName, scriptArgs, cwd) {
   const scriptCommand = `${scriptName} ${scriptArgs.join(' ')}`;
   const scriptOptions = {
-    encoding: 'UTF-8'
+    encoding: 'UTF-8',
   };
   if (cwd) scriptOptions.cwd = cwd;
   try {
@@ -205,21 +199,21 @@ function runScript (scriptName, scriptArgs, cwd) {
   }
 }
 
-function uploadNodeShasums () {
+function uploadNodeShasums() {
   console.log('Uploading Node SHASUMS file to S3.');
   const scriptPath = path.join(ELECTRON_DIR, 'script', 'release', 'uploaders', 'upload-node-checksums.py');
   runScript(scriptPath, ['-v', pkgVersion]);
   console.log(`${pass} Done uploading Node SHASUMS file to S3.`);
 }
 
-function uploadIndexJson () {
+function uploadIndexJson() {
   console.log('Uploading index.json to S3.');
   const scriptPath = path.join(ELECTRON_DIR, 'script', 'release', 'uploaders', 'upload-index-json.py');
   runScript(scriptPath, [pkgVersion]);
   console.log(`${pass} Done uploading index.json to S3.`);
 }
 
-async function mergeShasums (pkgVersion) {
+async function mergeShasums(pkgVersion) {
   // Download individual checksum files for Electron zip files from S3,
   // concatenate them, and upload to GitHub.
 
@@ -234,38 +228,44 @@ async function mergeShasums (pkgVersion) {
     apiVersion: '2006-03-01',
     accessKeyId,
     secretAccessKey,
-    region: 'us-west-2'
+    region: 'us-west-2',
   });
-  const objects = await s3.listObjectsV2({
-    Bucket: bucket,
-    Prefix: `atom-shell/tmp/${pkgVersion}/`,
-    Delimiter: '/'
-  }).promise();
+  const objects = await s3
+    .listObjectsV2({
+      Bucket: bucket,
+      Prefix: `atom-shell/tmp/${pkgVersion}/`,
+      Delimiter: '/',
+    })
+    .promise();
   const shasums = [];
   for (const obj of objects.Contents) {
     if (obj.Key.endsWith('.sha256sum')) {
-      const data = await s3.getObject({
-        Bucket: bucket,
-        Key: obj.Key
-      }).promise();
+      const data = await s3
+        .getObject({
+          Bucket: bucket,
+          Key: obj.Key,
+        })
+        .promise();
       shasums.push(data.Body.toString('ascii').trim());
     }
   }
   return shasums.join('\n');
 }
 
-async function createReleaseShasums (release) {
+async function createReleaseShasums(release) {
   const fileName = 'SHASUMS256.txt';
-  const existingAssets = release.assets.filter(asset => asset.name === fileName);
+  const existingAssets = release.assets.filter((asset) => asset.name === fileName);
   if (existingAssets.length > 0) {
     console.log(`${fileName} already exists on GitHub; deleting before creating new file.`);
-    await octokit.repos.deleteReleaseAsset({
-      owner: 'electron',
-      repo: targetRepo,
-      asset_id: existingAssets[0].id
-    }).catch(err => {
-      console.log(`${fail} Error deleting ${fileName} on GitHub:`, err);
-    });
+    await octokit.repos
+      .deleteReleaseAsset({
+        owner: 'electron',
+        repo: targetRepo,
+        asset_id: existingAssets[0].id,
+      })
+      .catch((err) => {
+        console.log(`${fail} Error deleting ${fileName} on GitHub:`, err);
+      });
   }
   console.log(`Creating and uploading the release ${fileName}.`);
   const checksums = await mergeShasums(pkgVersion);
@@ -279,23 +279,25 @@ async function createReleaseShasums (release) {
   console.log(`${pass} Successfully uploaded ${fileName} to GitHub.`);
 }
 
-async function uploadShasumFile (filePath, fileName, releaseId) {
+async function uploadShasumFile(filePath, fileName, releaseId) {
   const uploadUrl = `https://uploads.github.com/repos/electron/${targetRepo}/releases/${releaseId}/assets{?name,label}`;
-  return octokit.repos.uploadReleaseAsset({
-    url: uploadUrl,
-    headers: {
-      'content-type': 'text/plain',
-      'content-length': fs.statSync(filePath).size
-    },
-    data: fs.createReadStream(filePath),
-    name: fileName
-  }).catch(err => {
-    console.log(`${fail} Error uploading ${filePath} to GitHub:`, err);
-    process.exit(1);
-  });
+  return octokit.repos
+    .uploadReleaseAsset({
+      url: uploadUrl,
+      headers: {
+        'content-type': 'text/plain',
+        'content-length': fs.statSync(filePath).size,
+      },
+      data: fs.createReadStream(filePath),
+      name: fileName,
+    })
+    .catch((err) => {
+      console.log(`${fail} Error uploading ${filePath} to GitHub:`, err);
+      process.exit(1);
+    });
 }
 
-function saveShaSumFile (checksums, fileName) {
+function saveShaSumFile(checksums, fileName) {
   return new Promise((resolve, reject) => {
     temp.open(fileName, (err, info) => {
       if (err) {
@@ -315,20 +317,22 @@ function saveShaSumFile (checksums, fileName) {
   });
 }
 
-async function publishRelease (release) {
-  return octokit.repos.updateRelease({
-    owner: 'electron',
-    repo: targetRepo,
-    release_id: release.id,
-    tag_name: release.tag_name,
-    draft: false
-  }).catch(err => {
-    console.log(`${fail} Error publishing release:`, err);
-    process.exit(1);
-  });
+async function publishRelease(release) {
+  return octokit.repos
+    .updateRelease({
+      owner: 'electron',
+      repo: targetRepo,
+      release_id: release.id,
+      tag_name: release.tag_name,
+      draft: false,
+    })
+    .catch((err) => {
+      console.log(`${fail} Error publishing release:`, err);
+      process.exit(1);
+    });
 }
 
-async function makeRelease (releaseToValidate) {
+async function makeRelease(releaseToValidate) {
   if (releaseToValidate) {
     if (releaseToValidate === true) {
       releaseToValidate = pkgVersion;
@@ -349,12 +353,11 @@ async function makeRelease (releaseToValidate) {
     draftRelease = await getDraftRelease(pkgVersion, true);
     await validateReleaseAssets(draftRelease);
     await publishRelease(draftRelease);
-    console.log(`${pass} SUCCESS!!! Release has been published. Please run ` +
-      '"npm run publish-to-npm" to publish release to npm.');
+    console.log(`${pass} SUCCESS!!! Release has been published. Please run ` + '"npm run publish-to-npm" to publish release to npm.');
   }
 }
 
-async function makeTempDir () {
+async function makeTempDir() {
   return new Promise((resolve, reject) => {
     temp.mkdir('electron-publish', (err, dirPath) => {
       if (err) {
@@ -366,39 +369,41 @@ async function makeTempDir () {
   });
 }
 
-async function verifyAssets (release) {
+async function verifyAssets(release) {
   const downloadDir = await makeTempDir();
 
   console.log('Downloading files from GitHub to verify shasums');
   const shaSumFile = 'SHASUMS256.txt';
 
-  let filesToCheck = await Promise.all(release.assets.map(async asset => {
-    const requestOptions = await octokit.repos.getReleaseAsset.endpoint({
-      owner: 'electron',
-      repo: targetRepo,
-      asset_id: asset.id,
-      headers: {
-        Accept: 'application/octet-stream'
-      }
-    });
+  let filesToCheck = await Promise.all(
+    release.assets.map(async (asset) => {
+      const requestOptions = await octokit.repos.getReleaseAsset.endpoint({
+        owner: 'electron',
+        repo: targetRepo,
+        asset_id: asset.id,
+        headers: {
+          Accept: 'application/octet-stream',
+        },
+      });
 
-    const { url, headers } = requestOptions;
-    headers.authorization = `token ${process.env.ELECTRON_GITHUB_TOKEN}`;
+      const { url, headers } = requestOptions;
+      headers.authorization = `token ${process.env.ELECTRON_GITHUB_TOKEN}`;
 
-    const response = await got(url, {
-      followRedirect: false,
-      method: 'HEAD',
-      headers
-    });
+      const response = await got(url, {
+        followRedirect: false,
+        method: 'HEAD',
+        headers,
+      });
 
-    await downloadFiles(response.headers.location, downloadDir, asset.name);
-    return asset.name;
-  })).catch(err => {
+      await downloadFiles(response.headers.location, downloadDir, asset.name);
+      return asset.name;
+    }),
+  ).catch((err) => {
     console.log(`${fail} Error downloading files from GitHub`, err);
     process.exit(1);
   });
 
-  filesToCheck = filesToCheck.filter(fileName => fileName !== shaSumFile);
+  filesToCheck = filesToCheck.filter((fileName) => fileName !== shaSumFile);
   let checkerOpts;
   await validateChecksums({
     algorithm: 'sha256',
@@ -406,11 +411,11 @@ async function verifyAssets (release) {
     fileDirectory: downloadDir,
     shaSumFile,
     checkerOpts,
-    fileSource: 'GitHub'
+    fileSource: 'GitHub',
   });
 }
 
-function downloadFiles (urls, directory, targetName) {
+function downloadFiles(urls, directory, targetName) {
   return new Promise((resolve, reject) => {
     const nuggetOpts = { dir: directory };
     nuggetOpts.quiet = !args.verboseNugget;
@@ -427,7 +432,7 @@ function downloadFiles (urls, directory, targetName) {
   });
 }
 
-async function verifyShasums (urls, isS3) {
+async function verifyShasums(urls, isS3) {
   const fileSource = isS3 ? 'S3' : 'GitHub';
   console.log(`Downloading files from ${fileSource} to verify shasums`);
   const downloadDir = await makeTempDir();
@@ -435,34 +440,38 @@ async function verifyShasums (urls, isS3) {
   try {
     if (!isS3) {
       await downloadFiles(urls, downloadDir);
-      filesToCheck = urls.map(url => {
-        const currentUrl = new URL(url);
-        return path.basename(currentUrl.pathname);
-      }).filter(file => file.indexOf('SHASUMS') === -1);
+      filesToCheck = urls
+        .map((url) => {
+          const currentUrl = new URL(url);
+          return path.basename(currentUrl.pathname);
+        })
+        .filter((file) => file.indexOf('SHASUMS') === -1);
     } else {
       const s3VersionPath = `/atom-shell/dist/${pkgVersion}/`;
-      await Promise.all(urls.map(async (url) => {
-        const currentUrl = new URL(url);
-        const dirname = path.dirname(currentUrl.pathname);
-        const filename = path.basename(currentUrl.pathname);
-        const s3VersionPathIdx = dirname.indexOf(s3VersionPath);
-        if (s3VersionPathIdx === -1 || dirname === s3VersionPath) {
-          if (s3VersionPathIdx !== -1 && filename.indexof('SHASUMS') === -1) {
-            filesToCheck.push(filename);
+      await Promise.all(
+        urls.map(async (url) => {
+          const currentUrl = new URL(url);
+          const dirname = path.dirname(currentUrl.pathname);
+          const filename = path.basename(currentUrl.pathname);
+          const s3VersionPathIdx = dirname.indexOf(s3VersionPath);
+          if (s3VersionPathIdx === -1 || dirname === s3VersionPath) {
+            if (s3VersionPathIdx !== -1 && filename.indexof('SHASUMS') === -1) {
+              filesToCheck.push(filename);
+            }
+            await downloadFiles(url, downloadDir);
+          } else {
+            const subDirectory = dirname.substr(s3VersionPathIdx + s3VersionPath.length);
+            const fileDirectory = path.join(downloadDir, subDirectory);
+            try {
+              fs.statSync(fileDirectory);
+            } catch (err) {
+              fs.mkdirSync(fileDirectory);
+            }
+            filesToCheck.push(path.join(subDirectory, filename));
+            await downloadFiles(url, fileDirectory);
           }
-          await downloadFiles(url, downloadDir);
-        } else {
-          const subDirectory = dirname.substr(s3VersionPathIdx + s3VersionPath.length);
-          const fileDirectory = path.join(downloadDir, subDirectory);
-          try {
-            fs.statSync(fileDirectory);
-          } catch (err) {
-            fs.mkdirSync(fileDirectory);
-          }
-          filesToCheck.push(path.join(subDirectory, filename));
-          await downloadFiles(url, fileDirectory);
-        }
-      }));
+        }),
+      );
     }
   } catch (err) {
     console.log(`${fail} Error downloading files from ${fileSource}`, err);
@@ -480,7 +489,7 @@ async function verifyShasums (urls, isS3) {
     fileDirectory: downloadDir,
     shaSumFile: 'SHASUMS256.txt',
     checkerOpts,
-    fileSource
+    fileSource,
   });
 
   if (isS3) {
@@ -490,38 +499,39 @@ async function verifyShasums (urls, isS3) {
       fileDirectory: downloadDir,
       shaSumFile: 'SHASUMS.txt',
       checkerOpts,
-      fileSource
+      fileSource,
     });
   }
 }
 
-async function validateChecksums (validationArgs) {
-  console.log(`Validating checksums for files from ${validationArgs.fileSource} ` +
-    `against ${validationArgs.shaSumFile}.`);
+async function validateChecksums(validationArgs) {
+  console.log(`Validating checksums for files from ${validationArgs.fileSource} ` + `against ${validationArgs.shaSumFile}.`);
   const shaSumFilePath = path.join(validationArgs.fileDirectory, validationArgs.shaSumFile);
-  const checker = new sumchecker.ChecksumValidator(validationArgs.algorithm,
-    shaSumFilePath, validationArgs.checkerOpts);
-  await checker.validate(validationArgs.fileDirectory, validationArgs.filesToCheck)
-    .catch(err => {
-      if (err instanceof sumchecker.ChecksumMismatchError) {
-        console.error(`${fail} The checksum of ${err.filename} from ` +
+  const checker = new sumchecker.ChecksumValidator(validationArgs.algorithm, shaSumFilePath, validationArgs.checkerOpts);
+  await checker.validate(validationArgs.fileDirectory, validationArgs.filesToCheck).catch((err) => {
+    if (err instanceof sumchecker.ChecksumMismatchError) {
+      console.error(
+        `${fail} The checksum of ${err.filename} from ` +
           `${validationArgs.fileSource} did not match the shasum in ` +
-          `${validationArgs.shaSumFile}`);
-      } else if (err instanceof sumchecker.ChecksumParseError) {
-        console.error(`${fail} The checksum file ${validationArgs.shaSumFile} ` +
-          `from ${validationArgs.fileSource} could not be parsed.`, err);
-      } else if (err instanceof sumchecker.NoChecksumFoundError) {
-        console.error(`${fail} The file ${err.filename} from ` +
+          `${validationArgs.shaSumFile}`,
+      );
+    } else if (err instanceof sumchecker.ChecksumParseError) {
+      console.error(
+        `${fail} The checksum file ${validationArgs.shaSumFile} ` + `from ${validationArgs.fileSource} could not be parsed.`,
+        err,
+      );
+    } else if (err instanceof sumchecker.NoChecksumFoundError) {
+      console.error(
+        `${fail} The file ${err.filename} from ` +
           `${validationArgs.fileSource} was not in the shasum file ` +
-          `${validationArgs.shaSumFile}.`);
-      } else {
-        console.error(`${fail} Error matching files from ` +
-          `${validationArgs.fileSource} shasums in ${validationArgs.shaSumFile}.`, err);
-      }
-      process.exit(1);
-    });
-  console.log(`${pass} All files from ${validationArgs.fileSource} match ` +
-    `shasums defined in ${validationArgs.shaSumFile}.`);
+          `${validationArgs.shaSumFile}.`,
+      );
+    } else {
+      console.error(`${fail} Error matching files from ` + `${validationArgs.fileSource} shasums in ${validationArgs.shaSumFile}.`, err);
+    }
+    process.exit(1);
+  });
+  console.log(`${pass} All files from ${validationArgs.fileSource} match ` + `shasums defined in ${validationArgs.shaSumFile}.`);
 }
 
 makeRelease(args.validateRelease);

@@ -4,7 +4,7 @@ try {
     setImmediate: typeof setImmediate,
     global: typeof global,
     Buffer: typeof Buffer,
-    'global.Buffer': typeof global.Buffer
+    'global.Buffer': typeof global.Buffer,
   };
   console.log(JSON.stringify(types));
 } catch (e) {

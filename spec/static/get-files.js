@@ -1,7 +1,7 @@
-async function getFiles (directoryPath, { filter = null } = {}) {
+async function getFiles(directoryPath, { filter = null } = {}) {
   const files = [];
   const walker = require('walkdir').walk(directoryPath, {
-    no_recurse: true
+    no_recurse: true,
   });
   walker.on('file', (file) => {
     if (!filter || filter(file)) {

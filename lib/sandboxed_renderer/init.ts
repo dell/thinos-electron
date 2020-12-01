@@ -31,37 +31,37 @@ const loadedModules = new Map<string, any>([
   ['electron', electron],
   ['electron/common', electron],
   ['electron/renderer', electron],
-  ['events', events]
+  ['events', events],
 ]);
 
 const loadableModules = new Map<string, Function>([
   ['timers', () => require('timers')],
-  ['url', () => require('url')]
+  ['url', () => require('url')],
 ]);
 
 // ElectronApiServiceImpl will look for the "ipcNative" hidden object when
 // invoking the 'onMessage' callback.
 v8Util.setHiddenValue(global, 'ipcNative', {
-  onMessage (internal: boolean, channel: string, ports: MessagePort[], args: any[], senderId: number) {
+  onMessage(internal: boolean, channel: string, ports: MessagePort[], args: any[], senderId: number) {
     const sender = internal ? ipcRendererInternal : electron.ipcRenderer;
     sender.emit(channel, { sender, senderId, ports }, ...args);
-  }
+  },
 });
 
 // ElectronSandboxedRendererClient will look for the "lifecycle" hidden object when
 v8Util.setHiddenValue(global, 'lifecycle', {
-  onLoaded () {
+  onLoaded() {
     (process as events.EventEmitter).emit('loaded');
   },
-  onExit () {
+  onExit() {
     (process as events.EventEmitter).emit('exit');
   },
-  onDocumentStart () {
+  onDocumentStart() {
     (process as events.EventEmitter).emit('document-start');
   },
-  onDocumentEnd () {
+  onDocumentEnd() {
     (process as events.EventEmitter).emit('document-end');
-  }
+  },
 });
 
 const { webFrameInit } = require('@electron/internal/renderer/web-frame-init');
@@ -77,12 +77,12 @@ Object.assign(process, binding.process);
 Object.assign(process, processProps);
 
 Object.defineProperty(preloadProcess, 'noDeprecation', {
-  get () {
+  get() {
     return process.noDeprecation;
   },
-  set (value) {
+  set(value) {
     process.noDeprecation = value;
-  }
+  },
 });
 
 process.on('loaded', () => (preloadProcess as events.EventEmitter).emit('loaded'));
@@ -91,7 +91,7 @@ process.on('exit', () => (preloadProcess as events.EventEmitter).emit('exit'));
 (process as events.EventEmitter).on('document-end', () => (preloadProcess as events.EventEmitter).emit('document-end'));
 
 // This is the `require` function that will be visible to the preload script
-function preloadRequire (module: string) {
+function preloadRequire(module: string) {
   if (loadedModules.has(module)) {
     return loadedModules.get(module);
   }
@@ -153,7 +153,7 @@ if (process.isMainFrame) {
 // - `process`: The `preloadProcess` object
 // - `Buffer`: Shim of `Buffer` implementation
 // - `global`: The window object, which is aliased to `global` by webpack.
-function runPreloadScript (preloadSrc: string) {
+function runPreloadScript(preloadSrc: string) {
   const preloadWrapperSrc = `(function(require, process, Buffer, global, setImmediate, clearImmediate, exports) {
   ${preloadSrc}
   })`;

@@ -33,11 +33,14 @@ describe('chromium feature', () => {
 
   describe('navigator.webkitGetUserMedia', () => {
     it('calls its callbacks', (done) => {
-      navigator.webkitGetUserMedia({
-        audio: true,
-        video: false
-      }, () => done(),
-      () => done());
+      navigator.webkitGetUserMedia(
+        {
+          audio: true,
+          video: false,
+        },
+        () => done(),
+        () => done(),
+      );
     });
   });
 
@@ -79,9 +82,9 @@ describe('chromium feature', () => {
         pathname: `${fixtures}/pages/window-opener-no-node-integration.html`,
         protocol: 'file',
         query: {
-          p: `${fixtures}/pages/window-opener-node.html`
+          p: `${fixtures}/pages/window-opener-node.html`,
         },
-        slashes: true
+        slashes: true,
       });
       const message = waitForEvent(window, 'message');
       const b = window.open(windowUrl, '', 'nodeIntegration=no,show=no');
@@ -95,9 +98,9 @@ describe('chromium feature', () => {
         pathname: `${fixtures}/pages/window-opener-no-webview-tag.html`,
         protocol: 'file',
         query: {
-          p: `${fixtures}/pages/window-opener-webview.html`
+          p: `${fixtures}/pages/window-opener-webview.html`,
         },
-        slashes: true
+        slashes: true,
       });
       const message = waitForEvent(window, 'message');
       const b = window.open(windowUrl, '', 'webviewTag=no,nodeIntegration=yes,show=no');
@@ -109,7 +112,7 @@ describe('chromium feature', () => {
     it('does not override child options', async () => {
       const size = {
         width: 350,
-        height: 450
+        height: 450,
       };
       const message = waitForEvent(window, 'message');
       const b = window.open(`file://${fixtures}/pages/window-open-size.html`, '', 'show=no,width=' + size.width + ',height=' + size.height);
@@ -178,9 +181,9 @@ describe('chromium feature', () => {
         pathname: `${fixtures}/pages/webview-opener-postMessage.html`,
         protocol: 'file',
         query: {
-          p: `${fixtures}/pages/window-opener-postMessage.html`
+          p: `${fixtures}/pages/window-opener-postMessage.html`,
         },
-        slashes: true
+        slashes: true,
       });
       document.body.appendChild(webview);
       const event = await consoleMessage;
@@ -241,7 +244,9 @@ describe('chromium feature', () => {
     it('Worker can work', async () => {
       const worker = new Worker('../fixtures/workers/worker.js');
       const message = 'ping';
-      const eventPromise = new Promise((resolve) => { worker.onmessage = resolve; });
+      const eventPromise = new Promise((resolve) => {
+        worker.onmessage = resolve;
+      });
       worker.postMessage(message);
       const event = await eventPromise;
       worker.terminate();
@@ -250,7 +255,9 @@ describe('chromium feature', () => {
 
     it('Worker has no node integration by default', async () => {
       const worker = new Worker('../fixtures/workers/worker_node.js');
-      const event = await new Promise((resolve) => { worker.onmessage = resolve; });
+      const event = await new Promise((resolve) => {
+        worker.onmessage = resolve;
+      });
       worker.terminate();
       expect(event.data).to.equal('undefined undefined undefined undefined');
     });
@@ -270,7 +277,9 @@ describe('chromium feature', () => {
       it('can work', async () => {
         const worker = new SharedWorker('../fixtures/workers/shared_worker.js');
         const message = 'ping';
-        const eventPromise = new Promise((resolve) => { worker.port.onmessage = resolve; });
+        const eventPromise = new Promise((resolve) => {
+          worker.port.onmessage = resolve;
+        });
         worker.port.postMessage(message);
         const event = await eventPromise;
         expect(event.data).to.equal(message);
@@ -278,7 +287,9 @@ describe('chromium feature', () => {
 
       it('has no node integration by default', async () => {
         const worker = new SharedWorker('../fixtures/workers/shared_worker_node.js');
-        const event = await new Promise((resolve) => { worker.port.onmessage = resolve; });
+        const event = await new Promise((resolve) => {
+          worker.port.onmessage = resolve;
+        });
         expect(event.data).to.equal('undefined undefined undefined undefined');
       });
 
@@ -361,7 +372,7 @@ describe('chromium feature', () => {
     });
 
     it('requesting persitent quota works', async () => {
-      const grantedBytes = await new Promise(resolve => {
+      const grantedBytes = await new Promise((resolve) => {
         navigator.webkitPersistentStorage.requestQuota(1024 * 1024, resolve);
       });
       expect(grantedBytes).to.equal(1048576);
@@ -432,13 +443,15 @@ describe('chromium feature', () => {
       });
       server.listen(0, '127.0.0.1', () => {
         const port = server.address().port;
-        fetch(`http://127.0.0.1:${port}`).then((res) => res.body.getReader())
+        fetch(`http://127.0.0.1:${port}`)
+          .then((res) => res.body.getReader())
           .then((reader) => {
             reader.read().then((r) => {
               reader.cancel();
               done();
             });
-          }).catch((e) => done(e));
+          })
+          .catch((e) => done(e));
       });
     });
   });
@@ -491,22 +504,30 @@ describe('chromium feature', () => {
       speechSynthesis.speak(utter);
       // paused state after speak()
       expect(speechSynthesis.paused).to.be.false();
-      await new Promise((resolve) => { utter.onstart = resolve; });
+      await new Promise((resolve) => {
+        utter.onstart = resolve;
+      });
       // paused state after start event
       expect(speechSynthesis.paused).to.be.false();
 
       speechSynthesis.pause();
       // paused state changes async, right before the pause event
       expect(speechSynthesis.paused).to.be.false();
-      await new Promise((resolve) => { utter.onpause = resolve; });
+      await new Promise((resolve) => {
+        utter.onpause = resolve;
+      });
       expect(speechSynthesis.paused).to.be.true();
 
       speechSynthesis.resume();
-      await new Promise((resolve) => { utter.onresume = resolve; });
+      await new Promise((resolve) => {
+        utter.onresume = resolve;
+      });
       // paused state after resume event
       expect(speechSynthesis.paused).to.be.false();
 
-      await new Promise((resolve) => { utter.onend = resolve; });
+      await new Promise((resolve) => {
+        utter.onend = resolve;
+      });
     });
   });
 });

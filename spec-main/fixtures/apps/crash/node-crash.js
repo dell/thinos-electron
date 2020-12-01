@@ -4,8 +4,8 @@ if (process.platform === 'linux') {
     productName: 'Zombies',
     compress: false,
     globalExtra: {
-      _version: process.argv[3]
-    }
+      _version: process.argv[3],
+    },
   });
 }
 process.nextTick(() => process.crash());

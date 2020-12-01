@@ -4,9 +4,13 @@ if (process.isMainFrame) {
   window.addEventListener('DOMContentLoaded', () => {
     const webview = document.createElement('webview');
     webview.src = 'about:blank';
-    webview.addEventListener('did-finish-load', () => {
-      ipcRenderer.send('webview-loaded');
-    }, { once: true });
+    webview.addEventListener(
+      'did-finish-load',
+      () => {
+        ipcRenderer.send('webview-loaded');
+      },
+      { once: true },
+    );
     document.body.appendChild(webview);
   });
 } else {

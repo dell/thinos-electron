@@ -29,8 +29,8 @@ app.whenReady().then(() => {
     show: false,
     webPreferences: {
       preload: path.resolve(__dirname, 'preload.js'),
-      contextIsolation: true
-    }
+      contextIsolation: true,
+    },
   });
   win.loadFile('index.html');
 });

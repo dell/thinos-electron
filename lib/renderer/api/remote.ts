@@ -26,14 +26,14 @@ const finalizationRegistry = new (window as any).FinalizationRegistry((id: numbe
 const electronIds = new WeakMap<Object, number>();
 const isReturnValue = new WeakSet<Object>();
 
-function getCachedRemoteObject (id: number) {
+function getCachedRemoteObject(id: number) {
   const ref = remoteObjectCache.get(id);
   if (ref !== undefined) {
     const deref = ref.deref();
     if (deref !== undefined) return deref;
   }
 }
-function setCachedRemoteObject (id: number, value: any) {
+function setCachedRemoteObject(id: number, value: any) {
   const wr = new (window as any).WeakRef(value);
   remoteObjectCache.set(id, wr);
   finalizationRegistry.register(value, id);
@@ -55,13 +55,13 @@ process.on('exit', () => {
 const IS_REMOTE_PROXY = Symbol('is-remote-proxy');
 
 // Convert the arguments object into an array of meta data.
-function wrapArgs (args: any[], visited = new Set()): any {
+function wrapArgs(args: any[], visited = new Set()): any {
   const valueToMeta = (value: any): any => {
     // Check for circular reference.
     if (visited.has(value)) {
       return {
         type: 'value',
-        value: null
+        value: null,
       };
     }
 
@@ -71,19 +71,19 @@ function wrapArgs (args: any[], visited = new Set()): any {
       visited.add(value);
       const meta = {
         type: 'array',
-        value: wrapArgs(value, visited)
+        value: wrapArgs(value, visited),
       };
       visited.delete(value);
       return meta;
     } else if (value instanceof Buffer) {
       return {
         type: 'buffer',
-        value
+        value,
       };
     } else if (isSerializableObject(value)) {
       return {
         type: 'value',
-        value
+        value,
       };
     } else if (typeof value === 'object') {
       if (isPromise(value)) {
@@ -91,25 +91,26 @@ function wrapArgs (args: any[], visited = new Set()): any {
           type: 'promise',
           then: valueToMeta(function (onFulfilled: Function, onRejected: Function) {
             value.then(onFulfilled, onRejected);
-          })
+          }),
         };
       } else if (electronIds.has(value)) {
         return {
           type: 'remote-object',
-          id: electronIds.get(value)
+          id: electronIds.get(value),
         };
       }
 
       const meta: MetaTypeFromRenderer = {
         type: 'object',
         name: value.constructor ? value.constructor.name : '',
-        members: []
+        members: [],
       };
       visited.add(value);
-      for (const prop in value) { // eslint-disable-line guard-for-in
+      // eslint-disable-next-line guard-for-in
+      for (const prop in value) {
         meta.members.push({
           name: prop,
-          value: valueToMeta(value[prop])
+          value: valueToMeta(value[prop]),
         });
       }
       visited.delete(value);
@@ -117,19 +118,19 @@ function wrapArgs (args: any[], visited = new Set()): any {
     } else if (typeof value === 'function' && isReturnValue.has(value)) {
       return {
         type: 'function-with-return-value',
-        value: valueToMeta(value())
+        value: valueToMeta(value()),
       };
     } else if (typeof value === 'function') {
       return {
         type: 'function',
         id: callbacksRegistry.add(value),
         location: callbacksRegistry.getLocation(value),
-        length: value.length
+        length: value.length,
       };
     } else {
       return {
         type: 'value',
-        value
+        value,
       };
     }
   };
@@ -139,7 +140,7 @@ function wrapArgs (args: any[], visited = new Set()): any {
 // Populate object's members from descriptors.
 // The |ref| will be kept referenced by |members|.
 // This matches |getObjectMembers| in rpc-server.
-function setObjectMembers (ref: any, object: any, metaId: number, members: ObjectMember[]) {
+function setObjectMembers(ref: any, object: any, metaId: number, members: ObjectMember[]) {
   if (!Array.isArray(members)) return;
 
   for (const member of members) {
@@ -194,7 +195,7 @@ function setObjectMembers (ref: any, object: any, metaId: number, members: Objec
 
 // Populate object's prototype from descriptor.
 // This matches |getObjectPrototype| in rpc-server.
-function setObjectPrototype (ref: any, object: any, metaId: number, descriptor: ObjProtoDescriptor) {
+function setObjectPrototype(ref: any, object: any, metaId: number, descriptor: ObjProtoDescriptor) {
   if (descriptor === null) return;
   const proto = {};
   setObjectMembers(ref, proto, metaId, descriptor.members);
@@ -203,7 +204,7 @@ function setObjectPrototype (ref: any, object: any, metaId: number, descriptor: 
 }
 
 // Wrap function in Proxy for accessing remote properties
-function proxyFunctionProperties (remoteMemberFunction: Function, metaId: number, name: string) {
+function proxyFunctionProperties(remoteMemberFunction: Function, metaId: number, name: string) {
   let loaded = false;
 
   // Lazily load function properties
@@ -239,12 +240,12 @@ function proxyFunctionProperties (remoteMemberFunction: Function, metaId: number
       if (descriptor) return descriptor;
       loadRemoteProperties();
       return Object.getOwnPropertyDescriptor(target, property);
-    }
+    },
   });
 }
 
 // Convert meta data from browser into real value.
-function metaToValue (meta: MetaType): any {
+function metaToValue(meta: MetaType): any {
   if (meta.type === 'value') {
     return meta.value;
   } else if (meta.type === 'array') {
@@ -258,12 +259,18 @@ function metaToValue (meta: MetaType): any {
   } else if (meta.type === 'error') {
     return metaToError(meta);
   } else if (meta.type === 'exception') {
-    if (meta.value.type === 'error') { throw metaToError(meta.value); } else { throw new Error(`Unexpected value type in exception: ${meta.value.type}`); }
+    if (meta.value.type === 'error') {
+      throw metaToError(meta.value);
+    } else {
+      throw new Error(`Unexpected value type in exception: ${meta.value.type}`);
+    }
   } else {
     let ret;
     if ('id' in meta) {
       const cached = getCachedRemoteObject(meta.id);
-      if (cached !== undefined) { return cached; }
+      if (cached !== undefined) {
+        return cached;
+      }
     }
 
     // A shadow class to represent the remote function object.
@@ -296,7 +303,7 @@ function metaToValue (meta: MetaType): any {
   }
 }
 
-function metaToError (meta: { type: 'error', value: any, members: ObjectMember[] }) {
+function metaToError(meta: { type: 'error'; value: any; members: ObjectMember[] }) {
   const obj = meta.value;
   for (const { name, value } of meta.members) {
     obj[name] = metaToValue(value);
@@ -304,7 +311,7 @@ function metaToError (meta: { type: 'error', value: any, members: ObjectMember[]
   return obj;
 }
 
-function handleMessage (channel: string, handler: Function) {
+function handleMessage(channel: string, handler: Function) {
   ipcRendererInternal.onMessageFromMain(channel, (event, passedContextId, id, ...args) => {
     if (passedContextId === contextId) {
       handler(id, ...args);
@@ -317,7 +324,7 @@ function handleMessage (channel: string, handler: Function) {
 
 const enableStacks = hasSwitch('enable-api-filtering-logging');
 
-function getCurrentStack (): string | undefined {
+function getCurrentStack(): string | undefined {
   const target = { stack: undefined as string | undefined };
   if (enableStacks) {
     Error.captureStackTrace(target, getCurrentStack);
@@ -342,27 +349,27 @@ exports.require = (module: string) => {
 };
 
 // Alias to remote.require('electron').xxx.
-export function getBuiltin (module: string) {
+export function getBuiltin(module: string) {
   const command = IPC_MESSAGES.BROWSER_GET_BUILTIN;
   const meta = ipcRendererInternal.sendSync(command, contextId, module, getCurrentStack());
   return metaToValue(meta);
 }
 
-export function getCurrentWindow (): BrowserWindow {
+export function getCurrentWindow(): BrowserWindow {
   const command = IPC_MESSAGES.BROWSER_GET_CURRENT_WINDOW;
   const meta = ipcRendererInternal.sendSync(command, contextId, getCurrentStack());
   return metaToValue(meta);
 }
 
 // Get current WebContents object.
-export function getCurrentWebContents (): WebContents {
+export function getCurrentWebContents(): WebContents {
   const command = IPC_MESSAGES.BROWSER_GET_CURRENT_WEB_CONTENTS;
   const meta = ipcRendererInternal.sendSync(command, contextId, getCurrentStack());
   return metaToValue(meta);
 }
 
 // Get a global object in browser.
-export function getGlobal<T = any> (name: string): T {
+export function getGlobal<T = any>(name: string): T {
   const command = IPC_MESSAGES.BROWSER_GET_GLOBAL;
   const meta = ipcRendererInternal.sendSync(command, contextId, name, getCurrentStack());
   return metaToValue(meta);
@@ -370,11 +377,11 @@ export function getGlobal<T = any> (name: string): T {
 
 // Get the process object in browser.
 Object.defineProperty(exports, 'process', {
-  get: () => exports.getGlobal('process')
+  get: () => exports.getGlobal('process'),
 });
 
 // Create a function that will return the specified value when called in browser.
-export function createFunctionWithReturnValue<T> (returnValue: T): () => T {
+export function createFunctionWithReturnValue<T>(returnValue: T): () => T {
   const func = () => returnValue;
   isReturnValue.add(func);
   return func;
@@ -382,11 +389,11 @@ export function createFunctionWithReturnValue<T> (returnValue: T): () => T {
 
 const addBuiltinProperty = (name: string) => {
   Object.defineProperty(exports, name, {
-    get: () => exports.getBuiltin(name)
+    get: () => exports.getBuiltin(name),
   });
 };
 
-const browserModules = commonModuleList.concat(browserModuleNames.map(name => ({ name, loader: () => {} })));
+const browserModules = commonModuleList.concat(browserModuleNames.map((name) => ({ name, loader: () => {} })));
 
 // And add a helper receiver for each one.
 browserModules

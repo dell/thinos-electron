@@ -13,13 +13,15 @@ const versionUtils = require('./version-utils');
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
 
-function parseCommandLine () {
+function parseCommandLine() {
   let help;
   const opts = minimist(process.argv.slice(2), {
     string: ['bump', 'version'],
     boolean: ['dryRun', 'help'],
     alias: { version: ['v'] },
-    unknown: arg => { help = true; }
+    unknown: (arg) => {
+      help = true;
+    },
   });
   if (help || opts.help || !opts.bump) {
     console.log(`
@@ -35,7 +37,7 @@ function parseCommandLine () {
 }
 
 // run the script
-async function main () {
+async function main() {
   const opts = parseCommandLine();
   const currentVersion = await versionUtils.getElectronVersion();
   const version = await nextVersion(opts.bump, currentVersion);
@@ -45,7 +47,7 @@ async function main () {
     major: parsed.major,
     minor: parsed.minor,
     patch: parsed.patch,
-    pre: parsed.prerelease
+    pre: parsed.prerelease,
   };
 
   // print would-be new version and exit early
@@ -55,11 +57,7 @@ async function main () {
   }
 
   // update all version-related files
-  await Promise.all([
-    updateVersion(version),
-    updatePackageJSON(version),
-    updateWinRC(components)
-  ]);
+  await Promise.all([updateVersion(version), updatePackageJSON(version), updateWinRC(components)]);
 
   // commit all updated version-related files
   await commitVersionBump(version);
@@ -68,7 +66,7 @@ async function main () {
 }
 
 // get next version for release based on [nightly, beta, stable]
-async function nextVersion (bumpType, version) {
+async function nextVersion(bumpType, version) {
   if (versionUtils.isNightly(version) || versionUtils.isBeta(version)) {
     switch (bumpType) {
       case 'nightly':
@@ -106,13 +104,13 @@ async function nextVersion (bumpType, version) {
 }
 
 // update VERSION file with latest release info
-async function updateVersion (version) {
+async function updateVersion(version) {
   const versionPath = path.resolve(ELECTRON_DIR, 'ELECTRON_VERSION');
   await writeFile(versionPath, version, 'utf8');
 }
 
 // update package metadata files with new version
-async function updatePackageJSON (version) {
+async function updatePackageJSON(version) {
   const filePath = path.resolve(ELECTRON_DIR, 'package.json');
   const file = require(filePath);
   file.version = version;
@@ -120,13 +118,13 @@ async function updatePackageJSON (version) {
 }
 
 // push bump commit to release branch
-async function commitVersionBump (version) {
+async function commitVersionBump(version) {
   const gitArgs = ['commit', '-a', '-m', `Bump v${version}`, '-n'];
   await GitProcess.exec(gitArgs, ELECTRON_DIR);
 }
 
 // updates electron.rc file with new semver values
-async function updateWinRC (components) {
+async function updateWinRC(components) {
   const filePath = path.resolve(ELECTRON_DIR, 'shell', 'browser', 'resources', 'win', 'electron.rc');
   const data = await readFile(filePath, 'utf8');
   const arr = data.split('\n');

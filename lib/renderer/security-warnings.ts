@@ -21,8 +21,7 @@ const shouldLogSecurityWarnings = function (): boolean {
 
   switch (platform) {
     case 'darwin':
-      shouldLog = execPath.endsWith('MacOS/Electron') ||
-                  execPath.includes('Electron.app/Contents/Frameworks/');
+      shouldLog = execPath.endsWith('MacOS/Electron') || execPath.includes('Electron.app/Contents/Frameworks/');
       break;
     case 'freebsd':
     case 'linux':
@@ -35,13 +34,11 @@ const shouldLogSecurityWarnings = function (): boolean {
       shouldLog = false;
   }
 
-  if ((env && env.ELECTRON_DISABLE_SECURITY_WARNINGS) ||
-      (window && window.ELECTRON_DISABLE_SECURITY_WARNINGS)) {
+  if ((env && env.ELECTRON_DISABLE_SECURITY_WARNINGS) || (window && window.ELECTRON_DISABLE_SECURITY_WARNINGS)) {
     shouldLog = false;
   }
 
-  if ((env && env.ELECTRON_ENABLE_SECURITY_WARNINGS) ||
-      (window && window.ELECTRON_ENABLE_SECURITY_WARNINGS)) {
+  if ((env && env.ELECTRON_ENABLE_SECURITY_WARNINGS) || (window && window.ELECTRON_ENABLE_SECURITY_WARNINGS)) {
     shouldLog = true;
   }
 
@@ -79,14 +76,17 @@ const isLocalhost = function () {
  */
 const isUnsafeEvalEnabled: () => Promise<boolean> = function () {
   // Call _executeJavaScript to bypass the world-safe deprecation warning
-  return (webFrame as any)._executeJavaScript(`(${(() => {
-    try {
-      new Function(''); // eslint-disable-line no-new,no-new-func
-    } catch {
-      return false;
-    }
-    return true;
-  }).toString()})()`, false);
+  return (webFrame as any)._executeJavaScript(
+    `(${(() => {
+      try {
+        new Function(''); // eslint-disable-line no-new,no-new-func
+      } catch {
+        return false;
+      }
+      return true;
+    }).toString()})()`,
+    false,
+  );
 };
 
 const moreInformation = `\nFor more information and help, consult
@@ -120,8 +120,7 @@ const warnAboutInsecureResources = function () {
   Consider loading the following resources over HTTPS or FTPS. \n${resources}
   \n${moreInformation}`;
 
-  console.warn('%cElectron Security Warning (Insecure Resources)',
-    'font-weight: bold;', warning);
+  console.warn('%cElectron Security Warning (Insecure Resources)', 'font-weight: bold;', warning);
 };
 
 /**
@@ -138,8 +137,7 @@ const warnAboutNodeWithRemoteContent = function (nodeIntegration: boolean) {
     and attempted to load remote content from '${window.location}'. This
     exposes users of this app to severe security risks.\n${moreInformation}`;
 
-    console.warn('%cElectron Security Warning (Node.js Integration with Remote Content)',
-      'font-weight: bold;', warning);
+    console.warn('%cElectron Security Warning (Node.js Integration with Remote Content)', 'font-weight: bold;', warning);
   }
 };
 
@@ -160,8 +158,7 @@ const warnAboutDisabledWebSecurity = function (webPreferences?: Electron.WebPref
   const warning = `This renderer process has "webSecurity" disabled. This
   exposes users of this app to severe security risks.\n${moreInformation}`;
 
-  console.warn('%cElectron Security Warning (Disabled webSecurity)',
-    'font-weight: bold;', warning);
+  console.warn('%cElectron Security Warning (Disabled webSecurity)', 'font-weight: bold;', warning);
 };
 
 /**
@@ -178,8 +175,7 @@ const warnAboutInsecureCSP = function () {
     Policy set or a policy with "unsafe-eval" enabled. This exposes users of
     this app to unnecessary security risks.\n${moreInformation}`;
 
-    console.warn('%cElectron Security Warning (Insecure Content-Security-Policy)',
-      'font-weight: bold;', warning);
+    console.warn('%cElectron Security Warning (Insecure Content-Security-Policy)', 'font-weight: bold;', warning);
   });
 };
 
@@ -195,8 +191,7 @@ const warnAboutInsecureContentAllowed = function (webPreferences?: Electron.WebP
   enabled. This exposes users of this app to severe security risks.\n
   ${moreInformation}`;
 
-  console.warn('%cElectron Security Warning (allowRunningInsecureContent)',
-    'font-weight: bold;', warning);
+  console.warn('%cElectron Security Warning (allowRunningInsecureContent)', 'font-weight: bold;', warning);
 };
 
 /**
@@ -205,7 +200,7 @@ const warnAboutInsecureContentAllowed = function (webPreferences?: Electron.WebP
  * Logs a warning message about experimental features.
  */
 const warnAboutExperimentalFeatures = function (webPreferences?: Electron.WebPreferences) {
-  if (!webPreferences || (!webPreferences.experimentalFeatures)) {
+  if (!webPreferences || !webPreferences.experimentalFeatures) {
     return;
   }
 
@@ -213,8 +208,7 @@ const warnAboutExperimentalFeatures = function (webPreferences?: Electron.WebPre
   This exposes users of this app to some security risk. If you do not need
   this feature, you should disable it.\n${moreInformation}`;
 
-  console.warn('%cElectron Security Warning (experimentalFeatures)',
-    'font-weight: bold;', warning);
+  console.warn('%cElectron Security Warning (experimentalFeatures)', 'font-weight: bold;', warning);
 };
 
 /**
@@ -223,9 +217,11 @@ const warnAboutExperimentalFeatures = function (webPreferences?: Electron.WebPre
  * Logs a warning message about enableBlinkFeatures
  */
 const warnAboutEnableBlinkFeatures = function (webPreferences?: Electron.WebPreferences) {
-  if (!webPreferences ||
+  if (
+    !webPreferences ||
     !Object.prototype.hasOwnProperty.call(webPreferences, 'enableBlinkFeatures') ||
-    (webPreferences.enableBlinkFeatures && webPreferences.enableBlinkFeatures.length === 0)) {
+    (webPreferences.enableBlinkFeatures && webPreferences.enableBlinkFeatures.length === 0)
+  ) {
     return;
   }
 
@@ -233,8 +229,7 @@ const warnAboutEnableBlinkFeatures = function (webPreferences?: Electron.WebPref
   enabled. This exposes users of this app to some security risk. If you do not
   need this feature, you should disable it.\n${moreInformation}`;
 
-  console.warn('%cElectron Security Warning (enableBlinkFeatures)',
-    'font-weight: bold;', warning);
+  console.warn('%cElectron Security Warning (enableBlinkFeatures)', 'font-weight: bold;', warning);
 };
 
 /**
@@ -255,8 +250,7 @@ const warnAboutAllowedPopups = function () {
     BrowserWindows. If you do not need this feature, you should disable it.\n
     ${moreInformation}`;
 
-    console.warn('%cElectron Security Warning (allowpopups)',
-      'font-weight: bold;', warning);
+    console.warn('%cElectron Security Warning (allowpopups)', 'font-weight: bold;', warning);
   }
 };
 
@@ -279,17 +273,14 @@ const warnAboutRemoteModuleWithRemoteContent = function (webPreferences?: Electr
     and attempted to load remote content from '${window.location}'. This
     exposes users of this app to unnecessary security risks.\n${moreInformation}`;
 
-    console.warn('%cElectron Security Warning (enableRemoteModule)',
-      'font-weight: bold;', warning);
+    console.warn('%cElectron Security Warning (enableRemoteModule)', 'font-weight: bold;', warning);
   }
 };
 
 // Currently missing since we can't easily programmatically check for it:
 //   #16 Filter the `remote` module
 
-const logSecurityWarnings = function (
-  webPreferences: Electron.WebPreferences | undefined, nodeIntegration: boolean
-) {
+const logSecurityWarnings = function (webPreferences: Electron.WebPreferences | undefined, nodeIntegration: boolean) {
   warnAboutNodeWithRemoteContent(nodeIntegration);
   warnAboutDisabledWebSecurity(webPreferences);
   warnAboutInsecureResources();
@@ -309,7 +300,7 @@ const getWebPreferences = async function () {
   }
 };
 
-export function securityWarnings (nodeIntegration: boolean) {
+export function securityWarnings(nodeIntegration: boolean) {
   const loadHandler = async function () {
     if (shouldLogSecurityWarnings()) {
       const webPreferences = await getWebPreferences();

@@ -7,5 +7,5 @@ module.exports = {
   anonymous: new (class {})(),
   getConstructorName: function (value) {
     return value.constructor.name;
-  }
+  },
 };

@@ -8,23 +8,30 @@ import { IPC_MESSAGES } from '@electron/internal//common/ipc-messages';
 
 const convertToMenuTemplate = function (items: ContextMenuItem[], handler: (id: number) => void) {
   return items.map(function (item) {
-    const transformed: Electron.MenuItemConstructorOptions = item.type === 'subMenu' ? {
-      type: 'submenu',
-      label: item.label,
-      enabled: item.enabled,
-      submenu: convertToMenuTemplate(item.subItems, handler)
-    } : item.type === 'separator' ? {
-      type: 'separator'
-    } : item.type === 'checkbox' ? {
-      type: 'checkbox',
-      label: item.label,
-      enabled: item.enabled,
-      checked: item.checked
-    } : {
-      type: 'normal',
-      label: item.label,
-      enabled: item.enabled
-    };
+    const transformed: Electron.MenuItemConstructorOptions =
+      item.type === 'subMenu'
+        ? {
+            type: 'submenu',
+            label: item.label,
+            enabled: item.enabled,
+            submenu: convertToMenuTemplate(item.subItems, handler),
+          }
+        : item.type === 'separator'
+        ? {
+            type: 'separator',
+          }
+        : item.type === 'checkbox'
+        ? {
+            type: 'checkbox',
+            label: item.label,
+            enabled: item.enabled,
+            checked: item.checked,
+          }
+        : {
+            type: 'normal',
+            label: item.label,
+            enabled: item.enabled,
+          };
 
     if (item.id != null) {
       transformed.click = () => handler(item.id);
@@ -44,7 +51,7 @@ const getEditMenuItems = function (): Electron.MenuItemConstructorOptions[] {
     { role: 'paste' },
     { role: 'pasteAndMatchStyle' },
     { role: 'delete' },
-    { role: 'selectAll' }
+    { role: 'selectAll' },
   ];
 };
 
@@ -62,7 +69,7 @@ const assertChromeDevTools = function (contents: Electron.WebContents, api: stri
 };
 
 ipcMainInternal.handle(IPC_MESSAGES.INSPECTOR_CONTEXT_MENU, function (event, items: ContextMenuItem[], isEditMenu: boolean) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     assertChromeDevTools(event.sender, 'window.InspectorFrontendHost.showContextMenuAtPoint()');
 
     const template = isEditMenu ? getEditMenuItems() : convertToMenuTemplate(items, resolve);
@@ -92,7 +99,7 @@ ipcMainUtils.handleSync(IPC_MESSAGES.INSPECTOR_CONFIRM, async function (event, m
     message: String(message),
     title: String(title),
     buttons: ['OK', 'Cancel'],
-    cancelId: 1
+    cancelId: 1,
   };
   const window = event.sender.getOwnerBrowserWindow();
   const { response } = await dialog.showMessageBox(window, options);

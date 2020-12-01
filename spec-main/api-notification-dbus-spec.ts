@@ -12,10 +12,8 @@ import { app } from 'electron/main';
 import { ifdescribe } from './spec-helpers';
 import { promisify } from 'util';
 
-const skip = process.platform !== 'linux' ||
-             process.arch === 'ia32' ||
-             process.arch.indexOf('arm') === 0 ||
-             !process.env.DBUS_SESSION_BUS_ADDRESS;
+const skip =
+  process.platform !== 'linux' || process.arch === 'ia32' || process.arch.indexOf('arm') === 0 || !process.env.DBUS_SESSION_BUS_ADDRESS;
 
 ifdescribe(!skip)('Notification module (dbus)', () => {
   let mock: any, Notification, getCalls: any, reset: any;
@@ -50,8 +48,8 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
   });
 
   describe(`Notification module using ${serviceName}`, () => {
-    function onMethodCalled (done: () => void) {
-      function cb (name: string) {
+    function onMethodCalled(done: () => void) {
+      function cb(name: string) {
         console.log(`onMethodCalled: ${name}`);
         if (name === 'Notify') {
           mock.removeListener('MethodCalled', cb);
@@ -62,7 +60,7 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
       return cb;
     }
 
-    function unmarshalDBusNotifyHints (dbusHints: any) {
+    function unmarshalDBusNotifyHints(dbusHints: any) {
       const o: Record<string, any> = {};
       for (const hint of dbusHints) {
         const key = hint[0];
@@ -72,7 +70,7 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
       return o;
     }
 
-    function unmarshalDBusNotifyArgs (dbusArgs: any) {
+    function unmarshalDBusNotifyArgs(dbusArgs: any) {
       return {
         app_name: dbusArgs[0][1][0],
         replaces_id: dbusArgs[1][1][0],
@@ -80,11 +78,11 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
         title: dbusArgs[3][1][0],
         body: dbusArgs[4][1][0],
         actions: dbusArgs[5][1][0],
-        hints: unmarshalDBusNotifyHints(dbusArgs[6][1][0])
+        hints: unmarshalDBusNotifyHints(dbusArgs[6][1][0]),
       };
     }
 
-    before(done => {
+    before((done) => {
       mock.on('MethodCalled', onMethodCalled(done));
       // lazy load Notification after we listen to MethodCalled mock signal
       Notification = require('electron').Notification;
@@ -94,7 +92,7 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
         body: 'body',
         replyPlaceholder: 'replyPlaceholder',
         sound: 'sound',
-        closeButtonText: 'closeButtonText'
+        closeButtonText: 'closeButtonText',
       });
       n.show();
     });
@@ -118,8 +116,8 @@ ifdescribe(!skip)('Notification module (dbus)', () => {
         hints: {
           append: 'true',
           'desktop-entry': appName,
-          urgency: 1
-        }
+          urgency: 1,
+        },
       });
     });
   });

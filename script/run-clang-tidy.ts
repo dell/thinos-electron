@@ -11,14 +11,7 @@ import { ignore as streamJsonIgnore } from 'stream-json/filters/Ignore';
 import { streamArray as streamJsonStreamArray } from 'stream-json/streamers/StreamArray';
 
 const SOURCE_ROOT = path.normalize(path.dirname(__dirname));
-const LLVM_BIN = path.resolve(
-  SOURCE_ROOT,
-  '..',
-  'third_party',
-  'llvm-build',
-  'Release+Asserts',
-  'bin'
-);
+const LLVM_BIN = path.resolve(SOURCE_ROOT, '..', 'third_party', 'llvm-build', 'Release+Asserts', 'bin');
 const PLATFORM = os.platform();
 
 type SpawnAsyncResult = {
@@ -30,16 +23,16 @@ type SpawnAsyncResult = {
 class ErrorWithExitCode extends Error {
   exitCode: number;
 
-  constructor (message: string, exitCode: number) {
+  constructor(message: string, exitCode: number) {
     super(message);
     this.exitCode = exitCode;
   }
 }
 
-async function spawnAsync (
+async function spawnAsync(
   command: string,
   args: string[],
-  options?: childProcess.SpawnOptionsWithoutStdio | undefined
+  options?: childProcess.SpawnOptionsWithoutStdio | undefined,
 ): Promise<SpawnAsyncResult> {
   return new Promise((resolve, reject) => {
     try {
@@ -62,14 +55,11 @@ async function spawnAsync (
   });
 }
 
-function getDepotToolsEnv (): NodeJS.ProcessEnv {
+function getDepotToolsEnv(): NodeJS.ProcessEnv {
   let depotToolsEnv;
 
   const findDepotToolsOnPath = () => {
-    const result = childProcess.spawnSync(
-      PLATFORM === 'win32' ? 'where' : 'which',
-      ['gclient']
-    );
+    const result = childProcess.spawnSync(PLATFORM === 'win32' ? 'where' : 'which', ['gclient']);
 
     if (result.status === 0) {
       return process.env;
@@ -77,16 +67,12 @@ function getDepotToolsEnv (): NodeJS.ProcessEnv {
   };
 
   const checkForBuildTools = () => {
-    const result = childProcess.spawnSync(
-      'electron-build-tools',
-      ['show', 'env', '--json'],
-      { shell: true }
-    );
+    const result = childProcess.spawnSync('electron-build-tools', ['show', 'env', '--json'], { shell: true });
 
     if (result.status === 0) {
       return {
         ...process.env,
-        ...JSON.parse(result.stdout.toString().trim())
+        ...JSON.parse(result.stdout.toString().trim()),
       };
     }
   };
@@ -101,30 +87,24 @@ function getDepotToolsEnv (): NodeJS.ProcessEnv {
   }
 
   if (!('CHROMIUM_BUILDTOOLS_PATH' in depotToolsEnv)) {
-    throw new Error(
-      'CHROMIUM_BUILDTOOLS_PATH environment variable must be set'
-    );
+    throw new Error('CHROMIUM_BUILDTOOLS_PATH environment variable must be set');
   }
 
   return depotToolsEnv;
 }
 
-function chunkFilenames (filenames: string[], offset: number = 0): string[][] {
+function chunkFilenames(filenames: string[], offset: number = 0): string[][] {
   // Windows has a max command line length of 2047 characters, so we can't
   // provide too many filenames without going over that. To work around that,
   // chunk up a list of filenames such that it won't go over that limit when
   // used as args. Use a much higher limit on other platforms which will
   // effectively be a no-op.
-  const MAX_FILENAME_ARGS_LENGTH =
-    PLATFORM === 'win32' ? 2047 - offset : 100 * 1024;
+  const MAX_FILENAME_ARGS_LENGTH = PLATFORM === 'win32' ? 2047 - offset : 100 * 1024;
 
   return filenames.reduce(
     (chunkedFilenames: string[][], filename) => {
       const currChunk = chunkedFilenames[chunkedFilenames.length - 1];
-      const currChunkLength = currChunk.reduce(
-        (totalLength, _filename) => totalLength + _filename.length + 1,
-        0
-      );
+      const currChunkLength = currChunk.reduce((totalLength, _filename) => totalLength + _filename.length + 1, 0);
       if (currChunkLength + filename.length + 1 > MAX_FILENAME_ARGS_LENGTH) {
         chunkedFilenames.push([filename]);
       } else {
@@ -132,16 +112,11 @@ function chunkFilenames (filenames: string[], offset: number = 0): string[][] {
       }
       return chunkedFilenames;
     },
-    [[]]
+    [[]],
   );
 }
 
-async function runClangTidy (
-  outDir: string,
-  filenames: string[],
-  checks: string = '',
-  jobs: number = 1
-): Promise<boolean> {
+async function runClangTidy(outDir: string, filenames: string[], checks: string = '', jobs: number = 1): Promise<boolean> {
   const cmd = path.resolve(LLVM_BIN, 'clang-tidy');
   const args = [`-p=${outDir}`];
 
@@ -162,7 +137,7 @@ async function runClangTidy (
         ({ value: { file, directory } }) => {
           const filename = path.resolve(directory, file);
           return filenames.includes(filename) ? filename : null;
-        }
+        },
       ]);
 
       pipeline.on('data', (data) => compiledFilenames.push(data));
@@ -173,16 +148,13 @@ async function runClangTidy (
   // clang-tidy can figure out the file from a short relative filename, so
   // to get the most bang for the buck on the command line, let's trim the
   // filenames to the minimum so that we can fit more per invocation
-  filenames = (await filterCompilationDatabase()).map((filename) =>
-    path.relative(SOURCE_ROOT, filename)
-  );
+  filenames = (await filterCompilationDatabase()).map((filename) => path.relative(SOURCE_ROOT, filename));
 
   if (filenames.length === 0) {
     throw new Error('No filenames to run');
   }
 
-  const commandLength =
-    cmd.length + args.reduce((length, arg) => length + arg.length, 0);
+  const commandLength = cmd.length + args.reduce((length, arg) => length + arg.length, 0);
 
   const results: boolean[] = [];
   const asyncWorkers = [];
@@ -191,9 +163,7 @@ async function runClangTidy (
   const filesPerWorker = Math.ceil(filenames.length / jobs);
 
   for (let i = 0; i < jobs; i++) {
-    chunkedFilenames.push(
-      ...chunkFilenames(filenames.splice(0, filesPerWorker), commandLength)
-    );
+    chunkedFilenames.push(...chunkFilenames(filenames.splice(0, filesPerWorker), commandLength));
   }
 
   const worker = async () => {
@@ -213,7 +183,7 @@ async function runClangTidy (
                 line
                   .split(' warning: ')
                   .map((part) => chalk.whiteBright(part))
-                  .join(chalk.magentaBright(' warning: '))
+                  .join(chalk.magentaBright(' warning: ')),
               );
               state = 'code-line';
             } else if (line.includes(' note: ')) {
@@ -222,9 +192,7 @@ async function runClangTidy (
               console.log(lineParts.join(chalk.grey(' note: ')));
               state = 'code-line';
             } else if (line.startsWith('error:')) {
-              console.log(
-                chalk.redBright('error: ') + line.split(' ').slice(1).join(' ')
-              );
+              console.log(chalk.redBright('error: ') + line.split(' ').slice(1).join(' '));
             } else if (state === 'code-line') {
               console.log(line);
               state = 'post-code-line';
@@ -242,7 +210,7 @@ async function runClangTidy (
           // On a clean run there's nothing on stdout. A run with warnings-only
           // will have a status code of zero, but there's output on stdout
           return result.status === 0 && result.stdout.length === 0;
-        })
+        }),
       );
 
       filenames = chunkedFilenames.shift();
@@ -261,14 +229,11 @@ async function runClangTidy (
   }
 }
 
-async function findMatchingFiles (
-  top: string,
-  test: (filename: string) => boolean
-): Promise<string[]> {
+async function findMatchingFiles(top: string, test: (filename: string) => boolean): Promise<string[]> {
   return new Promise((resolve) => {
     const matches = [] as string[];
     klaw(top, {
-      filter: (f) => path.basename(f) !== '.bin'
+      filter: (f) => path.basename(f) !== '.bin',
     })
       .on('end', () => resolve(matches))
       .on('data', (item) => {
@@ -279,13 +244,10 @@ async function findMatchingFiles (
   });
 }
 
-function parseCommandLine () {
-  const showUsage = (arg?: string) : boolean => {
+function parseCommandLine() {
+  const showUsage = (arg?: string): boolean => {
     if (!arg || arg.startsWith('-')) {
-      console.log(
-        'Usage: script/run-clang-tidy.ts [-h|--help] [--jobs|-j] ' +
-          '[--checks] --out-dir OUTDIR [file1 file2]'
-      );
+      console.log('Usage: script/run-clang-tidy.ts [-h|--help] [--jobs|-j] ' + '[--checks] --out-dir OUTDIR [file1 file2]');
       process.exit(0);
     }
 
@@ -298,7 +260,7 @@ function parseCommandLine () {
     default: { jobs: 1 },
     alias: { help: 'h', jobs: 'j' },
     stopEarly: true,
-    unknown: showUsage
+    unknown: showUsage,
   });
 
   if (opts.help) showUsage();
@@ -311,7 +273,7 @@ function parseCommandLine () {
   return opts;
 }
 
-async function main (): Promise<boolean> {
+async function main(): Promise<boolean> {
   const opts = parseCommandLine();
   const outDir = path.resolve(opts['out-dir']);
 
@@ -321,11 +283,7 @@ async function main (): Promise<boolean> {
     // Make sure the compile_commands.json file is up-to-date
     const env = getDepotToolsEnv();
 
-    const result = childProcess.spawnSync(
-      'gn',
-      ['gen', '.', '--export-compile-commands'],
-      { cwd: outDir, env, shell: true }
-    );
+    const result = childProcess.spawnSync('gn', ['gen', '.', '--export-compile-commands'], { cwd: outDir, env, shell: true });
 
     if (result.status !== 0) {
       if (result.error) {
@@ -334,11 +292,7 @@ async function main (): Promise<boolean> {
         console.error(result.stderr.toString());
       }
 
-      throw new ErrorWithExitCode(
-        'Failed to automatically generate compile_commands.json for ' +
-          'output directory',
-        2
-      );
+      throw new ErrorWithExitCode('Failed to automatically generate compile_commands.json for ' + 'output directory', 2);
     }
   }
 
@@ -348,10 +302,7 @@ async function main (): Promise<boolean> {
     filenames.push(...opts._.map((filename) => path.resolve(filename)));
   } else {
     filenames.push(
-      ...(await findMatchingFiles(
-        path.resolve(SOURCE_ROOT, 'shell'),
-        (filename: string) => /.*\.(?:cc|h|mm)$/.test(filename)
-      ))
+      ...(await findMatchingFiles(path.resolve(SOURCE_ROOT, 'shell'), (filename: string) => /.*\.(?:cc|h|mm)$/.test(filename))),
     );
   }
 

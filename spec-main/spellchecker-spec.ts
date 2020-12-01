@@ -16,8 +16,8 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
       show: false,
       webPreferences: {
         nodeIntegration: true,
-        partition: `unique-spell-${Date.now()}`
-      }
+        partition: `unique-spell-${Date.now()}`,
+      },
     });
     w.webContents.session.setSpellCheckerLanguages(['en-US']);
     await w.loadFile(path.resolve(__dirname, './fixtures/chromium/spellchecker.html'));
@@ -29,9 +29,7 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
 
   // Context menu test can not run on Windows, and it is not reliable on ARM
   // CI machines.
-  const shouldRun = process.platform !== 'win32' &&
-                    process.arch !== 'arm' &&
-                    process.arch !== 'arm64';
+  const shouldRun = process.platform !== 'win32' && process.arch !== 'arm' && process.arch !== 'arm64';
 
   ifit(shouldRun)('should detect correctly spelled words as correct', async () => {
     await w.webContents.executeJavaScript('document.body.querySelector("textarea").value = "Beautiful and lovely"');
@@ -43,7 +41,7 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
       type: 'mouseDown',
       button: 'right',
       x: 43,
-      y: 42
+      y: 42,
     });
     const contextMenuParams: Electron.ContextMenuParams = (await contextMenuPromise)[1];
     expect(contextMenuParams.misspelledWord).to.eq('');
@@ -60,7 +58,7 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
       type: 'mouseDown',
       button: 'right',
       x: 43,
-      y: 42
+      y: 42,
     });
     const contextMenuParams: Electron.ContextMenuParams = (await contextMenuPromise)[1];
     expect(contextMenuParams.misspelledWord).to.eq('Beautifulllll');
@@ -80,7 +78,7 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
       type: 'mouseDown',
       button: 'right',
       x: 43,
-      y: 42
+      y: 42,
     });
     const contextMenuParams: Electron.ContextMenuParams = (await contextMenuPromise)[1];
     expect(contextMenuParams.misspelledWord).to.eq('Beautifulllll');
@@ -142,7 +140,7 @@ ifdescribe(features.isBuiltinSpellCheckerEnabled())('spellchecker', () => {
     describe('ses.listWordsFromSpellCheckerDictionary', () => {
       it('should successfully list words in custom dictionary', async () => {
         const words = ['foo', 'bar', 'baz'];
-        const results = words.map(word => ses.addWordToSpellCheckerDictionary(word));
+        const results = words.map((word) => ses.addWordToSpellCheckerDictionary(word));
         expect(results).to.eql([true, true, true]);
 
         const wordList = await ses.listWordsInSpellCheckerDictionary();

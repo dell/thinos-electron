@@ -14,7 +14,7 @@ const fail = '✗'.red;
 const args = require('minimist')(process.argv, {
   string: ['runners', 'target'],
   boolean: ['buildNativeTests'],
-  unknown: arg => unknownFlags.push(arg)
+  unknown: (arg) => unknownFlags.push(arg),
 });
 
 const unknownArgs = [];
@@ -35,7 +35,7 @@ const NPX_CMD = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const runners = new Map([
   ['main', { description: 'Main process specs', run: runMainProcessElectronTests }],
   ['remote', { description: 'Remote based specs', run: runRemoteBasedElectronTests }],
-  ['native', { description: 'Native specs', run: runNativeElectronTests }]
+  ['native', { description: 'Native specs', run: runNativeElectronTests }],
 ]);
 
 const specHashPath = path.resolve(__dirname, '../spec/.hash');
@@ -43,7 +43,7 @@ const specHashPath = path.resolve(__dirname, '../spec/.hash');
 let runnersToRun = null;
 if (args.runners) {
   runnersToRun = args.runners.split(',');
-  if (!runnersToRun.every(r => [...runners.keys()].includes(r))) {
+  if (!runnersToRun.every((r) => [...runners.keys()].includes(r))) {
     console.log(`${fail} ${runnersToRun} must be a subset of [${[...runners.keys()].join(' | ')}]`);
     process.exit(1);
   }
@@ -52,11 +52,10 @@ if (args.runners) {
   console.log(`Triggering runners: ${[...runners.keys()].join(', ')}`);
 }
 
-async function main () {
+async function main() {
   const [lastSpecHash, lastSpecInstallHash] = loadLastSpecHash();
   const [currentSpecHash, currentSpecInstallHash] = await getSpecHash();
-  const somethingChanged = (currentSpecHash !== lastSpecHash) ||
-      (lastSpecInstallHash !== currentSpecInstallHash);
+  const somethingChanged = currentSpecHash !== lastSpecHash || lastSpecInstallHash !== currentSpecInstallHash;
 
   if (somethingChanged) {
     await installSpecModules(path.resolve(__dirname, '..', 'spec'));
@@ -72,28 +71,26 @@ async function main () {
   await runElectronTests();
 }
 
-function generateTypeDefinitions () {
+function generateTypeDefinitions() {
   const { status } = childProcess.spawnSync('npm', ['run', 'create-typescript-definitions'], {
     cwd: path.resolve(__dirname, '..'),
     stdio: 'inherit',
-    shell: true
+    shell: true,
   });
   if (status !== 0) {
     throw new Error(`Electron typescript definition generation failed with exit code: ${status}.`);
   }
 }
 
-function loadLastSpecHash () {
-  return fs.existsSync(specHashPath)
-    ? fs.readFileSync(specHashPath, 'utf8').split('\n')
-    : [null, null];
+function loadLastSpecHash() {
+  return fs.existsSync(specHashPath) ? fs.readFileSync(specHashPath, 'utf8').split('\n') : [null, null];
 }
 
-function saveSpecHash ([newSpecHash, newSpecInstallHash]) {
+function saveSpecHash([newSpecHash, newSpecInstallHash]) {
   fs.writeFileSync(specHashPath, `${newSpecHash}\n${newSpecInstallHash}`);
 }
 
-async function runElectronTests () {
+async function runElectronTests() {
   const errors = [];
 
   const testResultsDir = process.env.ELECTRON_TEST_RESULTS_DIR;
@@ -123,7 +120,7 @@ async function runElectronTests () {
   }
 }
 
-async function runRemoteBasedElectronTests () {
+async function runRemoteBasedElectronTests() {
   let exe = path.resolve(BASE, utils.getElectronExec());
   const runnerArgs = ['electron/spec', ...unknownArgs.slice(2)];
   if (process.platform === 'linux') {
@@ -133,7 +130,7 @@ async function runRemoteBasedElectronTests () {
 
   const { status } = childProcess.spawnSync(exe, runnerArgs, {
     cwd: path.resolve(__dirname, '../..'),
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   if (status !== 0) {
     const textStatus = process.platform === 'win32' ? `0x${status.toString(16)}` : status.toString();
@@ -143,7 +140,7 @@ async function runRemoteBasedElectronTests () {
   console.log(`${pass} Electron remote process tests passed.`);
 }
 
-async function runNativeElectronTests () {
+async function runNativeElectronTests() {
   let testTargets = require('./native-test-targets.json');
   const outDir = `out/${utils.getOutDir()}`;
 
@@ -158,7 +155,7 @@ async function runNativeElectronTests () {
     for (const target of testTargets) {
       const build = childProcess.spawnSync('ninja', ['-C', outDir, target], {
         cwd: path.resolve(__dirname, '../..'),
-        stdio: 'inherit'
+        stdio: 'inherit',
       });
 
       // Exit if test target failed to build
@@ -178,7 +175,7 @@ async function runNativeElectronTests () {
     console.info('\nRunning native test for target:', target);
     const testRun = childProcess.spawnSync(`./${outDir}/${target}`, {
       cwd: path.resolve(__dirname, '../..'),
-      stdio: 'inherit'
+      stdio: 'inherit',
     });
 
     // Collect failures and log at end
@@ -194,7 +191,7 @@ async function runNativeElectronTests () {
   console.log(`${pass} Electron native tests passed.`);
 }
 
-async function runMainProcessElectronTests () {
+async function runMainProcessElectronTests() {
   let exe = path.resolve(BASE, utils.getElectronExec());
   const runnerArgs = ['electron/spec-main', ...unknownArgs.slice(2)];
   if (process.platform === 'linux') {
@@ -204,7 +201,7 @@ async function runMainProcessElectronTests () {
 
   const { status, signal } = childProcess.spawnSync(exe, runnerArgs, {
     cwd: path.resolve(__dirname, '../..'),
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   if (status !== 0) {
     if (status) {
@@ -218,12 +215,12 @@ async function runMainProcessElectronTests () {
   console.log(`${pass} Electron main process tests passed.`);
 }
 
-async function installSpecModules (dir) {
+async function installSpecModules(dir) {
   const nodeDir = path.resolve(BASE, `out/${utils.getOutDir({ shouldLog: true })}/gen/node_headers`);
   const env = Object.assign({}, process.env, {
     npm_config_nodedir: nodeDir,
     npm_config_msvs_version: '2019',
-    npm_config_yes: 'true'
+    npm_config_yes: 'true',
   });
   if (fs.existsSync(path.resolve(dir, 'node_modules'))) {
     await fs.remove(path.resolve(dir, 'node_modules'));
@@ -231,7 +228,7 @@ async function installSpecModules (dir) {
   const { status } = childProcess.spawnSync(NPX_CMD, [`yarn@${YARN_VERSION}`, 'install', '--frozen-lockfile'], {
     env,
     cwd: dir,
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   if (status !== 0 && !process.env.IGNORE_YARN_INSTALL_ERROR) {
     console.log(`${fail} Failed to yarn install in '${dir}'`);
@@ -242,17 +239,21 @@ async function installSpecModules (dir) {
   if (process.platform === 'darwin' && process.env.npm_config_arch === 'arm64') {
     for (const nodeModule of fs.readdirSync(path.resolve(dir, 'node_modules'))) {
       if (fs.existsSync(path.resolve(dir, 'node_modules', nodeModule, 'binding.gyp'))) {
-        childProcess.spawnSync(NPX_CMD, ['https://github.com/MarshallOfSound/node-gyp/archive/apple-silicon.tar.gz', 'clean', 'configure', 'build', '--arch=arm64'], {
-          env,
-          cwd: path.resolve(dir, 'node_modules', nodeModule),
-          stdio: 'inherit'
-        });
+        childProcess.spawnSync(
+          NPX_CMD,
+          ['https://github.com/MarshallOfSound/node-gyp/archive/apple-silicon.tar.gz', 'clean', 'configure', 'build', '--arch=arm64'],
+          {
+            env,
+            cwd: path.resolve(dir, 'node_modules', nodeModule),
+            stdio: 'inherit',
+          },
+        );
       }
     }
   }
 }
 
-function getSpecHash () {
+function getSpecHash() {
   return Promise.all([
     (async () => {
       const hasher = crypto.createHash('SHA256');
@@ -270,11 +271,11 @@ function getSpecHash () {
       }
       const { hash } = await hashElement(specNodeModulesPath, {
         folders: {
-          exclude: ['.bin']
-        }
+          exclude: ['.bin'],
+        },
       });
       return hash;
-    })()
+    })(),
   ]);
 }
 

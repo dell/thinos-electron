@@ -21,7 +21,7 @@ const supportedWebViewEvents = Object.keys(webViewEvents);
 const guestInstances = new Map<number, GuestInstance>();
 const embedderElementsMap = new Map<string, number>();
 
-function sanitizeOptionsForGuest (options: Record<string, any>) {
+function sanitizeOptionsForGuest(options: Record<string, any>) {
   const ret = { ...options };
   // WebContents values can't be sent over IPC.
   delete ret.webContents;
@@ -34,12 +34,12 @@ const createGuest = function (embedder: Electron.WebContents, params: Record<str
   const guest = (webContents as typeof ElectronInternal.WebContents).create({
     type: 'webview',
     partition: params.partition,
-    embedder: embedder
+    embedder: embedder,
   });
   const guestInstanceId = guest.id;
   guestInstances.set(guestInstanceId, {
     guest: guest,
-    embedder: embedder
+    embedder: embedder,
   });
 
   // Clear the guest from map when it is destroyed.
@@ -94,9 +94,16 @@ const createGuest = function (embedder: Electron.WebContents, params: Record<str
   }
 
   guest.on('new-window', function (event, url, frameName, disposition, options, additionalFeatures, referrer) {
-    sendToEmbedder(IPC_MESSAGES.GUEST_VIEW_INTERNAL_DISPATCH_EVENT, 'new-window', url,
-      frameName, disposition, sanitizeOptionsForGuest(options),
-      additionalFeatures, referrer);
+    sendToEmbedder(
+      IPC_MESSAGES.GUEST_VIEW_INTERNAL_DISPATCH_EVENT,
+      'new-window',
+      url,
+      frameName,
+      disposition,
+      sanitizeOptionsForGuest(options),
+      additionalFeatures,
+      referrer,
+    );
   });
 
   // Dispatch guest's IPC messages to embedder.
@@ -117,8 +124,13 @@ const createGuest = function (embedder: Electron.WebContents, params: Record<str
 };
 
 // Attach the guest to an element of embedder.
-const attachGuest = function (event: Electron.IpcMainInvokeEvent,
-  embedderFrameId: number, elementInstanceId: number, guestInstanceId: number, params: Record<string, any>) {
+const attachGuest = function (
+  event: Electron.IpcMainInvokeEvent,
+  embedderFrameId: number,
+  elementInstanceId: number,
+  guestInstanceId: number,
+  params: Record<string, any>,
+) {
   const embedder = event.sender;
   // Destroy the old guest when attaching.
   const key = `${embedder.id}-${elementInstanceId}`;
@@ -159,10 +171,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
 
   // parse the 'webpreferences' attribute string, if set
   // this uses the same parsing rules as window.open uses for its features
-  const parsedWebPreferences =
-    typeof params.webpreferences === 'string'
-      ? parseWebViewWebPreferences(params.webpreferences)
-      : null;
+  const parsedWebPreferences = typeof params.webpreferences === 'string' ? parseWebViewWebPreferences(params.webpreferences) : null;
 
   const webPreferences: Electron.WebPreferences = {
     guestInstanceId: guestInstanceId,
@@ -175,7 +184,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
     webSecurity: !params.disablewebsecurity,
     enableBlinkFeatures: params.blinkfeatures,
     disableBlinkFeatures: params.disableblinkfeatures,
-    ...parsedWebPreferences
+    ...parsedWebPreferences,
   };
 
   if (params.preload) {
@@ -191,7 +200,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
     ['enableRemoteModule', false],
     ['sandbox', true],
     ['nodeIntegrationInSubFrames', false],
-    ['enableWebSQL', false]
+    ['enableWebSQL', false],
   ]);
 
   // Inherit certain option values from embedder
@@ -285,7 +294,10 @@ const isWebViewTagEnabled = function (contents: Electron.WebContents) {
   return isWebViewTagEnabledCache.get(contents);
 };
 
-const makeSafeHandler = function<Event extends { sender: Electron.WebContents }> (channel: string, handler: (event: Event, ...args: any[]) => any) {
+const makeSafeHandler = function <Event extends { sender: Electron.WebContents }>(
+  channel: string,
+  handler: (event: Event, ...args: any[]) => any,
+) {
   return (event: Event, ...args: any[]) => {
     if (isWebViewTagEnabled(event.sender)) {
       return handler(event, ...args);
@@ -308,27 +320,33 @@ handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_CREATE_GUEST, function (event, par
   return createGuest(event.sender, params);
 });
 
-handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_ATTACH_GUEST, function (event, embedderFrameId: number, elementInstanceId: number, guestInstanceId: number, params) {
-  try {
-    attachGuest(event, embedderFrameId, elementInstanceId, guestInstanceId, params);
-  } catch (error) {
-    console.error(`Guest attach failed: ${error}`);
-  }
-});
+handleMessage(
+  IPC_MESSAGES.GUEST_VIEW_MANAGER_ATTACH_GUEST,
+  function (event, embedderFrameId: number, elementInstanceId: number, guestInstanceId: number, params) {
+    try {
+      attachGuest(event, embedderFrameId, elementInstanceId, guestInstanceId, params);
+    } catch (error) {
+      console.error(`Guest attach failed: ${error}`);
+    }
+  },
+);
 
 handleMessageSync(IPC_MESSAGES.GUEST_VIEW_MANAGER_DETACH_GUEST, function (event, guestInstanceId: number) {
   return detachGuest(event.sender, guestInstanceId);
 });
 
 // this message is sent by the actual <webview>
-ipcMainInternal.on(IPC_MESSAGES.GUEST_VIEW_MANAGER_FOCUS_CHANGE, function (event: ElectronInternal.IpcMainInternalEvent, focus: boolean, guestInstanceId: number) {
-  const guest = getGuest(guestInstanceId);
-  if (guest === event.sender) {
-    event.sender.emit('focus-change', {}, focus, guestInstanceId);
-  } else {
-    console.error(`focus-change for guestInstanceId: ${guestInstanceId}`);
-  }
-});
+ipcMainInternal.on(
+  IPC_MESSAGES.GUEST_VIEW_MANAGER_FOCUS_CHANGE,
+  function (event: ElectronInternal.IpcMainInternalEvent, focus: boolean, guestInstanceId: number) {
+    const guest = getGuest(guestInstanceId);
+    if (guest === event.sender) {
+      event.sender.emit('focus-change', {}, focus, guestInstanceId);
+    } else {
+      console.error(`focus-change for guestInstanceId: ${guestInstanceId}`);
+    }
+  },
+);
 
 handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_CALL, function (event, guestInstanceId: number, method: string, args: any[]) {
   const guest = getGuestForWebContents(guestInstanceId, event.sender);

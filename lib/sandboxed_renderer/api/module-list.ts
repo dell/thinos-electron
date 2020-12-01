@@ -5,42 +5,42 @@ const enableRemoteModule = getWebPreference(window, 'enableRemoteModule');
 export const moduleList: ElectronInternal.ModuleEntry[] = [
   {
     name: 'contextBridge',
-    loader: () => require('@electron/internal/renderer/api/context-bridge')
+    loader: () => require('@electron/internal/renderer/api/context-bridge'),
   },
   {
     name: 'crashReporter',
-    loader: () => require('@electron/internal/renderer/api/crash-reporter')
+    loader: () => require('@electron/internal/renderer/api/crash-reporter'),
   },
   {
     name: 'ipcRenderer',
-    loader: () => require('@electron/internal/renderer/api/ipc-renderer')
+    loader: () => require('@electron/internal/renderer/api/ipc-renderer'),
   },
   {
     name: 'nativeImage',
-    loader: () => require('@electron/internal/renderer/api/native-image')
+    loader: () => require('@electron/internal/renderer/api/native-image'),
   },
   {
     name: 'webFrame',
-    loader: () => require('@electron/internal/renderer/api/web-frame')
+    loader: () => require('@electron/internal/renderer/api/web-frame'),
   },
   // The internal modules, invisible unless you know their names.
   {
     name: 'deprecate',
     loader: () => require('@electron/internal/common/api/deprecate'),
-    private: true
-  }
+    private: true,
+  },
 ];
 
 if (BUILDFLAG(ENABLE_DESKTOP_CAPTURER)) {
   moduleList.push({
     name: 'desktopCapturer',
-    loader: () => require('@electron/internal/renderer/api/desktop-capturer')
+    loader: () => require('@electron/internal/renderer/api/desktop-capturer'),
   });
 }
 
 if (BUILDFLAG(ENABLE_REMOTE_MODULE) && enableRemoteModule) {
   moduleList.push({
     name: 'remote',
-    loader: () => require('@electron/internal/renderer/api/remote')
+    loader: () => require('@electron/internal/renderer/api/remote'),
   });
 }

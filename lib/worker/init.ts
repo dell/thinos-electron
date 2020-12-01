@@ -13,13 +13,14 @@ require('../common/reset-search-paths');
 require('@electron/internal/common/init');
 
 // Export node bindings to global.
-const { makeRequireFunction } = __non_webpack_require__('internal/modules/cjs/helpers') // eslint-disable-line
+const { makeRequireFunction } = __non_webpack_require__('internal/modules/cjs/helpers'); // eslint-disable-line
 global.module = new Module('electron/js2c/worker_init');
 global.require = makeRequireFunction(global.module);
 
 // Set the __filename to the path of html file if it is file: protocol.
 if (self.location.protocol === 'file:') {
-  const pathname = process.platform === 'win32' && self.location.pathname[0] === '/' ? self.location.pathname.substr(1) : self.location.pathname;
+  const pathname =
+    process.platform === 'win32' && self.location.pathname[0] === '/' ? self.location.pathname.substr(1) : self.location.pathname;
   global.__filename = path.normalize(decodeURIComponent(pathname));
   global.__dirname = path.dirname(global.__filename);
 

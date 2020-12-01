@@ -1,6 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron';
 
-async function getOcticonSvg (name: string) {
+async function getOcticonSvg(name: string) {
   try {
     const response = await fetch(`octicon/${name}.svg`);
     const div = document.createElement('div');
@@ -11,7 +11,7 @@ async function getOcticonSvg (name: string) {
   }
 }
 
-async function loadSVG (element: HTMLSpanElement) {
+async function loadSVG(element: HTMLSpanElement) {
   for (const cssClass of element.classList) {
     if (cssClass.startsWith('octicon-')) {
       const icon = await getOcticonSvg(cssClass.substr(8));
@@ -27,10 +27,10 @@ async function loadSVG (element: HTMLSpanElement) {
   }
 }
 
-async function initialize () {
+async function initialize() {
   const electronPath = await ipcRenderer.invoke('bootstrap');
 
-  function replaceText (selector: string, text: string) {
+  function replaceText(selector: string, text: string) {
     const element = document.querySelector<HTMLElement>(selector);
     if (element) {
       element.innerText = text;
@@ -49,5 +49,5 @@ async function initialize () {
 }
 
 contextBridge.exposeInMainWorld('electronDefaultApp', {
-  initialize
+  initialize,
 });

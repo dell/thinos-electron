@@ -8,7 +8,7 @@ let currentlyRunning: {
 }[] = [];
 
 // |options.types| can't be empty and must be an array
-function isValid (options: Electron.SourcesOptions) {
+function isValid(options: Electron.SourcesOptions) {
   const types = options ? options.types : undefined;
   return Array.isArray(types);
 }
@@ -26,7 +26,7 @@ export const getSourcesImpl = (event: Electron.IpcMainEvent | null, args: Electr
     captureWindow,
     captureScreen,
     thumbnailSize,
-    fetchWindowIcons
+    fetchWindowIcons,
   };
 
   for (const running of currentlyRunning) {
@@ -47,7 +47,7 @@ export const getSourcesImpl = (event: Electron.IpcMainEvent | null, args: Electr
         capturer = null;
       }
       // Remove from currentlyRunning once we resolve or reject
-      currentlyRunning = currentlyRunning.filter(running => running.options !== options);
+      currentlyRunning = currentlyRunning.filter((running) => running.options !== options);
     };
 
     capturer._onerror = (error: string) => {
@@ -72,7 +72,7 @@ export const getSourcesImpl = (event: Electron.IpcMainEvent | null, args: Electr
 
   currentlyRunning.push({
     options,
-    getSources
+    getSources,
   });
 
   return getSources;

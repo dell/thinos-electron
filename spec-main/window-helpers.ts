@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { BrowserWindow } from 'electron/main';
 import { emittedOnce } from './events-helpers';
 
-async function ensureWindowIsClosed (window: BrowserWindow | null) {
+async function ensureWindowIsClosed(window: BrowserWindow | null) {
   if (window && !window.isDestroyed()) {
     if (window.webContents && !window.webContents.isDestroyed()) {
       // If a window isn't destroyed already, and it has non-destroyed WebContents,
@@ -22,10 +22,7 @@ async function ensureWindowIsClosed (window: BrowserWindow | null) {
   }
 }
 
-export const closeWindow = async (
-  window: BrowserWindow | null = null,
-  { assertNotWindows } = { assertNotWindows: true }
-) => {
+export const closeWindow = async (window: BrowserWindow | null = null, { assertNotWindows } = { assertNotWindows: true }) => {
   await ensureWindowIsClosed(window);
 
   if (assertNotWindows) {
@@ -40,7 +37,7 @@ export const closeWindow = async (
   }
 };
 
-export async function closeAllWindows () {
+export async function closeAllWindows() {
   for (const w of BrowserWindow.getAllWindows()) {
     await closeWindow(w, { assertNotWindows: false });
   }

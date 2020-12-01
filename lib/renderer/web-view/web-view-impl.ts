@@ -21,26 +21,26 @@ const getNextId = function () {
 
 // Represents the internal state of the WebView node.
 export class WebViewImpl {
-  public beforeFirstNavigation = true
-  public elementAttached = false
-  public guestInstanceId?: number
-  public hasFocus = false
+  public beforeFirstNavigation = true;
+  public elementAttached = false;
+  public guestInstanceId?: number;
+  public hasFocus = false;
   public internalInstanceId?: number;
   public resizeObserver?: ResizeObserver;
   public userAgentOverride?: string;
-  public viewInstanceId: number
+  public viewInstanceId: number;
 
   // on* Event handlers.
-  public on: Record<string, any> = {}
-  public internalElement: HTMLIFrameElement
+  public on: Record<string, any> = {};
+  public internalElement: HTMLIFrameElement;
 
   // Replaced in web-view-attributes
   public attributes = new Map<string, WebViewAttribute>();
-  public setupWebViewAttributes (): void {}
+  public setupWebViewAttributes(): void {}
 
   public dispatchEventInMainWorld?: (eventName: string, props: any) => boolean;
 
-  constructor (public webviewNode: HTMLElement) {
+  constructor(public webviewNode: HTMLElement) {
     // Create internal iframe element.
     this.internalElement = this.createInternalElement();
     const shadowRoot = this.webviewNode.attachShadow({ mode: 'open' });
@@ -54,11 +54,11 @@ export class WebViewImpl {
       get: () => {
         return this.internalElement.contentWindow;
       },
-      enumerable: true
+      enumerable: true,
     });
   }
 
-  createInternalElement () {
+  createInternalElement() {
     const iframeElement = document.createElement('iframe');
     iframeElement.style.flex = '1 1 auto';
     iframeElement.style.width = '100%';
@@ -68,7 +68,7 @@ export class WebViewImpl {
   }
 
   // Resets some state upon reattaching <webview> element to the DOM.
-  reset () {
+  reset() {
     // If guestInstanceId is defined then the <webview> has navigated and has
     // already picked up a partition ID. Thus, we need to reset the initialization
     // state. However, it may be the case that beforeFirstNavigation is false BUT
@@ -98,7 +98,7 @@ export class WebViewImpl {
   // a BrowserPlugin property will update the corresponding BrowserPlugin
   // attribute, if necessary. See BrowserPlugin::UpdateDOMAttribute for more
   // details.
-  handleWebviewAttributeMutation (attributeName: string, oldValue: any, newValue: any) {
+  handleWebviewAttributeMutation(attributeName: string, oldValue: any, newValue: any) {
     if (!this.attributes.has(attributeName) || this.attributes.get(attributeName)!.ignoreMutation) {
       return;
     }
@@ -107,27 +107,27 @@ export class WebViewImpl {
     this.attributes.get(attributeName)!.handleMutation(oldValue, newValue);
   }
 
-  onElementResize () {
+  onElementResize() {
     const props = {
       newWidth: this.webviewNode.clientWidth,
-      newHeight: this.webviewNode.clientHeight
+      newHeight: this.webviewNode.clientHeight,
     };
     this.dispatchEvent('resize', props);
   }
 
-  createGuest () {
-    guestViewInternal.createGuest(this.buildParams()).then(guestInstanceId => {
+  createGuest() {
+    guestViewInternal.createGuest(this.buildParams()).then((guestInstanceId) => {
       this.attachGuestInstance(guestInstanceId);
     });
   }
 
-  dispatchEvent (eventName: string, props: Record<string, any> = {}) {
+  dispatchEvent(eventName: string, props: Record<string, any> = {}) {
     this.dispatchEventInMainWorld!(eventName, props);
   }
 
   // Adds an 'on<event>' property on the webview, which can be used to set/unset
   // an event handler.
-  setupEventProperty (eventName: string) {
+  setupEventProperty(eventName: string) {
     const propertyName = `on${eventName.toLowerCase()}`;
     return Object.defineProperty(this.webviewNode, propertyName, {
       get: () => {
@@ -142,15 +142,15 @@ export class WebViewImpl {
           return this.webviewNode.addEventListener(eventName, value);
         }
       },
-      enumerable: true
+      enumerable: true,
     });
   }
 
   // Updates state upon loadcommit.
-  onLoadCommit (props: Record<string, any>) {
+  onLoadCommit(props: Record<string, any>) {
     const oldValue = this.webviewNode.getAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_SRC);
     const newValue = props.url;
-    if (props.isMainFrame && (oldValue !== newValue)) {
+    if (props.isMainFrame && oldValue !== newValue) {
       // Touching the src attribute triggers a navigation. To avoid
       // triggering a page reload on every guest-initiated navigation,
       // we do not handle this mutation.
@@ -159,7 +159,7 @@ export class WebViewImpl {
   }
 
   // Emits focus/blur events.
-  onFocusChange () {
+  onFocusChange() {
     const hasFocus = document.activeElement === this.webviewNode;
     if (hasFocus !== this.hasFocus) {
       this.hasFocus = hasFocus;
@@ -167,14 +167,14 @@ export class WebViewImpl {
     }
   }
 
-  onAttach (storagePartitionId: number) {
+  onAttach(storagePartitionId: number) {
     return this.attributes.get(WEB_VIEW_CONSTANTS.ATTRIBUTE_PARTITION)!.setValue(storagePartitionId);
   }
 
-  buildParams () {
+  buildParams() {
     const params: Record<string, any> = {
       instanceId: this.viewInstanceId,
-      userAgentOverride: this.userAgentOverride
+      userAgentOverride: this.userAgentOverride,
     };
 
     for (const [attributeName, attribute] of this.attributes) {
@@ -184,7 +184,7 @@ export class WebViewImpl {
     return params;
   }
 
-  attachGuestInstance (guestInstanceId: number) {
+  attachGuestInstance(guestInstanceId: number) {
     if (!this.elementAttached) {
       // The element could be detached before we got response from browser.
       return;
@@ -192,12 +192,7 @@ export class WebViewImpl {
     this.internalInstanceId = getNextId();
     this.guestInstanceId = guestInstanceId;
 
-    guestViewInternal.attachGuest(
-      this.internalInstanceId,
-      this.guestInstanceId,
-      this.buildParams(),
-      this.internalElement.contentWindow!
-    );
+    guestViewInternal.attachGuest(this.internalInstanceId, this.guestInstanceId, this.buildParams(), this.internalElement.contentWindow!);
 
     // TODO(zcbenz): Should we deprecate the "resize" event? Wait, it is not
     // even documented.
@@ -266,7 +261,7 @@ export const setupMethods = (WebViewElement: typeof ElectronInternal.WebViewElem
   for (const property of properties) {
     Object.defineProperty(WebViewElement.prototype, property, {
       get: createPropertyGetter(property),
-      set: createPropertySetter(property)
+      set: createPropertySetter(property),
     });
   }
 };
@@ -276,5 +271,5 @@ export const webViewImplModule = {
   setupMethods,
   guestViewInternal,
   webFrame,
-  WebViewImpl
+  WebViewImpl,
 };

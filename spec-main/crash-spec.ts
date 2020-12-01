@@ -24,7 +24,7 @@ const runFixtureAndEnsureCleanExit = (args: string[]) => {
       }
       expect(signal).to.equal(null, 'exit signal should be null');
       expect(code).to.equal(0, 'should have exited with code 0');
-      children = children.filter(c => c !== child);
+      children = children.filter((c) => c !== child);
       resolve();
     });
   });

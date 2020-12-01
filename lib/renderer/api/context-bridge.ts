@@ -11,7 +11,7 @@ const contextBridge: Electron.ContextBridge = {
   exposeInMainWorld: (key: string, api: Record<string, any>) => {
     checkContextIsolationEnabled();
     return binding.exposeAPIInMainWorld(key, api);
-  }
+  },
 } as any;
 
 export default contextBridge;
@@ -27,7 +27,7 @@ export const internalContextBridge = {
   overrideGlobalPropertyFromIsolatedWorld: (keys: string[], getter: Function, setter?: Function) => {
     return binding._overrideGlobalPropertyFromIsolatedWorld(keys, getter, setter || null);
   },
-  isInMainWorld: () => binding._isCalledFromMainWorld() as boolean
+  isInMainWorld: () => binding._isCalledFromMainWorld() as boolean,
 };
 
 if (binding._isDebug) {

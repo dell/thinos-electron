@@ -1,8 +1,6 @@
 exports.property = 1127;
 
-function func () {
-
-}
+function func() {}
 func.property = 'foo';
 exports.func = func;
 

@@ -13,7 +13,7 @@ type DefaultAppOptions = {
   interactive: boolean;
   abi: boolean;
   modules: string[];
-}
+};
 
 const Module = require('module');
 
@@ -27,7 +27,7 @@ const option: DefaultAppOptions = {
   webdriver: false,
   interactive: false,
   abi: false,
-  modules: []
+  modules: [],
 };
 
 let nextArgIsRequire = false;
@@ -74,12 +74,12 @@ if (option.modules.length > 0) {
   Module._preloadModules(option.modules);
 }
 
-function loadApplicationPackage (packagePath: string) {
+function loadApplicationPackage(packagePath: string) {
   // Add a flag indicating app is started from default app.
   Object.defineProperty(process, 'defaultApp', {
     configurable: false,
     enumerable: true,
-    value: true
+    value: true,
   });
 
   try {
@@ -124,23 +124,23 @@ function loadApplicationPackage (packagePath: string) {
   }
 }
 
-function showErrorMessage (message: string) {
+function showErrorMessage(message: string) {
   app.focus();
   dialog.showErrorBox('Error launching app', message);
   process.exit(1);
 }
 
-async function loadApplicationByURL (appUrl: string) {
+async function loadApplicationByURL(appUrl: string) {
   const { loadURL } = await import('./default_app');
   loadURL(appUrl);
 }
 
-async function loadApplicationByFile (appPath: string) {
+async function loadApplicationByFile(appPath: string) {
   const { loadFile } = await import('./default_app');
   loadFile(appPath);
 }
 
-function startRepl () {
+function startRepl() {
   if (process.platform === 'win32') {
     console.error('Electron REPL not currently supported on Windows');
     process.exit(1);
@@ -163,12 +163,12 @@ function startRepl () {
 
   const { REPLServer } = require('repl');
   const repl = new REPLServer({
-    prompt: '> '
+    prompt: '> ',
   }).on('exit', () => {
     process.exit(0);
   });
 
-  function defineBuiltin (context: any, name: string, getter: Function) {
+  function defineBuiltin(context: any, name: string, getter: Function) {
     const setReal = (val: any) => {
       // Deleting the property before re-assigning it disables the
       // getter/setter mechanism.
@@ -185,14 +185,14 @@ function startRepl () {
           get: () => lib,
           set: setReal,
           configurable: true,
-          enumerable: false
+          enumerable: false,
         });
 
         return lib;
       },
       set: setReal,
       configurable: true,
-      enumerable: false
+      enumerable: false,
     });
   }
 
@@ -206,11 +206,42 @@ function startRepl () {
   // we only trigger custom tab-completion when no common words are
   // potentially matches.
   const commonWords = [
-    'async', 'await', 'break', 'case', 'catch', 'const', 'continue',
-    'debugger', 'default', 'delete', 'do', 'else', 'export', 'false',
-    'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof', 'let',
-    'new', 'null', 'return', 'switch', 'this', 'throw', 'true', 'try',
-    'typeof', 'var', 'void', 'while', 'with', 'yield'
+    'async',
+    'await',
+    'break',
+    'case',
+    'catch',
+    'const',
+    'continue',
+    'debugger',
+    'default',
+    'delete',
+    'do',
+    'else',
+    'export',
+    'false',
+    'finally',
+    'for',
+    'function',
+    'if',
+    'import',
+    'in',
+    'instanceof',
+    'let',
+    'new',
+    'null',
+    'return',
+    'switch',
+    'this',
+    'throw',
+    'true',
+    'try',
+    'typeof',
+    'var',
+    'void',
+    'while',
+    'with',
+    'yield',
   ];
 
   const electronBuiltins = [...Object.keys(electron), 'original-fs', 'electron'];

@@ -5,7 +5,7 @@ describe('View', () => {
   let w: BaseWindow;
   afterEach(async () => {
     await closeWindow(w as any);
-    w = null as unknown as BaseWindow;
+    w = (null as unknown) as BaseWindow;
   });
 
   it('can be used as content view', () => {

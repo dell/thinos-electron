@@ -47,16 +47,10 @@ export const syncMethods = new Set([
   'getZoomFactor',
   'getZoomLevel',
   'setZoomFactor',
-  'setZoomLevel'
+  'setZoomLevel',
 ]);
 
-export const properties = new Set([
-  'audioMuted',
-  'userAgent',
-  'zoomLevel',
-  'zoomFactor',
-  'frameRate'
-]);
+export const properties = new Set(['audioMuted', 'userAgent', 'zoomLevel', 'zoomFactor', 'frameRate']);
 
 export const asyncMethods = new Set([
   'loadURL',
@@ -69,5 +63,5 @@ export const asyncMethods = new Set([
   'setLayoutZoomLevelLimits',
   'setVisualZoomLevelLimits',
   'print',
-  'printToPDF'
+  'printToPDF',
 ]);

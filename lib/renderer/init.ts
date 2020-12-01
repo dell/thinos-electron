@@ -19,10 +19,10 @@ const Module = require('module');
 // variables to this wrapper please ensure to update that plugin as well.
 Module.wrapper = [
   '(function (exports, require, module, __filename, __dirname, process, global, Buffer) { ' +
-  // By running the code in a new closure, it would be possible for the module
-  // code to override "process" and "Buffer" with local variables.
-  'return function (exports, require, module, __filename, __dirname) { ',
-  '\n}.call(this, exports, require, module, __filename, __dirname); });'
+    // By running the code in a new closure, it would be possible for the module
+    // code to override "process" and "Buffer" with local variables.
+    'return function (exports, require, module, __filename, __dirname) { ',
+  '\n}.call(this, exports, require, module, __filename, __dirname); });',
 ];
 
 // We modified the original process.argv to let node.js load the
@@ -43,10 +43,10 @@ const { ipcRendererInternal } = require('@electron/internal/renderer/ipc-rendere
 const ipcRenderer = require('@electron/internal/renderer/api/ipc-renderer').default;
 
 v8Util.setHiddenValue(global, 'ipcNative', {
-  onMessage (internal: boolean, channel: string, ports: any[], args: any[], senderId: number) {
+  onMessage(internal: boolean, channel: string, ports: any[], args: any[], senderId: number) {
     const sender = internal ? ipcRendererInternal : ipcRenderer;
     sender.emit(channel, { sender, senderId, ports }, ...args);
-  }
+  },
 });
 
 // Use electron module after everything is ready.
@@ -101,7 +101,7 @@ if (process.isMainFrame) {
 
 if (nodeIntegration) {
   // Export node bindings to global.
-  const { makeRequireFunction } = __non_webpack_require__('internal/modules/cjs/helpers') // eslint-disable-line
+  const { makeRequireFunction } = __non_webpack_require__('internal/modules/cjs/helpers'); // eslint-disable-line
   global.module = new Module('electron/js2c/renderer_init');
   global.require = makeRequireFunction(global.module);
 

@@ -1,15 +1,12 @@
 import { EventEmitter } from 'events';
 import { app } from 'electron/main';
 
-const {
-  createPowerMonitor,
-  getSystemIdleState,
-  getSystemIdleTime,
-  isOnBatteryPower
-} = process._linkedBinding('electron_browser_power_monitor');
+const { createPowerMonitor, getSystemIdleState, getSystemIdleTime, isOnBatteryPower } = process._linkedBinding(
+  'electron_browser_power_monitor',
+);
 
 class PowerMonitor extends EventEmitter {
-  constructor () {
+  constructor() {
     super();
     // Don't start the event source until both a) the app is ready and b)
     // there's a listener registered for a powerMonitor event.
@@ -39,19 +36,19 @@ class PowerMonitor extends EventEmitter {
     });
   }
 
-  getSystemIdleState (idleThreshold: number) {
+  getSystemIdleState(idleThreshold: number) {
     return getSystemIdleState(idleThreshold);
   }
 
-  getSystemIdleTime () {
+  getSystemIdleTime() {
     return getSystemIdleTime();
   }
 
-  isOnBatteryPower () {
+  isOnBatteryPower() {
     return isOnBatteryPower();
   }
 
-  get onBatteryPower () {
+  get onBatteryPower() {
     return this.isOnBatteryPower();
   }
 }

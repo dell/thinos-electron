@@ -60,17 +60,20 @@ ipcMainUtils.handleSync(IPC_MESSAGES.BROWSER_CLIPBOARD_SYNC, function (event, me
 if (BUILDFLAG(ENABLE_DESKTOP_CAPTURER)) {
   const desktopCapturer = require('@electron/internal/browser/desktop-capturer');
 
-  ipcMainInternal.handle(IPC_MESSAGES.DESKTOP_CAPTURER_GET_SOURCES, async function (event, options: Electron.SourcesOptions, stack: string) {
-    logStack(event.sender, 'desktopCapturer.getSources()', stack);
-    const customEvent = emitCustomEvent(event.sender, 'desktop-capturer-get-sources');
+  ipcMainInternal.handle(
+    IPC_MESSAGES.DESKTOP_CAPTURER_GET_SOURCES,
+    async function (event, options: Electron.SourcesOptions, stack: string) {
+      logStack(event.sender, 'desktopCapturer.getSources()', stack);
+      const customEvent = emitCustomEvent(event.sender, 'desktop-capturer-get-sources');
 
-    if (customEvent.defaultPrevented) {
-      console.error('Blocked desktopCapturer.getSources()');
-      return [];
-    }
+      if (customEvent.defaultPrevented) {
+        console.error('Blocked desktopCapturer.getSources()');
+        return [];
+      }
 
-    return typeUtils.serialize(await desktopCapturer.getSourcesImpl(event, options));
-  });
+      return typeUtils.serialize(await desktopCapturer.getSourcesImpl(event, options));
+    },
+  );
 }
 
 const getPreloadScript = async function (preloadPath: string) {
@@ -88,15 +91,15 @@ ipcMainUtils.handleSync(IPC_MESSAGES.BROWSER_SANDBOX_LOAD, async function (event
   const preloadPaths = event.sender._getPreloadPaths();
 
   return {
-    preloadScripts: await Promise.all(preloadPaths.map(path => getPreloadScript(path))),
+    preloadScripts: await Promise.all(preloadPaths.map((path) => getPreloadScript(path))),
     process: {
       arch: process.arch,
       platform: process.platform,
       env: { ...process.env },
       version: process.version,
       versions: process.versions,
-      execPath: process.helperExecPath
-    }
+      execPath: process.helperExecPath,
+    },
   };
 });
 

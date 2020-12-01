@@ -1,9 +1,9 @@
-function foo () {
+function foo() {
   return 'hello';
 }
 foo.bar = 'baz';
 foo.nested = {
-  prop: 'yes'
+  prop: 'yes',
 };
 foo.method1 = function () {
   return 'world';
@@ -13,5 +13,5 @@ foo.method1.prop1 = function () {
 };
 
 module.exports = {
-  foo: foo
+  foo: foo,
 };

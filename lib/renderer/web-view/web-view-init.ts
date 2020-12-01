@@ -3,7 +3,7 @@ import { IPC_MESSAGES } from '@electron/internal/common/ipc-messages';
 
 const v8Util = process._linkedBinding('electron_common_v8_util');
 
-function handleFocusBlur (guestInstanceId: number) {
+function handleFocusBlur(guestInstanceId: number) {
   // Note that while Chromium content APIs have observer for focus/blur, they
   // unfortunately do not work for webview.
 
@@ -16,9 +16,7 @@ function handleFocusBlur (guestInstanceId: number) {
   });
 }
 
-export function webViewInit (
-  contextIsolation: boolean, webviewTag: ElectronInternal.WebViewElement, guestInstanceId: number
-) {
+export function webViewInit(contextIsolation: boolean, webviewTag: ElectronInternal.WebViewElement, guestInstanceId: number) {
   // Don't allow recursive `<webview>`.
   if (webviewTag && guestInstanceId == null) {
     const { webViewImplModule } = require('@electron/internal/renderer/web-view/web-view-impl');

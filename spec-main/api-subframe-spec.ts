@@ -19,13 +19,13 @@ describe('renderer nodeIntegrationInSubFrames', () => {
           show: false,
           width: 400,
           height: 400,
-          webPreferences
+          webPreferences,
         });
       });
 
       afterEach(async () => {
         await closeWindow(w);
-        w = null as unknown as BrowserWindow;
+        w = (null as unknown) as BrowserWindow;
       });
 
       it('should load preload scripts in top level iframes', async () => {
@@ -83,8 +83,8 @@ describe('renderer nodeIntegrationInSubFrames', () => {
         const detailsPromise = emittedNTimes(ipcMain, 'preload-ran', 2);
         w.loadFile(path.resolve(__dirname, `fixtures/sub-frames/frame-container${fixtureSuffix}.html`));
         const details = await detailsPromise;
-        const senders = details.map(event => event[0].sender);
-        const isolatedGlobals = await Promise.all(senders.map(sender => sender.executeJavaScript('window.isolatedGlobal')));
+        const senders = details.map((event) => event[0].sender);
+        const isolatedGlobals = await Promise.all(senders.map((sender) => sender.executeJavaScript('window.isolatedGlobal')));
         for (const result of isolatedGlobals) {
           if (webPreferences.contextIsolation) {
             expect(result).to.be.undefined();
@@ -96,14 +96,13 @@ describe('renderer nodeIntegrationInSubFrames', () => {
     });
   };
 
-  const generateConfigs = (webPreferences: any, ...permutations: {name: string, webPreferences: any}[]) => {
+  const generateConfigs = (webPreferences: any, ...permutations: { name: string; webPreferences: any }[]) => {
     const configs = [{ webPreferences, names: [] as string[] }];
     for (let i = 0; i < permutations.length; i++) {
       const length = configs.length;
       for (let j = 0; j < length; j++) {
         const newConfig = Object.assign({}, configs[j]);
-        newConfig.webPreferences = Object.assign({},
-          newConfig.webPreferences, permutations[i].webPreferences);
+        newConfig.webPreferences = Object.assign({}, newConfig.webPreferences, permutations[i].webPreferences);
         newConfig.names = newConfig.names.slice(0);
         newConfig.names.push(permutations[i].name);
         configs.push(newConfig);
@@ -118,28 +117,28 @@ describe('renderer nodeIntegrationInSubFrames', () => {
       }
       delete config.names;
 
-      return config as {title: string, webPreferences: any};
+      return config as { title: string; webPreferences: any };
     });
   };
 
   generateConfigs(
     {
       preload: path.resolve(__dirname, 'fixtures/sub-frames/preload.js'),
-      nodeIntegrationInSubFrames: true
+      nodeIntegrationInSubFrames: true,
     },
     {
       name: 'sandbox',
-      webPreferences: { sandbox: true }
+      webPreferences: { sandbox: true },
     },
     {
       name: 'context isolation',
-      webPreferences: { contextIsolation: true }
+      webPreferences: { contextIsolation: true },
     },
     {
       name: 'webview',
-      webPreferences: { webviewTag: true, preload: false }
-    }
-  ).forEach(config => {
+      webPreferences: { webviewTag: true, preload: false },
+    },
+  ).forEach((config) => {
     generateTests(config.title, config.webPreferences);
   });
 
@@ -155,14 +154,14 @@ describe('renderer nodeIntegrationInSubFrames', () => {
         webPreferences: {
           preload: path.resolve(__dirname, 'fixtures/sub-frames/webview-iframe-preload.js'),
           nodeIntegrationInSubFrames: true,
-          webviewTag: true
-        }
+          webviewTag: true,
+        },
       });
     });
 
     afterEach(async () => {
       await closeWindow(w);
-      w = null as unknown as BrowserWindow;
+      w = (null as unknown) as BrowserWindow;
     });
 
     it('should not load preload scripts', async () => {
@@ -195,14 +194,14 @@ ifdescribe(process.platform !== 'linux')('cross-site frame sandboxing', () => {
 
   after(() => {
     server.close();
-    server = null as unknown as http.Server;
+    server = (null as unknown) as http.Server;
   });
 
   let w: BrowserWindow;
 
   afterEach(async () => {
     await closeWindow(w);
-    w = null as unknown as BrowserWindow;
+    w = (null as unknown) as BrowserWindow;
   });
 
   const generateSpecs = (description: string, webPreferences: any) => {
@@ -210,17 +209,17 @@ ifdescribe(process.platform !== 'linux')('cross-site frame sandboxing', () => {
       it('iframe process is sandboxed if possible', async () => {
         w = new BrowserWindow({
           show: false,
-          webPreferences
+          webPreferences,
         });
 
         await w.loadURL(serverUrl);
 
         const pidMain = w.webContents.getOSProcessId();
-        const pidFrame = w.webContents.mainFrame.frames.find(f => f.name === 'frame')!.osProcessId;
+        const pidFrame = w.webContents.mainFrame.frames.find((f) => f.name === 'frame')!.osProcessId;
 
         const metrics = app.getAppMetrics();
         const isProcessSandboxed = function (pid: number) {
-          const entry = metrics.filter(metric => metric.pid === pid)[0];
+          const entry = metrics.filter((metric) => metric.pid === pid)[0];
           return entry && entry.sandboxed;
         };
 
@@ -235,21 +234,21 @@ ifdescribe(process.platform !== 'linux')('cross-site frame sandboxing', () => {
 
   generateSpecs('nodeIntegrationInSubFrames = false, sandbox = false', {
     nodeIntegrationInSubFrames: false,
-    sandbox: false
+    sandbox: false,
   });
 
   generateSpecs('nodeIntegrationInSubFrames = false, sandbox = true', {
     nodeIntegrationInSubFrames: false,
-    sandbox: true
+    sandbox: true,
   });
 
   generateSpecs('nodeIntegrationInSubFrames = true, sandbox = false', {
     nodeIntegrationInSubFrames: true,
-    sandbox: false
+    sandbox: false,
   });
 
   generateSpecs('nodeIntegrationInSubFrames = true, sandbox = true', {
     nodeIntegrationInSubFrames: true,
-    sandbox: true
+    sandbox: true,
   });
 });

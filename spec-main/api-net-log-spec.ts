@@ -20,7 +20,7 @@ describe('netLog module', () => {
   let serverUrl: string;
   const connections: Set<Socket> = new Set();
 
-  before(done => {
+  before((done) => {
     server = http.createServer();
     server.listen(0, '127.0.0.1', () => {
       serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -37,7 +37,7 @@ describe('netLog module', () => {
     });
   });
 
-  after(done => {
+  after((done) => {
     for (const connection of connections) {
       connection.destroy();
     }
@@ -118,46 +118,48 @@ describe('netLog module', () => {
     await testNetLog().stopLogging();
     expect(fs.existsSync(dumpFileDynamic)).to.be.true('dump file exists');
     const dump = fs.readFileSync(dumpFileDynamic, 'utf8');
-    expect(JSON.parse(dump).events.some((x: any) => x.params && x.params.bytes && Buffer.from(x.params.bytes, 'base64').includes(unique))).to.be.true('uuid present in dump');
+    expect(
+      JSON.parse(dump).events.some((x: any) => x.params && x.params.bytes && Buffer.from(x.params.bytes, 'base64').includes(unique)),
+    ).to.be.true('uuid present in dump');
   });
 
   ifit(process.platform !== 'linux')('should begin and end logging automatically when --log-net-log is passed', async () => {
-    const appProcess = ChildProcess.spawn(process.execPath,
-      [appPath], {
-        env: {
-          TEST_REQUEST_URL: serverUrl,
-          TEST_DUMP_FILE: dumpFile
-        }
-      });
+    const appProcess = ChildProcess.spawn(process.execPath, [appPath], {
+      env: {
+        TEST_REQUEST_URL: serverUrl,
+        TEST_DUMP_FILE: dumpFile,
+      },
+    });
 
     await emittedOnce(appProcess, 'exit');
     expect(fs.existsSync(dumpFile)).to.be.true('dump file exists');
   });
 
-  ifit(process.platform !== 'linux')('should begin and end logging automtically when --log-net-log is passed, and behave correctly when .startLogging() and .stopLogging() is called', async () => {
-    const appProcess = ChildProcess.spawn(process.execPath,
-      [appPath], {
+  ifit(process.platform !== 'linux')(
+    'should begin and end logging automtically when --log-net-log is passed, and behave correctly when .startLogging() and .stopLogging() is called',
+    async () => {
+      const appProcess = ChildProcess.spawn(process.execPath, [appPath], {
         env: {
           TEST_REQUEST_URL: serverUrl,
           TEST_DUMP_FILE: dumpFile,
           TEST_DUMP_FILE_DYNAMIC: dumpFileDynamic,
-          TEST_MANUAL_STOP: 'true'
-        }
+          TEST_MANUAL_STOP: 'true',
+        },
       });
 
-    await emittedOnce(appProcess, 'exit');
-    expect(fs.existsSync(dumpFile)).to.be.true('dump file exists');
-    expect(fs.existsSync(dumpFileDynamic)).to.be.true('dynamic dump file exists');
-  });
+      await emittedOnce(appProcess, 'exit');
+      expect(fs.existsSync(dumpFile)).to.be.true('dump file exists');
+      expect(fs.existsSync(dumpFileDynamic)).to.be.true('dynamic dump file exists');
+    },
+  );
 
   ifit(process.platform !== 'linux')('should end logging automatically when only .startLogging() is called', async () => {
-    const appProcess = ChildProcess.spawn(process.execPath,
-      [appPath], {
-        env: {
-          TEST_REQUEST_URL: serverUrl,
-          TEST_DUMP_FILE_DYNAMIC: dumpFileDynamic
-        }
-      });
+    const appProcess = ChildProcess.spawn(process.execPath, [appPath], {
+      env: {
+        TEST_REQUEST_URL: serverUrl,
+        TEST_DUMP_FILE_DYNAMIC: dumpFileDynamic,
+      },
+    });
 
     await emittedOnce(appProcess, 'exit');
     expect(fs.existsSync(dumpFileDynamic)).to.be.true('dynamic dump file exists');

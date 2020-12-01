@@ -15,7 +15,7 @@ BrowserWindow.prototype._init = function (this: BWT) {
   this.setBounds = (bounds, ...opts) => {
     bounds = {
       ...this.getBounds(),
-      ...bounds
+      ...bounds,
     };
     nativeSetBounds.call(this, bounds, ...opts);
   };
@@ -65,9 +65,9 @@ BrowserWindow.prototype._init = function (this: BWT) {
   Object.defineProperty(this, 'devToolsWebContents', {
     enumerable: true,
     configurable: false,
-    get () {
+    get() {
       return this.webContents.devToolsWebContents;
-    }
+    },
   });
 };
 
@@ -77,11 +77,11 @@ const isBrowserWindow = (win: any) => {
 
 BrowserWindow.fromId = (id: number) => {
   const win = BaseWindow.fromId(id);
-  return isBrowserWindow(win) ? win as any as BWT : null;
+  return isBrowserWindow(win) ? ((win as any) as BWT) : null;
 };
 
 BrowserWindow.getAllWindows = () => {
-  return BaseWindow.getAllWindows().filter(isBrowserWindow) as any[] as BWT[];
+  return (BaseWindow.getAllWindows().filter(isBrowserWindow) as any[]) as BWT[];
 };
 
 BrowserWindow.getFocusedWindow = () => {

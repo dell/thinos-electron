@@ -52,43 +52,37 @@ describe('webFrameMain module', () => {
     });
 
     it('can traverse all frames in root', () => {
-      const urls = webFrame.framesInSubtree.map(frame => frame.url);
-      expect(urls).to.deep.equal([
-        fileUrl('frame-with-frame-container.html'),
-        fileUrl('frame-with-frame.html'),
-        fileUrl('frame.html')
-      ]);
+      const urls = webFrame.framesInSubtree.map((frame) => frame.url);
+      expect(urls).to.deep.equal([fileUrl('frame-with-frame-container.html'), fileUrl('frame-with-frame.html'), fileUrl('frame.html')]);
     });
 
     it('can traverse all frames in subtree', () => {
-      const urls = webFrame.frames[0].framesInSubtree.map(frame => frame.url);
-      expect(urls).to.deep.equal([
-        fileUrl('frame-with-frame.html'),
-        fileUrl('frame.html')
-      ]);
+      const urls = webFrame.frames[0].framesInSubtree.map((frame) => frame.url);
+      expect(urls).to.deep.equal([fileUrl('frame-with-frame.html'), fileUrl('frame.html')]);
     });
 
     describe('cross-origin', () => {
-      type Server = { server: http.Server, url: string }
+      type Server = { server: http.Server; url: string };
 
       /** Creates an HTTP server whose handler embeds the given iframe src. */
-      const createServer = () => new Promise<Server>(resolve => {
-        const server = http.createServer((req, res) => {
-          const params = new URLSearchParams(url.parse(req.url || '').search || '');
-          if (params.has('frameSrc')) {
-            res.end(`<iframe src="${params.get('frameSrc')}"></iframe>`);
-          } else {
-            res.end('');
-          }
+      const createServer = () =>
+        new Promise<Server>((resolve) => {
+          const server = http.createServer((req, res) => {
+            const params = new URLSearchParams(url.parse(req.url || '').search || '');
+            if (params.has('frameSrc')) {
+              res.end(`<iframe src="${params.get('frameSrc')}"></iframe>`);
+            } else {
+              res.end('');
+            }
+          });
+          server.listen(0, '127.0.0.1', () => {
+            const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
+            resolve({ server, url });
+          });
         });
-        server.listen(0, '127.0.0.1', () => {
-          const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`;
-          resolve({ server, url });
-        });
-      });
 
-      let serverA = null as unknown as Server;
-      let serverB = null as unknown as Server;
+      let serverA = (null as unknown) as Server;
+      let serverB = (null as unknown) as Server;
 
       before(async () => {
         serverA = await createServer();
@@ -170,7 +164,7 @@ describe('webFrameMain module', () => {
       webFrame = w.webContents.mainFrame;
       w.destroy();
       // Wait for WebContents, and thus RenderFrameHost, to be destroyed.
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
     it('throws upon accessing properties', () => {

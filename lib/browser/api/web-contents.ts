@@ -13,23 +13,23 @@ import { IPC_MESSAGES } from '@electron/internal/common/ipc-messages';
 // session is not used here, the purpose is to make sure session is initalized
 // before the webContents module.
 // eslint-disable-next-line
-session
+session;
 
 let nextId = 0;
 const getNextId = function () {
   return ++nextId;
 };
 
-type PostData = LoadURLOptions['postData']
+type PostData = LoadURLOptions['postData'];
 
 /* eslint-disable camelcase */
 type MediaSize = {
-  name: string,
-  custom_display_name: string,
-  height_microns: number,
-  width_microns: number,
-  is_default?: 'true',
-}
+  name: string;
+  custom_display_name: string;
+  height_microns: number;
+  width_microns: number;
+  is_default?: 'true';
+};
 /* eslint-enable camelcase */
 
 // Stock page sizes
@@ -38,39 +38,39 @@ const PDFPageSizes: Record<string, MediaSize> = {
     custom_display_name: 'A5',
     height_microns: 210000,
     name: 'ISO_A5',
-    width_microns: 148000
+    width_microns: 148000,
   },
   A4: {
     custom_display_name: 'A4',
     height_microns: 297000,
     name: 'ISO_A4',
     is_default: 'true',
-    width_microns: 210000
+    width_microns: 210000,
   },
   A3: {
     custom_display_name: 'A3',
     height_microns: 420000,
     name: 'ISO_A3',
-    width_microns: 297000
+    width_microns: 297000,
   },
   Legal: {
     custom_display_name: 'Legal',
     height_microns: 355600,
     name: 'NA_LEGAL',
-    width_microns: 215900
+    width_microns: 215900,
   },
   Letter: {
     custom_display_name: 'Letter',
     height_microns: 279400,
     name: 'NA_LETTER',
-    width_microns: 215900
+    width_microns: 215900,
   },
   Tabloid: {
     height_microns: 431800,
     name: 'NA_LEDGER',
     width_microns: 279400,
-    custom_display_name: 'Tabloid'
-  }
+    custom_display_name: 'Tabloid',
+  },
 };
 
 // The minimum micron size Chromium accepts is that where:
@@ -83,13 +83,13 @@ const PDFPageSizes: Record<string, MediaSize> = {
 // Practically, this means microns need to be > 352 microns.
 // We therefore need to verify this or it will silently fail.
 const isValidCustomPageSize = (width: number, height: number) => {
-  return [width, height].every(x => x > 352);
+  return [width, height].every((x) => x > 352);
 };
 
 // Default printing setting
 const defaultPrintingSetting = {
   // Customizable.
-  pageRange: [] as {from: number, to: number}[],
+  pageRange: [] as { from: number; to: number }[],
   mediaSize: {} as MediaSize,
   landscape: false,
   headerFooterEnabled: false,
@@ -118,7 +118,7 @@ const defaultPrintingSetting = {
   collate: true,
   printerType: 2,
   title: undefined as string | undefined,
-  url: undefined as string | undefined
+  url: undefined as string | undefined,
 };
 
 // JavaScript implementations of WebContents.
@@ -139,7 +139,7 @@ WebContents.prototype.send = function (channel, ...args) {
 
 WebContents.prototype.postMessage = function (...args) {
   if (Array.isArray(args[2])) {
-    args[2] = args[2].map(o => o instanceof MessagePortMain ? o._internalPort : o);
+    args[2] = args[2].map((o) => (o instanceof MessagePortMain ? o._internalPort : o));
   }
   this._postMessage(...args);
 };
@@ -190,12 +190,12 @@ WebContents.prototype._sendToFrameInternal = function (frameId, channel, ...args
 };
 
 // Following methods are mapped to webFrame.
-const webFrameMethods = [
-  'insertCSS',
-  'insertText',
-  'removeInsertedCSS',
-  'setVisualZoomLevelLimits'
-] as ('insertCSS' | 'insertText' | 'removeInsertedCSS' | 'setVisualZoomLevelLimits')[];
+const webFrameMethods = ['insertCSS', 'insertText', 'removeInsertedCSS', 'setVisualZoomLevelLimits'] as (
+  | 'insertCSS'
+  | 'insertText'
+  | 'removeInsertedCSS'
+  | 'setVisualZoomLevelLimits'
+)[];
 
 for (const method of webFrameMethods) {
   WebContents.prototype[method] = function (...args: any[]): Promise<any> {
@@ -217,11 +217,26 @@ const waitTillCanExecuteJavaScript = async (webContents: Electron.WebContents) =
 // WebContents has been loaded.
 WebContents.prototype.executeJavaScript = async function (code, hasUserGesture) {
   await waitTillCanExecuteJavaScript(this);
-  return ipcMainUtils.invokeInWebContents(this, false, IPC_MESSAGES.RENDERER_WEB_FRAME_METHOD, 'executeJavaScript', String(code), !!hasUserGesture);
+  return ipcMainUtils.invokeInWebContents(
+    this,
+    false,
+    IPC_MESSAGES.RENDERER_WEB_FRAME_METHOD,
+    'executeJavaScript',
+    String(code),
+    !!hasUserGesture,
+  );
 };
 WebContents.prototype.executeJavaScriptInIsolatedWorld = async function (worldId, code, hasUserGesture) {
   await waitTillCanExecuteJavaScript(this);
-  return ipcMainUtils.invokeInWebContents(this, false, IPC_MESSAGES.RENDERER_WEB_FRAME_METHOD, 'executeJavaScriptInIsolatedWorld', worldId, code, !!hasUserGesture);
+  return ipcMainUtils.invokeInWebContents(
+    this,
+    false,
+    IPC_MESSAGES.RENDERER_WEB_FRAME_METHOD,
+    'executeJavaScriptInIsolatedWorld',
+    worldId,
+    code,
+    !!hasUserGesture,
+  );
 };
 
 // Translate the options of printToPDF.
@@ -230,7 +245,7 @@ let pendingPromise: Promise<any> | undefined;
 WebContents.prototype.printToPDF = async function (options) {
   const printSettings = {
     ...defaultPrintingSetting,
-    requestID: getNextId()
+    requestID: getNextId(),
   };
 
   if (options.landscape !== undefined) {
@@ -276,7 +291,7 @@ WebContents.prototype.printToPDF = async function (options) {
   if (options.pageRanges !== undefined) {
     const pageRanges = options.pageRanges;
     if (!Object.prototype.hasOwnProperty.call(pageRanges, 'from') || !Object.prototype.hasOwnProperty.call(pageRanges, 'to')) {
-      const error = new Error('pageRanges must be an Object with \'from\' and \'to\' properties');
+      const error = new Error("pageRanges must be an Object with 'from' and 'to' properties");
       return Promise.reject(error);
     }
 
@@ -291,10 +306,12 @@ WebContents.prototype.printToPDF = async function (options) {
     }
 
     // Chromium uses 1-based page ranges, so increment each by 1.
-    printSettings.pageRange = [{
-      from: pageRanges.from + 1,
-      to: pageRanges.to + 1
-    }];
+    printSettings.pageRange = [
+      {
+        from: pageRanges.from + 1,
+        to: pageRanges.to + 1,
+      },
+    ];
   }
 
   if (options.headerFooter !== undefined) {
@@ -343,7 +360,7 @@ WebContents.prototype.printToPDF = async function (options) {
         name: 'CUSTOM',
         custom_display_name: 'Custom',
         height_microns: height,
-        width_microns: width
+        width_microns: width,
       };
     } else if (Object.prototype.hasOwnProperty.call(PDFPageSizes, pageSize)) {
       printSettings.mediaSize = PDFPageSizes[pageSize];
@@ -395,7 +412,7 @@ WebContents.prototype.print = function (options = {}, callback) {
           name: 'CUSTOM',
           custom_display_name: 'Custom',
           height_microns: height,
-          width_microns: width
+          width_microns: width,
         };
       } else if (PDFPageSizes[pageSize]) {
         (options as any).mediaSize = PDFPageSizes[pageSize];
@@ -433,21 +450,32 @@ WebContents.prototype.loadFile = function (filePath, options = {}) {
   }
   const { query, search, hash } = options;
 
-  return this.loadURL(url.format({
-    protocol: 'file',
-    slashes: true,
-    pathname: path.resolve(app.getAppPath(), filePath),
-    query,
-    search,
-    hash
-  }));
+  return this.loadURL(
+    url.format({
+      protocol: 'file',
+      slashes: true,
+      pathname: path.resolve(app.getAppPath(), filePath),
+      query,
+      search,
+      hash,
+    }),
+  );
 };
 
-WebContents.prototype.setWindowOpenHandler = function (handler: (details: Electron.HandlerDetails) => ({action: 'allow'} | {action: 'deny', overrideBrowserWindowOptions?: BrowserWindowConstructorOptions})) {
+WebContents.prototype.setWindowOpenHandler = function (
+  handler: (
+    details: Electron.HandlerDetails,
+  ) => { action: 'allow' } | { action: 'deny'; overrideBrowserWindowOptions?: BrowserWindowConstructorOptions },
+) {
   this._windowOpenHandler = handler;
 };
 
-WebContents.prototype._callWindowOpenHandler = function (event: any, url: string, frameName: string, rawFeatures: string): BrowserWindowConstructorOptions | null {
+WebContents.prototype._callWindowOpenHandler = function (
+  event: any,
+  url: string,
+  frameName: string,
+  rawFeatures: string,
+): BrowserWindowConstructorOptions | null {
   if (!this._windowOpenHandler) {
     return null;
   }
@@ -469,10 +497,14 @@ WebContents.prototype._callWindowOpenHandler = function (event: any, url: string
     event.preventDefault();
     return null;
   } else if (response.action === 'allow') {
-    if (typeof response.overrideBrowserWindowOptions === 'object' && response.overrideBrowserWindowOptions !== null) { return response.overrideBrowserWindowOptions; } else { return {}; }
+    if (typeof response.overrideBrowserWindowOptions === 'object' && response.overrideBrowserWindowOptions !== null) {
+      return response.overrideBrowserWindowOptions;
+    } else {
+      return {};
+    }
   } else {
     event.preventDefault();
-    console.error('The window open handler response must be an object with an \'action\' property of \'allow\' or \'deny\'.');
+    console.error("The window open handler response must be an object with an 'action' property of 'allow' or 'deny'.");
     return null;
   }
 };
@@ -489,14 +521,14 @@ const addReplyInternalToEvent = (event: any) => {
     enumerable: false,
     value: (...args: any[]) => {
       event.sender._sendToFrameInternal(event.frameId, ...args);
-    }
+    },
   });
 };
 
 const addReturnValueToEvent = (event: any) => {
   Object.defineProperty(event, 'returnValue', {
     set: (value) => event.sendReply(value),
-    get: () => {}
+    get: () => {},
   });
 };
 
@@ -573,21 +605,24 @@ WebContents.prototype._init = function () {
   });
 
   this.on('-ipc-ports' as any, function (event: any, internal: boolean, channel: string, message: any, ports: any[]) {
-    event.ports = ports.map(p => new MessagePortMain(p));
+    event.ports = ports.map((p) => new MessagePortMain(p));
     ipcMain.emit(channel, event, message);
   });
 
   // Handle context menu action request from pepper plugin.
-  this.on('pepper-context-menu' as any, function (event: any, params: {x: number, y: number, menu: Array<(MenuItemConstructorOptions) | (MenuItem)>}, callback: () => void) {
-    // Access Menu via electron.Menu to prevent circular require.
-    const menu = require('electron').Menu.buildFromTemplate(params.menu);
-    menu.popup({
-      window: event.sender.getOwnerBrowserWindow(),
-      x: params.x,
-      y: params.y,
-      callback
-    });
-  });
+  this.on(
+    'pepper-context-menu' as any,
+    function (event: any, params: { x: number; y: number; menu: Array<MenuItemConstructorOptions | MenuItem> }, callback: () => void) {
+      // Access Menu via electron.Menu to prevent circular require.
+      const menu = require('electron').Menu.buildFromTemplate(params.menu);
+      menu.popup({
+        window: event.sender.getOwnerBrowserWindow(),
+        x: params.x,
+        y: params.y,
+        callback,
+      });
+    },
+  );
 
   this.on('crashed', (event, ...args) => {
     app.emit('renderer-process-crashed', event, this, ...args);
@@ -598,7 +633,9 @@ WebContents.prototype._init = function () {
 
     // Log out a hint to help users better debug renderer crashes.
     if (loggingEnabled()) {
-      console.info(`Renderer process ${details.reason} - see https://www.electronjs.org/docs/tutorial/application-debugging for potential debugging information.`);
+      console.info(
+        `Renderer process ${details.reason} - see https://www.electronjs.org/docs/tutorial/application-debugging for potential debugging information.`,
+      );
     }
   });
 
@@ -609,73 +646,91 @@ WebContents.prototype._init = function () {
 
   if (this.getType() !== 'remote') {
     // Make new windows requested by links behave like "window.open".
-    this.on('-new-window' as any, (event: any, url: string, frameName: string, disposition: string,
-      rawFeatures: string, referrer: any, postData: PostData) => {
-      openGuestWindow({
-        event,
-        embedder: event.sender,
-        disposition,
-        referrer,
-        postData,
-        overrideBrowserWindowOptions: {},
-        windowOpenArgs: {
-          url,
-          frameName,
-          features: rawFeatures
-        }
-      });
-    });
+    this.on(
+      '-new-window' as any,
+      (event: any, url: string, frameName: string, disposition: string, rawFeatures: string, referrer: any, postData: PostData) => {
+        openGuestWindow({
+          event,
+          embedder: event.sender,
+          disposition,
+          referrer,
+          postData,
+          overrideBrowserWindowOptions: {},
+          windowOpenArgs: {
+            url,
+            frameName,
+            features: rawFeatures,
+          },
+        });
+      },
+    );
 
     let windowOpenOverriddenOptions: BrowserWindowConstructorOptions | null = null;
     this.on('-will-add-new-contents' as any, (event: any, url: string, frameName: string, rawFeatures: string) => {
       windowOpenOverriddenOptions = this._callWindowOpenHandler(event, url, frameName, rawFeatures);
       if (!event.defaultPrevented) {
-        const secureOverrideWebPreferences = windowOpenOverriddenOptions ? {
-          // Allow setting of backgroundColor as a webPreference even though
-          // it's technically a BrowserWindowConstructorOptions option because
-          // we need to access it in the renderer at init time.
-          backgroundColor: windowOpenOverriddenOptions.backgroundColor,
-          ...windowOpenOverriddenOptions.webPreferences
-        } : undefined;
-        this._setNextChildWebPreferences(
-          makeWebPreferences({ embedder: event.sender, secureOverrideWebPreferences })
-        );
+        const secureOverrideWebPreferences = windowOpenOverriddenOptions
+          ? {
+              // Allow setting of backgroundColor as a webPreference even though
+              // it's technically a BrowserWindowConstructorOptions option because
+              // we need to access it in the renderer at init time.
+              backgroundColor: windowOpenOverriddenOptions.backgroundColor,
+              ...windowOpenOverriddenOptions.webPreferences,
+            }
+          : undefined;
+        this._setNextChildWebPreferences(makeWebPreferences({ embedder: event.sender, secureOverrideWebPreferences }));
       }
     });
 
     // Create a new browser window for the native implementation of
     // "window.open", used in sandbox and nativeWindowOpen mode.
-    this.on('-add-new-contents' as any, (event: any, webContents: Electron.WebContents, disposition: string,
-      _userGesture: boolean, _left: number, _top: number, _width: number, _height: number, url: string, frameName: string,
-      referrer: Electron.Referrer, rawFeatures: string, postData: PostData) => {
-      const overriddenOptions = windowOpenOverriddenOptions || undefined;
-      windowOpenOverriddenOptions = null;
+    this.on(
+      '-add-new-contents' as any,
+      (
+        event: any,
+        webContents: Electron.WebContents,
+        disposition: string,
+        _userGesture: boolean,
+        _left: number,
+        _top: number,
+        _width: number,
+        _height: number,
+        url: string,
+        frameName: string,
+        referrer: Electron.Referrer,
+        rawFeatures: string,
+        postData: PostData,
+      ) => {
+        const overriddenOptions = windowOpenOverriddenOptions || undefined;
+        windowOpenOverriddenOptions = null;
 
-      if ((disposition !== 'foreground-tab' && disposition !== 'new-window' &&
-           disposition !== 'background-tab')) {
-        event.preventDefault();
-        return;
-      }
-
-      openGuestWindow({
-        event,
-        embedder: event.sender,
-        guest: webContents,
-        overrideBrowserWindowOptions: overriddenOptions,
-        disposition,
-        referrer,
-        postData,
-        windowOpenArgs: {
-          url,
-          frameName,
-          features: rawFeatures
+        if (disposition !== 'foreground-tab' && disposition !== 'new-window' && disposition !== 'background-tab') {
+          event.preventDefault();
+          return;
         }
-      });
-    });
+
+        openGuestWindow({
+          event,
+          embedder: event.sender,
+          guest: webContents,
+          overrideBrowserWindowOptions: overriddenOptions,
+          disposition,
+          referrer,
+          postData,
+          windowOpenArgs: {
+            url,
+            frameName,
+            features: rawFeatures,
+          },
+        });
+      },
+    );
 
     const prefs = this.getWebPreferences() || {};
     if (prefs.webviewTag && prefs.contextIsolation) {
-      deprecate.log('Security Warning: A WebContents was just created with both webviewTag and contextIsolation enabled.  This combination is fundamentally less secure and effectively bypasses the protections of contextIsolation.  We strongly recommend you move away from webviews to OOPIF or BrowserView in order for your app to be more secure');
+      deprecate.log(
+        'Security Warning: A WebContents was just created with both webviewTag and contextIsolation enabled.  This combination is fundamentally less secure and effectively bypasses the protections of contextIsolation.  We strongly recommend you move away from webviews to OOPIF or BrowserView in order for your app to be more secure',
+      );
     }
   }
 
@@ -699,45 +754,45 @@ WebContents.prototype._init = function () {
 
   Object.defineProperty(this, 'audioMuted', {
     get: () => this.isAudioMuted(),
-    set: (muted) => this.setAudioMuted(muted)
+    set: (muted) => this.setAudioMuted(muted),
   });
 
   Object.defineProperty(this, 'userAgent', {
     get: () => this.getUserAgent(),
-    set: (agent) => this.setUserAgent(agent)
+    set: (agent) => this.setUserAgent(agent),
   });
 
   Object.defineProperty(this, 'zoomLevel', {
     get: () => this.getZoomLevel(),
-    set: (level) => this.setZoomLevel(level)
+    set: (level) => this.setZoomLevel(level),
   });
 
   Object.defineProperty(this, 'zoomFactor', {
     get: () => this.getZoomFactor(),
-    set: (factor) => this.setZoomFactor(factor)
+    set: (factor) => this.setZoomFactor(factor),
   });
 
   Object.defineProperty(this, 'frameRate', {
     get: () => this.getFrameRate(),
-    set: (rate) => this.setFrameRate(rate)
+    set: (rate) => this.setFrameRate(rate),
   });
 
   Object.defineProperty(this, 'backgroundThrottling', {
     get: () => this.getBackgroundThrottling(),
-    set: (allowed) => this.setBackgroundThrottling(allowed)
+    set: (allowed) => this.setBackgroundThrottling(allowed),
   });
 };
 
 // Public APIs.
-export function create (options = {}): Electron.WebContents {
+export function create(options = {}): Electron.WebContents {
   return new (WebContents as any)(options);
 }
 
-export function fromId (id: string) {
+export function fromId(id: string) {
   return binding.fromId(id);
 }
 
-export function getFocusedWebContents () {
+export function getFocusedWebContents() {
   let focused = null;
   for (const contents of binding.getAllWebContents()) {
     if (!contents.isFocused()) continue;
@@ -748,6 +803,6 @@ export function getFocusedWebContents () {
   }
   return focused;
 }
-export function getAllWebContents () {
+export function getAllWebContents() {
   return binding.getAllWebContents();
 }

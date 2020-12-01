@@ -4,7 +4,7 @@ const path = require('path');
 
 const args = require('minimist')(process.argv.slice(2), {
   boolean: ['default'],
-  string: ['jUnitDir']
+  string: ['jUnitDir'],
 });
 
 const BASE = path.resolve(__dirname, '../..');
@@ -30,7 +30,7 @@ const defaultOptions = [
   `--skip-tests=${DISABLED_TESTS.join(',')}`,
   '--shell',
   utils.getAbsoluteElectronExec(),
-  '-J'
+  '-J',
 ];
 
 const getCustomOptions = () => {
@@ -44,37 +44,33 @@ const getCustomOptions = () => {
 
   // We need this unilaterally or Node.js will try
   // to run from out/Release/node.
-  customOptions = customOptions.concat([
-    '--shell',
-    utils.getAbsoluteElectronExec()
-  ]);
+  customOptions = customOptions.concat(['--shell', utils.getAbsoluteElectronExec()]);
 
   return customOptions;
 };
 
-async function main () {
+async function main() {
   const options = args.default ? defaultOptions : getCustomOptions();
 
   const testChild = cp.spawn('python', options, {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: 'true',
-      ELECTRON_EAGER_ASAR_HOOK_FOR_TESTING: 'true'
+      ELECTRON_EAGER_ASAR_HOOK_FOR_TESTING: 'true',
     },
     cwd: NODE_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   testChild.on('exit', (testCode) => {
     if (JUNIT_DIR) {
       fs.mkdirSync(JUNIT_DIR);
       const converterStream = require('tap-xunit')();
-      fs.createReadStream(
-        path.resolve(NODE_DIR, TAP_FILE_NAME)
-      ).pipe(converterStream).pipe(
-        fs.createWriteStream(path.resolve(JUNIT_DIR, 'nodejs.xml'))
-      ).on('close', () => {
-        process.exit(testCode);
-      });
+      fs.createReadStream(path.resolve(NODE_DIR, TAP_FILE_NAME))
+        .pipe(converterStream)
+        .pipe(fs.createWriteStream(path.resolve(JUNIT_DIR, 'nodejs.xml')))
+        .on('close', () => {
+          process.exit(testCode);
+        });
     }
   });
 }

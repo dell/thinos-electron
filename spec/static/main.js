@@ -7,7 +7,7 @@ const { app, BrowserWindow, dialog, ipcMain, session } = electron;
 try {
   require('fs').rmdirSync(app.getPath('userData'), { recursive: true });
 } catch (e) {
-  console.warn('Warning: couldn\'t clear user data directory:', e);
+  console.warn("Warning: couldn't clear user data directory:", e);
 }
 
 const fs = require('fs');
@@ -15,12 +15,7 @@ const path = require('path');
 const util = require('util');
 const v8 = require('v8');
 
-const argv = require('yargs')
-  .boolean('ci')
-  .array('files')
-  .string('g').alias('g', 'grep')
-  .boolean('i').alias('i', 'invert')
-  .argv;
+const argv = require('yargs').boolean('ci').array('files').string('g').alias('g', 'grep').boolean('i').alias('i', 'invert').argv;
 
 let window = null;
 
@@ -36,11 +31,11 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = true;
 // throwing UnknownSystemError in renderer process sometimes. This line makes
 // sure we can reproduce it in renderer process.
 // eslint-disable-next-line
-process.stdout
+process.stdout;
 
 // Access console to reproduce #3482.
 // eslint-disable-next-line
-console
+console;
 
 ipcMain.on('message', function (event, ...args) {
   event.sender.send('message', ...args);
@@ -67,7 +62,7 @@ ipcMain.on('process.exit', function (event, code) {
 });
 
 ipcMain.on('eval', function (event, script) {
-  event.returnValue = eval(script) // eslint-disable-line
+  event.returnValue = eval(script); // eslint-disable-line
 });
 
 ipcMain.on('echo', function (event, msg) {
@@ -109,22 +104,22 @@ app.whenReady().then(async function () {
       backgroundThrottling: false,
       nodeIntegration: true,
       enableRemoteModule: false,
-      webviewTag: true
-    }
+      webviewTag: true,
+    },
   });
   window.loadFile('static/index.html', {
     query: {
       grep: argv.grep,
       invert: argv.invert ? 'true' : '',
-      files: argv.files ? argv.files.join(',') : undefined
-    }
+      files: argv.files ? argv.files.join(',') : undefined,
+    },
   });
   window.on('unresponsive', function () {
     const chosen = dialog.showMessageBox(window, {
       type: 'warning',
       buttons: ['Close', 'Keep Waiting'],
       message: 'Window is not responsing',
-      detail: 'The window is not responding. Would you like to force close it or just keep waiting?'
+      detail: 'The window is not responding. Would you like to force close it or just keep waiting?',
     });
     if (chosen === 0) window.destroy();
   });
@@ -135,7 +130,7 @@ app.whenReady().then(async function () {
 });
 
 ipcMain.on('prevent-next-will-attach-webview', (event) => {
-  event.sender.once('will-attach-webview', event => event.preventDefault());
+  event.sender.once('will-attach-webview', (event) => event.preventDefault());
 });
 
 ipcMain.on('disable-node-on-next-will-attach-webview', (event, id) => {

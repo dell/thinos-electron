@@ -22,11 +22,11 @@ describe('contextBridge', () => {
       res.setHeader('Content-Type', 'text/html');
       res.end('');
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   });
 
   after(async () => {
-    if (server) await new Promise(resolve => server.close(resolve));
+    if (server) await new Promise((resolve) => server.close(resolve));
     server = null as any;
   });
 
@@ -40,8 +40,8 @@ describe('contextBridge', () => {
       show: false,
       webPreferences: {
         contextIsolation: false,
-        preload: path.resolve(fixturesPath, 'can-bind-preload.js')
-      }
+        preload: path.resolve(fixturesPath, 'can-bind-preload.js'),
+      },
     });
     const [, bound] = await emittedOnce(ipcMain, 'context-bridge-bound', () => w.loadFile(path.resolve(fixturesPath, 'empty.html')));
     expect(bound).to.equal(false);
@@ -52,8 +52,8 @@ describe('contextBridge', () => {
       show: false,
       webPreferences: {
         contextIsolation: true,
-        preload: path.resolve(fixturesPath, 'can-bind-preload.js')
-      }
+        preload: path.resolve(fixturesPath, 'can-bind-preload.js'),
+      },
     });
     const [, bound] = await emittedOnce(ipcMain, 'context-bridge-bound', () => w.loadFile(path.resolve(fixturesPath, 'empty.html')));
     expect(bound).to.equal(true);
@@ -63,11 +63,15 @@ describe('contextBridge', () => {
     describe(`with sandbox=${useSandbox}`, () => {
       const makeBindingWindow = async (bindingCreator: Function) => {
         const preloadContent = `const renderer_1 = require('electron');
-        ${useSandbox ? '' : `require('v8').setFlagsFromString('--expose_gc');
+        ${
+          useSandbox
+            ? ''
+            : `require('v8').setFlagsFromString('--expose_gc');
         const gc=require('vm').runInNewContext('gc');
         renderer_1.contextBridge.exposeInMainWorld('GCRunner', {
           run: () => gc()
-        });`}
+        });`
+        }
         (${bindingCreator.toString()})();`;
         const tmpDir = await fs.mkdtemp(path.resolve(os.tmpdir(), 'electron-spec-preload-'));
         dir = tmpDir;
@@ -79,14 +83,13 @@ describe('contextBridge', () => {
             nodeIntegration: true,
             sandbox: useSandbox,
             preload: path.resolve(tmpDir, 'preload.js'),
-            additionalArguments: ['--unsafely-expose-electron-internals-for-testing']
-          }
+            additionalArguments: ['--unsafely-expose-electron-internals-for-testing'],
+          },
         });
         await w.loadURL(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
       };
 
-      const callWithBindings = (fn: Function) =>
-        w.webContents.executeJavaScript(`(${fn.toString()})(window)`);
+      const callWithBindings = (fn: Function) => w.webContents.executeJavaScript(`(${fn.toString()})(window)`);
 
       const getGCInfo = async (): Promise<{
         trackedValues: number;
@@ -106,7 +109,7 @@ describe('contextBridge', () => {
       it('should proxy numbers', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myNumber: 123
+            myNumber: 123,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -118,7 +121,7 @@ describe('contextBridge', () => {
       it('should make properties unwriteable', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myNumber: 123
+            myNumber: 123,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -131,7 +134,7 @@ describe('contextBridge', () => {
       it('should proxy strings', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myString: 'my-words'
+            myString: 'my-words',
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -143,7 +146,7 @@ describe('contextBridge', () => {
       it('should proxy arrays', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myArr: [123, 'my-words']
+            myArr: [123, 'my-words'],
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -155,7 +158,7 @@ describe('contextBridge', () => {
       it('should make arrays immutable', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myArr: [123, 'my-words']
+            myArr: [123, 'my-words'],
           });
         });
         const immutable = await callWithBindings((root: any) => {
@@ -172,7 +175,7 @@ describe('contextBridge', () => {
       it('should proxy booleans', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myBool: true
+            myBool: true,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -184,7 +187,7 @@ describe('contextBridge', () => {
       it('should proxy promises and resolve with the correct value', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myPromise: Promise.resolve('i-resolved')
+            myPromise: Promise.resolve('i-resolved'),
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -196,7 +199,7 @@ describe('contextBridge', () => {
       it('should proxy promises and reject with the correct value', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myPromise: Promise.reject(new Error('i-rejected'))
+            myPromise: Promise.reject(new Error('i-rejected')),
           });
         });
         const result = await callWithBindings(async (root: any) => {
@@ -213,7 +216,7 @@ describe('contextBridge', () => {
       it('should proxy promises and resolve with the correct value if it resolves later', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myPromise: () => new Promise(resolve => setTimeout(() => resolve('delayed'), 20))
+            myPromise: () => new Promise((resolve) => setTimeout(() => resolve('delayed'), 20)),
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -225,7 +228,7 @@ describe('contextBridge', () => {
       it('should proxy nested promises correctly', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            myPromise: () => new Promise(resolve => setTimeout(() => resolve(Promise.resolve(123)), 20))
+            myPromise: () => new Promise((resolve) => setTimeout(() => resolve(Promise.resolve(123)), 20)),
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -240,7 +243,7 @@ describe('contextBridge', () => {
             getNumber: () => 123,
             getString: () => 'help',
             getBoolean: () => false,
-            getPromise: async () => 'promise'
+            getPromise: async () => 'promise',
           });
         });
         const result = await callWithBindings(async (root: any) => {
@@ -252,7 +255,7 @@ describe('contextBridge', () => {
       it('should proxy methods that are callable multiple times', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            doThing: () => 123
+            doThing: () => 123,
           });
         });
         const result = await callWithBindings(async (root: any) => {
@@ -264,7 +267,7 @@ describe('contextBridge', () => {
       it('should proxy methods in the reverse direction', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            callWithNumber: (fn: any) => fn(123)
+            callWithNumber: (fn: any) => fn(123),
           });
         });
         const result = await callWithBindings(async (root: any) => {
@@ -276,7 +279,7 @@ describe('contextBridge', () => {
       it('should proxy promises in the reverse direction', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            getPromiseValue: (p: Promise<any>) => p
+            getPromiseValue: (p: Promise<any>) => p,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -290,7 +293,7 @@ describe('contextBridge', () => {
           contextBridge.exposeInMainWorld('example', {
             1: 123,
             2: 456,
-            3: 789
+            3: 789,
           });
         });
         const result = await callWithBindings(async (root: any) => {
@@ -302,7 +305,7 @@ describe('contextBridge', () => {
       it('it should proxy null and undefined correctly', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            values: [null, undefined]
+            values: [null, undefined],
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -318,7 +321,7 @@ describe('contextBridge', () => {
           const mySymbol = Symbol('unique');
           contextBridge.exposeInMainWorld('example', {
             getSymbol: () => mySymbol,
-            isSymbol: (s: Symbol) => s === mySymbol
+            isSymbol: (s: Symbol) => s === mySymbol,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -332,7 +335,7 @@ describe('contextBridge', () => {
           const mySymbol = Symbol('unique');
           contextBridge.exposeInMainWorld('example', {
             getSymbol: () => mySymbol,
-            getObject: () => ({ [mySymbol]: 123 })
+            getObject: () => ({ [mySymbol]: 123 }),
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -345,13 +348,13 @@ describe('contextBridge', () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
             arr: new Uint8Array(100),
-            regexp: /a/g
+            regexp: /a/g,
           });
         });
         const result = await callWithBindings((root: any) => {
           return [
             Object.getPrototypeOf(root.example.arr) === Uint8Array.prototype,
-            Object.getPrototypeOf(root.example.regexp) === RegExp.prototype
+            Object.getPrototypeOf(root.example.regexp) === RegExp.prototype,
           ];
         });
         expect(result).to.deep.equal([true, true]);
@@ -362,7 +365,7 @@ describe('contextBridge', () => {
           const o: any = { value: 135 };
           o.o = o;
           contextBridge.exposeInMainWorld('example', {
-            o
+            o,
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -375,11 +378,15 @@ describe('contextBridge', () => {
       if (!useSandbox) {
         it('should release the global hold on methods sent across contexts', async () => {
           await makeBindingWindow(() => {
-            require('electron').ipcRenderer.on('get-gc-info', (e: Electron.IpcRendererEvent) => e.sender.send('gc-info', { trackedValues: process._linkedBinding('electron_common_v8_util').getWeaklyTrackedValues().length }));
+            require('electron').ipcRenderer.on('get-gc-info', (e: Electron.IpcRendererEvent) =>
+              e.sender.send('gc-info', {
+                trackedValues: process._linkedBinding('electron_common_v8_util').getWeaklyTrackedValues().length,
+              }),
+            );
             const { weaklyTrackValue } = process._linkedBinding('electron_common_v8_util');
             contextBridge.exposeInMainWorld('example', {
               getFunction: () => () => 123,
-              track: weaklyTrackValue
+              track: weaklyTrackValue,
             });
           });
           await callWithBindings(async (root: any) => {
@@ -403,11 +410,15 @@ describe('contextBridge', () => {
       if (useSandbox) {
         it('should not leak the global hold on methods sent across contexts when reloading a sandboxed renderer', async () => {
           await makeBindingWindow(() => {
-            require('electron').ipcRenderer.on('get-gc-info', e => e.sender.send('gc-info', { trackedValues: process._linkedBinding('electron_common_v8_util').getWeaklyTrackedValues().length }));
+            require('electron').ipcRenderer.on('get-gc-info', (e) =>
+              e.sender.send('gc-info', {
+                trackedValues: process._linkedBinding('electron_common_v8_util').getWeaklyTrackedValues().length,
+              }),
+            );
             const { weaklyTrackValue } = process._linkedBinding('electron_common_v8_util');
             contextBridge.exposeInMainWorld('example', {
               getFunction: () => () => 123,
-              track: weaklyTrackValue
+              track: weaklyTrackValue,
             });
             require('electron').ipcRenderer.send('window-ready-for-tasking');
           });
@@ -433,12 +444,12 @@ describe('contextBridge', () => {
           let threw = false;
           contextBridge.exposeInMainWorld('example', {
             attempt: 1,
-            getThrew: () => threw
+            getThrew: () => threw,
           });
           try {
             contextBridge.exposeInMainWorld('example', {
               attempt: 2,
-              getThrew: () => threw
+              getThrew: () => threw,
             });
           } catch {
             threw = true;
@@ -453,9 +464,10 @@ describe('contextBridge', () => {
       it('should work with complex nested methods and promises', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            first: (second: Function) => second((fourth: Function) => {
-              return fourth();
-            })
+            first: (second: Function) =>
+              second((fourth: Function) => {
+                return fourth();
+              }),
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -469,7 +481,7 @@ describe('contextBridge', () => {
       it('should throw an error when recursion depth is exceeded', async () => {
         await makeBindingWindow(() => {
           contextBridge.exposeInMainWorld('example', {
-            doThing: (a: any) => console.log(a)
+            doThing: (a: any) => console.log(a),
           });
         });
         let threw = await callWithBindings((root: any) => {
@@ -512,7 +524,7 @@ describe('contextBridge', () => {
             throwNotClonable: () => {
               return Object(Symbol('foo'));
             },
-            argumentConvert: () => {}
+            argumentConvert: () => {},
           });
         });
         const result = await callWithBindings((root: any) => {
@@ -527,7 +539,8 @@ describe('contextBridge', () => {
           const normalIsError = Object.getPrototypeOf(getError(root.example.throwNormal)) === Error.prototype;
           const weirdIsError = Object.getPrototypeOf(getError(root.example.throwWeird)) === Error.prototype;
           const notClonableIsError = Object.getPrototypeOf(getError(root.example.throwNotClonable)) === Error.prototype;
-          const argumentConvertIsError = Object.getPrototypeOf(getError(() => root.example.argumentConvert(Object(Symbol('test'))))) === Error.prototype;
+          const argumentConvertIsError =
+            Object.getPrototypeOf(getError(() => root.example.argumentConvert(Object(Symbol('test'))))) === Error.prototype;
           return [normalIsError, weirdIsError, notClonableIsError, argumentConvertIsError];
         });
         expect(result).to.deep.equal([true, true, true, true], 'should all be errors in the current context');
@@ -547,28 +560,42 @@ describe('contextBridge', () => {
             getString: () => 'string',
             getBoolean: () => true,
             getArr: () => [123, 'string', true, ['foo']],
-            getPromise: async () => ({ number: 123, string: 'string', boolean: true, fn: () => 'string', arr: [123, 'string', true, ['foo']] }),
+            getPromise: async () => ({
+              number: 123,
+              string: 'string',
+              boolean: true,
+              fn: () => 'string',
+              arr: [123, 'string', true, ['foo']],
+            }),
             getFunctionFromFunction: async () => () => null,
             object: {
               number: 123,
               string: 'string',
               boolean: true,
               arr: [123, 'string', true, ['foo']],
-              getPromise: async () => ({ number: 123, string: 'string', boolean: true, fn: () => 'string', arr: [123, 'string', true, ['foo']] })
+              getPromise: async () => ({
+                number: 123,
+                string: 'string',
+                boolean: true,
+                fn: () => 'string',
+                arr: [123, 'string', true, ['foo']],
+              }),
             },
             receiveArguments: (fn: any) => fn({ key: 'value' }),
             symbolKeyed: {
-              [Symbol('foo')]: 123
-            }
+              [Symbol('foo')]: 123,
+            },
           });
         });
         const result = await callWithBindings(async (root: any) => {
           const { example } = root;
           let arg: any;
-          example.receiveArguments((o: any) => { arg = o; });
+          example.receiveArguments((o: any) => {
+            arg = o;
+          });
           const protoChecks = [
-            ...Object.keys(example).map(key => [key, String]),
-            ...Object.getOwnPropertySymbols(example.symbolKeyed).map(key => [key, Symbol]),
+            ...Object.keys(example).map((key) => [key, String]),
+            ...Object.getOwnPropertySymbols(example.symbolKeyed).map((key) => [key, Symbol]),
             [example, Object],
             [example.number, Number],
             [example.string, String],
@@ -631,10 +658,10 @@ describe('contextBridge', () => {
             [(await example.object.getPromise()).arr[3], Array],
             [(await example.object.getPromise()).arr[3][0], String],
             [arg, Object],
-            [arg.key, String]
+            [arg.key, String],
           ];
           return {
-            protoMatches: protoChecks.map(([a, Constructor]) => Object.getPrototypeOf(a) === Constructor.prototype)
+            protoMatches: protoChecks.map(([a, Constructor]) => Object.getPrototypeOf(a) === Constructor.prototype),
           };
         });
         // Every protomatch should be true
@@ -674,7 +701,7 @@ describe('contextBridge', () => {
               };
               contextBridge.internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['isFun'], getter);
               contextBridge.exposeInMainWorld('foo', {
-                callCount: () => callCount
+                callCount: () => callCount,
               });
             });
             const result = await callWithBindings(async (root: any) => {
@@ -704,7 +731,7 @@ describe('contextBridge', () => {
               };
               contextBridge.internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['isFun'], () => true, setter);
               contextBridge.exposeInMainWorld('foo', {
-                callArgs: () => callArgs
+                callArgs: () => callArgs,
               });
             });
             const result = await callWithBindings(async (root: any) => {
@@ -723,7 +750,7 @@ describe('contextBridge', () => {
               contextBridge.internalContextBridge.overrideGlobalValueWithDynamicPropsFromIsolatedWorld(['thing'], {
                 a: 123,
                 b: () => 2,
-                c: () => ({ d: 3 })
+                c: () => ({ d: 3 }),
               });
             });
             const result = await callWithBindings(async (root: any) => {
@@ -735,9 +762,9 @@ describe('contextBridge', () => {
           it('should work with getters', async () => {
             await makeBindingWindow(() => {
               contextBridge.internalContextBridge.overrideGlobalValueWithDynamicPropsFromIsolatedWorld(['thing'], {
-                get foo () {
+                get foo() {
                   return 'hi there';
-                }
+                },
               });
             });
             const result = await callWithBindings(async (root: any) => {
@@ -750,12 +777,12 @@ describe('contextBridge', () => {
             await makeBindingWindow(() => {
               let a: any = null;
               contextBridge.internalContextBridge.overrideGlobalValueWithDynamicPropsFromIsolatedWorld(['thing'], {
-                get foo () {
+                get foo() {
                   return a;
                 },
-                set foo (arg: any) {
+                set foo(arg: any) {
                   a = arg + 1;
-                }
+                },
               });
             });
             const result = await callWithBindings(async (root: any) => {
@@ -769,10 +796,10 @@ describe('contextBridge', () => {
             await makeBindingWindow(() => {
               contextBridge.internalContextBridge.overrideGlobalValueWithDynamicPropsFromIsolatedWorld(['thing'], {
                 a: () => ({
-                  get foo () {
+                  get foo() {
                     return 'still here';
-                  }
-                })
+                  },
+                }),
               });
             });
             const result = await callWithBindings(async (root: any) => {

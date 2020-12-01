@@ -14,7 +14,7 @@ describe('debugger module', () => {
     w = new BrowserWindow({
       show: false,
       width: 400,
-      height: 400
+      height: 400,
     });
   });
 
@@ -28,7 +28,7 @@ describe('debugger module', () => {
       expect(w.webContents.debugger.isAttached()).to.be.true();
     });
 
-    it('fails when protocol version is not supported', done => {
+    it('fails when protocol version is not supported', (done) => {
       try {
         w.webContents.debugger.attach('2.0');
       } catch (err) {
@@ -53,7 +53,7 @@ describe('debugger module', () => {
       expect(w.webContents.debugger.isAttached()).to.be.false();
     });
 
-    it('doesn\'t disconnect an active devtools session', async () => {
+    it("doesn't disconnect an active devtools session", async () => {
       w.webContents.loadURL('about:blank');
       const detach = emittedOnce(w.webContents.debugger, 'detach');
       w.webContents.debugger.attach();
@@ -108,15 +108,19 @@ describe('debugger module', () => {
     });
 
     it('fires message event', async () => {
-      const url = process.platform !== 'win32'
-        ? `file://${path.join(fixtures, 'pages', 'a.html')}`
-        : `file:///${path.join(fixtures, 'pages', 'a.html').replace(/\\/g, '/')}`;
+      const url =
+        process.platform !== 'win32'
+          ? `file://${path.join(fixtures, 'pages', 'a.html')}`
+          : `file:///${path.join(fixtures, 'pages', 'a.html').replace(/\\/g, '/')}`;
       w.webContents.loadURL(url);
       w.webContents.debugger.attach();
-      const message = emittedUntil(w.webContents.debugger, 'message',
-        (event: Electron.Event, method: string) => method === 'Console.messageAdded');
+      const message = emittedUntil(
+        w.webContents.debugger,
+        'message',
+        (event: Electron.Event, method: string) => method === 'Console.messageAdded',
+      );
       w.webContents.debugger.sendCommand('Console.enable');
-      const [,, params] = await message;
+      const [, , params] = await message;
       w.webContents.debugger.detach();
       expect((params as any).message.level).to.equal('log');
       expect((params as any).message.url).to.equal(url);
@@ -141,19 +145,20 @@ describe('debugger module', () => {
         done(`unexpected error : ${err}`);
       }
 
-      let requestId : number;
+      let requestId: number;
       w.webContents.debugger.on('message', (event, method, params) => {
-        if (method === 'Network.responseReceived' &&
-            params.response.url.startsWith('http://127.0.0.1')) {
+        if (method === 'Network.responseReceived' && params.response.url.startsWith('http://127.0.0.1')) {
           requestId = params.requestId;
-        } else if (method === 'Network.loadingFinished' &&
-                   params.requestId === requestId) {
-          w.webContents.debugger.sendCommand('Network.getResponseBody', {
-            requestId: params.requestId
-          }).then(data => {
-            expect(data.body).to.equal('\u0024');
-            done();
-          }).catch(result => done(result));
+        } else if (method === 'Network.loadingFinished' && params.requestId === requestId) {
+          w.webContents.debugger
+            .sendCommand('Network.getResponseBody', {
+              requestId: params.requestId,
+            })
+            .then((data) => {
+              expect(data.body).to.equal('\u0024');
+              done();
+            })
+            .catch((result) => done(result));
         }
       });
 
@@ -214,10 +219,12 @@ describe('debugger module', () => {
       w.webContents.debugger.on('message', (event, ...args) => {
         const [method, params, sessionId] = args;
         if (method === 'Target.targetCreated') {
-          w.webContents.debugger.sendCommand('Target.attachToTarget', { targetId: params.targetInfo.targetId, flatten: true }).then(result => {
-            session = result.sessionId;
-            w.webContents.debugger.sendCommand('Debugger.enable', {}, result.sessionId);
-          });
+          w.webContents.debugger
+            .sendCommand('Target.attachToTarget', { targetId: params.targetInfo.targetId, flatten: true })
+            .then((result) => {
+              session = result.sessionId;
+              w.webContents.debugger.sendCommand('Debugger.enable', {}, result.sessionId);
+            });
         }
         if (method === 'Debugger.scriptParsed') {
           expect(sessionId).to.equal(session);

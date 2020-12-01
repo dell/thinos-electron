@@ -7,19 +7,19 @@ const getOwnerKey = (webContents: WebContents, contextId: string) => {
 const electronIds = new WeakMap<Object, number>();
 
 class ObjectsRegistry {
-  private nextId: number = 0
+  private nextId: number = 0;
 
   // Stores all objects by ref-counting.
   // (id) => {object, count}
-  private storage: Record<number, { count: number, object: any }> = {}
+  private storage: Record<number, { count: number; object: any }> = {};
 
   // Stores the IDs + refCounts of objects referenced by WebContents.
   // (ownerKey) => { id: refCount }
-  private owners: Record<string, Map<number, number>> = {}
+  private owners: Record<string, Map<number, number>> = {};
 
   // Register a new object and return its assigned ID. If the object is already
   // registered then the already assigned ID would be returned.
-  add (webContents: WebContents, contextId: string, obj: any) {
+  add(webContents: WebContents, contextId: string, obj: any) {
     // Get or assign an ID to the object.
     const id = this.saveToStorage(obj);
 
@@ -41,7 +41,7 @@ class ObjectsRegistry {
   }
 
   // Get an object according to its ID.
-  get (id: number) {
+  get(id: number) {
     const pointer = this.storage[id];
     if (pointer != null) return pointer.object;
   }
@@ -49,7 +49,7 @@ class ObjectsRegistry {
   // Dereference an object according to its ID.
   // Note that an object may be double-freed (cleared when page is reloaded, and
   // then garbage collected in old page).
-  remove (webContents: WebContents, contextId: string, id: number) {
+  remove(webContents: WebContents, contextId: string, id: number) {
     const ownerKey = getOwnerKey(webContents, contextId);
     const owner = this.owners[ownerKey];
     if (owner && owner.has(id)) {
@@ -69,7 +69,7 @@ class ObjectsRegistry {
   }
 
   // Clear all references to objects refrenced by the WebContents.
-  clear (webContents: WebContents, contextId: string) {
+  clear(webContents: WebContents, contextId: string) {
     const ownerKey = getOwnerKey(webContents, contextId);
     const owner = this.owners[ownerKey];
     if (!owner) return;
@@ -80,13 +80,13 @@ class ObjectsRegistry {
   }
 
   // Private: Saves the object into storage and assigns an ID for it.
-  saveToStorage (object: any) {
+  saveToStorage(object: any) {
     let id = electronIds.get(object);
     if (!id) {
       id = ++this.nextId;
       this.storage[id] = {
         count: 0,
-        object: object
+        object: object,
       };
       electronIds.set(object, id);
     }
@@ -94,7 +94,7 @@ class ObjectsRegistry {
   }
 
   // Private: Dereference the object from store.
-  dereference (id: number) {
+  dereference(id: number) {
     const pointer = this.storage[id];
     if (pointer == null) {
       return;
@@ -107,12 +107,11 @@ class ObjectsRegistry {
   }
 
   // Private: Clear the storage when renderer process is destroyed.
-  registerDeleteListener (webContents: WebContents, contextId: string) {
+  registerDeleteListener(webContents: WebContents, contextId: string) {
     // contextId => ${processHostId}-${contextCount}
     const processHostId = contextId.split('-')[0];
     const listener = (_: any, deletedProcessHostId: string) => {
-      if (deletedProcessHostId &&
-          deletedProcessHostId.toString() === processHostId) {
+      if (deletedProcessHostId && deletedProcessHostId.toString() === processHostId) {
         webContents.removeListener('render-view-deleted' as any, listener);
         this.clear(webContents, contextId);
       }

@@ -7,10 +7,13 @@ const WrapperPlugin = require('wrapper-webpack-plugin');
 const electronRoot = path.resolve(__dirname, '../..');
 
 class AccessDependenciesPlugin {
-  apply (compiler) {
-    compiler.hooks.compilation.tap('AccessDependenciesPlugin', compilation => {
-      compilation.hooks.finishModules.tap('AccessDependenciesPlugin', modules => {
-        const filePaths = modules.map(m => m.resource).filter(p => p).map(p => path.relative(electronRoot, p));
+  apply(compiler) {
+    compiler.hooks.compilation.tap('AccessDependenciesPlugin', (compilation) => {
+      compilation.hooks.finishModules.tap('AccessDependenciesPlugin', (modules) => {
+        const filePaths = modules
+          .map((m) => m.resource)
+          .filter((p) => p)
+          .map((p) => path.relative(electronRoot, p));
         console.info(JSON.stringify(filePaths));
       });
     });
@@ -23,7 +26,7 @@ module.exports = ({
   targetDeletesNodeGlobals,
   target,
   wrapInitWithProfilingTimeout,
-  wrapInitWithTryCatch
+  wrapInitWithTryCatch,
 }) => {
   let entry = path.resolve(electronRoot, 'lib', target, 'init.ts');
   if (!fs.existsSync(entry)) {
@@ -37,7 +40,7 @@ module.exports = ({
     const outputFilename = argv['output-filename'] || `${target}.bundle.js`;
 
     const defines = {
-      BUILDFLAG: onlyPrintingGraph ? '(a => a)' : ''
+      BUILDFLAG: onlyPrintingGraph ? '(a => a)' : '',
     };
 
     if (env.buildflags) {
@@ -57,21 +60,16 @@ module.exports = ({
       ignoredModules.push(
         '@electron/internal/browser/desktop-capturer',
         '@electron/internal/browser/api/desktop-capturer',
-        '@electron/internal/renderer/api/desktop-capturer'
+        '@electron/internal/renderer/api/desktop-capturer',
       );
     }
 
     if (defines.ENABLE_REMOTE_MODULE === 'false') {
-      ignoredModules.push(
-        '@electron/internal/browser/remote/server',
-        '@electron/internal/renderer/api/remote'
-      );
+      ignoredModules.push('@electron/internal/browser/remote/server', '@electron/internal/renderer/api/remote');
     }
 
     if (defines.ENABLE_VIEWS_API === 'false') {
-      ignoredModules.push(
-        '@electron/internal/browser/api/views/image-view.js'
-      );
+      ignoredModules.push('@electron/internal/browser/api/views/image-view.js');
     }
 
     const plugins = [];
@@ -81,41 +79,49 @@ module.exports = ({
     }
 
     if (targetDeletesNodeGlobals) {
-      plugins.push(new webpack.ProvidePlugin({
-        process: ['@electron/internal/common/webpack-provider', 'process'],
-        global: ['@electron/internal/common/webpack-provider', '_global'],
-        Buffer: ['@electron/internal/common/webpack-provider', 'Buffer']
-      }));
+      plugins.push(
+        new webpack.ProvidePlugin({
+          process: ['@electron/internal/common/webpack-provider', 'process'],
+          global: ['@electron/internal/common/webpack-provider', '_global'],
+          Buffer: ['@electron/internal/common/webpack-provider', 'Buffer'],
+        }),
+      );
     }
 
-    plugins.push(new webpack.ProvidePlugin({
-      Promise: ['@electron/internal/common/webpack-globals-provider', 'Promise']
-    }));
+    plugins.push(
+      new webpack.ProvidePlugin({
+        Promise: ['@electron/internal/common/webpack-globals-provider', 'Promise'],
+      }),
+    );
 
     plugins.push(new webpack.DefinePlugin(defines));
 
     if (wrapInitWithProfilingTimeout) {
-      plugins.push(new WrapperPlugin({
-        header: 'function ___electron_webpack_init__() {',
-        footer: `
+      plugins.push(
+        new WrapperPlugin({
+          header: 'function ___electron_webpack_init__() {',
+          footer: `
 };
 if ((globalThis.process || binding.process).argv.includes("--profile-electron-init")) {
   setTimeout(___electron_webpack_init__, 0);
 } else {
   ___electron_webpack_init__();
-}`
-      }));
+}`,
+        }),
+      );
     }
 
     if (wrapInitWithTryCatch) {
-      plugins.push(new WrapperPlugin({
-        header: 'try {',
-        footer: `
+      plugins.push(
+        new WrapperPlugin({
+          header: 'try {',
+          footer: `
 } catch (err) {
   console.error('Electron ${outputFilename} script failed to run');
   console.error(err);
-}`
-      }));
+}`,
+        }),
+      );
     }
 
     return {
@@ -124,7 +130,7 @@ if ((globalThis.process || binding.process).argv.includes("--profile-electron-in
       entry,
       target: alwaysHasNode ? 'node' : 'web',
       output: {
-        filename: outputFilename
+        filename: outputFilename,
       },
       resolve: {
         alias: {
@@ -134,33 +140,36 @@ if ((globalThis.process || binding.process).argv.includes("--profile-electron-in
           'electron/renderer$': electronAPIFile,
           'electron/common$': electronAPIFile,
           // Force timers to resolve to our dependency that doesn't use window.postMessage
-          timers: path.resolve(electronRoot, 'node_modules', 'timers-browserify', 'main.js')
+          timers: path.resolve(electronRoot, 'node_modules', 'timers-browserify', 'main.js'),
         },
-        extensions: ['.ts', '.js']
+        extensions: ['.ts', '.js'],
       },
       module: {
-        rules: [{
-          test: (moduleName) => !onlyPrintingGraph && ignoredModules.includes(moduleName),
-          loader: 'null-loader'
-        }, {
-          test: /\.ts$/,
-          loader: 'ts-loader',
-          options: {
-            configFile: path.resolve(electronRoot, 'tsconfig.electron.json'),
-            transpileOnly: onlyPrintingGraph,
-            ignoreDiagnostics: [
-              // File '{0}' is not under 'rootDir' '{1}'.
-              6059
-            ]
-          }
-        }]
+        rules: [
+          {
+            test: (moduleName) => !onlyPrintingGraph && ignoredModules.includes(moduleName),
+            loader: 'null-loader',
+          },
+          {
+            test: /\.ts$/,
+            loader: 'ts-loader',
+            options: {
+              configFile: path.resolve(electronRoot, 'tsconfig.electron.json'),
+              transpileOnly: onlyPrintingGraph,
+              ignoreDiagnostics: [
+                // File '{0}' is not under 'rootDir' '{1}'.
+                6059,
+              ],
+            },
+          },
+        ],
       },
       node: {
         __dirname: false,
         __filename: false,
         // We provide our own "timers" import above, any usage of setImmediate inside
         // one of our renderer bundles should import it from the 'timers' package
-        setImmediate: false
+        setImmediate: false,
       },
       optimization: {
         minimize: true,
@@ -168,12 +177,12 @@ if ((globalThis.process || binding.process).argv.includes("--profile-electron-in
           new TerserPlugin({
             terserOptions: {
               keep_classnames: true,
-              keep_fnames: true
-            }
-          })
-        ]
+              keep_fnames: true,
+            },
+          }),
+        ],
       },
-      plugins
+      plugins,
     };
   };
 };

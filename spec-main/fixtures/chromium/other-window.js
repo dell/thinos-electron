@@ -1,6 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 
-const ints = (...args) => args.map(a => parseInt(a, 10));
+const ints = (...args) => args.map((a) => parseInt(a, 10));
 
 const [x, y, width, height] = ints(...process.argv.slice(2));
 
@@ -11,7 +11,7 @@ app.whenReady().then(() => {
     x,
     y,
     width,
-    height
+    height,
   });
   console.log('__ready__');
 });

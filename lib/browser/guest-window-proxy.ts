@@ -36,10 +36,7 @@ const isRelatedWindow = function (sender: WebContents, target: WebContents) {
 };
 
 const isScriptableWindow = function (sender: WebContents, target: WebContents) {
-  return (
-    isRelatedWindow(sender, target) &&
-    isSameOrigin(sender.getURL(), target.getURL())
-  );
+  return isRelatedWindow(sender, target) && isSameOrigin(sender.getURL(), target.getURL());
 };
 
 const isNodeIntegrationEnabled = function (sender: WebContents) {
@@ -48,54 +45,40 @@ const isNodeIntegrationEnabled = function (sender: WebContents) {
 
 // Checks whether |sender| can access the |target|:
 const canAccessWindow = function (sender: WebContents, target: WebContents) {
-  return (
-    isChildWindow(sender, target) ||
-    isScriptableWindow(sender, target) ||
-    isNodeIntegrationEnabled(sender)
-  );
+  return isChildWindow(sender, target) || isScriptableWindow(sender, target) || isNodeIntegrationEnabled(sender);
 };
 
 // Routed window.open messages with raw options
-ipcMainInternal.on(
-  IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_OPEN,
-  (
-    event,
-    url: string,
-    frameName: string,
-    features: string
-  ) => {
-    // This should only be allowed for senders that have nativeWindowOpen: false
-    const lastWebPreferences = (event.sender as any).getLastWebPreferences();
-    if (lastWebPreferences.nativeWindowOpen || lastWebPreferences.sandbox) {
-      (event as any).returnValue = null;
-      throw new Error(
-        'GUEST_WINDOW_MANAGER_WINDOW_OPEN denied: expected native window.open'
-      );
-    }
-
-    const browserWindowOptions = (event.sender as any)._callWindowOpenHandler(event, url, frameName, features);
-    if (event.defaultPrevented) {
-      return;
-    }
-    const guest = openGuestWindow({
-      event,
-      embedder: event.sender,
-      referrer: { url: '', policy: 'default' },
-      disposition: 'new-window',
-      overrideBrowserWindowOptions: browserWindowOptions,
-      windowOpenArgs: {
-        url: url || 'about:blank',
-        frameName: frameName || '',
-        features: features || ''
-      }
-    });
-
-    (event as any).returnValue = guest ? guest.webContents.id : null;
+ipcMainInternal.on(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_OPEN, (event, url: string, frameName: string, features: string) => {
+  // This should only be allowed for senders that have nativeWindowOpen: false
+  const lastWebPreferences = (event.sender as any).getLastWebPreferences();
+  if (lastWebPreferences.nativeWindowOpen || lastWebPreferences.sandbox) {
+    (event as any).returnValue = null;
+    throw new Error('GUEST_WINDOW_MANAGER_WINDOW_OPEN denied: expected native window.open');
   }
-);
+
+  const browserWindowOptions = (event.sender as any)._callWindowOpenHandler(event, url, frameName, features);
+  if (event.defaultPrevented) {
+    return;
+  }
+  const guest = openGuestWindow({
+    event,
+    embedder: event.sender,
+    referrer: { url: '', policy: 'default' },
+    disposition: 'new-window',
+    overrideBrowserWindowOptions: browserWindowOptions,
+    windowOpenArgs: {
+      url: url || 'about:blank',
+      frameName: frameName || '',
+      features: features || '',
+    },
+  });
+
+  (event as any).returnValue = guest ? guest.webContents.id : null;
+});
 
 type IpcHandler<T, Event> = (event: Event, guestContents: Electron.WebContents, ...args: any[]) => T;
-const makeSafeHandler = function<T, Event> (handler: IpcHandler<T, Event>) {
+const makeSafeHandler = function <T, Event>(handler: IpcHandler<T, Event>) {
   return (event: Event, guestId: number, ...args: any[]) => {
     // Access webContents via electron to prevent circular require.
     const guestContents = webContents.fromId(guestId);
@@ -118,94 +101,62 @@ const handleMessageSync = function (channel: string, handler: IpcHandler<any, El
 type ContentsCheck = (contents: WebContents, guestContents: WebContents) => boolean;
 const securityCheck = function (contents: WebContents, guestContents: WebContents, check: ContentsCheck) {
   if (!check(contents, guestContents)) {
-    console.error(
-      `Blocked ${contents.getURL()} from accessing guestId: ${guestContents.id}`
-    );
+    console.error(`Blocked ${contents.getURL()} from accessing guestId: ${guestContents.id}`);
     throw new Error(`Access denied to guestId: ${guestContents.id}`);
   }
 };
 
 const windowMethods = new Set(['destroy', 'focus', 'blur']);
 
-handleMessage(
-  IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_METHOD,
-  (event, guestContents, method, ...args) => {
-    securityCheck(event.sender, guestContents, canAccessWindow);
+handleMessage(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_METHOD, (event, guestContents, method, ...args) => {
+  securityCheck(event.sender, guestContents, canAccessWindow);
 
-    if (!windowMethods.has(method)) {
-      console.error(
-        `Blocked ${event.sender.getURL()} from calling method: ${method}`
-      );
-      throw new Error(`Invalid method: ${method}`);
-    }
-
-    return (getGuestWindow(guestContents) as any)[method](...args);
+  if (!windowMethods.has(method)) {
+    console.error(`Blocked ${event.sender.getURL()} from calling method: ${method}`);
+    throw new Error(`Invalid method: ${method}`);
   }
-);
 
-handleMessage(
-  IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_POSTMESSAGE,
-  (event, guestContents, message, targetOrigin, sourceOrigin) => {
-    if (targetOrigin == null) {
-      targetOrigin = '*';
-    }
+  return (getGuestWindow(guestContents) as any)[method](...args);
+});
 
-    // The W3C does not seem to have word on how postMessage should work when the
-    // origins do not match, so we do not do |canAccessWindow| check here since
-    // postMessage across origins is useful and not harmful.
-    securityCheck(event.sender, guestContents, isRelatedWindow);
-
-    if (
-      targetOrigin === '*' ||
-      isSameOrigin(guestContents.getURL(), targetOrigin)
-    ) {
-      const sourceId = event.sender.id;
-      guestContents._sendInternal(
-        IPC_MESSAGES.GUEST_WINDOW_POSTMESSAGE,
-        sourceId,
-        message,
-        sourceOrigin
-      );
-    }
+handleMessage(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_POSTMESSAGE, (event, guestContents, message, targetOrigin, sourceOrigin) => {
+  if (targetOrigin == null) {
+    targetOrigin = '*';
   }
-);
 
-const webContentsMethodsAsync = new Set([
-  'loadURL',
-  'executeJavaScript',
-  'print'
-]);
+  // The W3C does not seem to have word on how postMessage should work when the
+  // origins do not match, so we do not do |canAccessWindow| check here since
+  // postMessage across origins is useful and not harmful.
+  securityCheck(event.sender, guestContents, isRelatedWindow);
 
-handleMessage(
-  IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD,
-  (event, guestContents, method, ...args) => {
-    securityCheck(event.sender, guestContents, canAccessWindow);
-
-    if (!webContentsMethodsAsync.has(method)) {
-      console.error(
-        `Blocked ${event.sender.getURL()} from calling method: ${method}`
-      );
-      throw new Error(`Invalid method: ${method}`);
-    }
-
-    return (guestContents as any)[method](...args);
+  if (targetOrigin === '*' || isSameOrigin(guestContents.getURL(), targetOrigin)) {
+    const sourceId = event.sender.id;
+    guestContents._sendInternal(IPC_MESSAGES.GUEST_WINDOW_POSTMESSAGE, sourceId, message, sourceOrigin);
   }
-);
+});
+
+const webContentsMethodsAsync = new Set(['loadURL', 'executeJavaScript', 'print']);
+
+handleMessage(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD, (event, guestContents, method, ...args) => {
+  securityCheck(event.sender, guestContents, canAccessWindow);
+
+  if (!webContentsMethodsAsync.has(method)) {
+    console.error(`Blocked ${event.sender.getURL()} from calling method: ${method}`);
+    throw new Error(`Invalid method: ${method}`);
+  }
+
+  return (guestContents as any)[method](...args);
+});
 
 const webContentsMethodsSync = new Set(['getURL']);
 
-handleMessageSync(
-  IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD,
-  (event, guestContents, method, ...args) => {
-    securityCheck(event.sender, guestContents, canAccessWindow);
+handleMessageSync(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD, (event, guestContents, method, ...args) => {
+  securityCheck(event.sender, guestContents, canAccessWindow);
 
-    if (!webContentsMethodsSync.has(method)) {
-      console.error(
-        `Blocked ${event.sender.getURL()} from calling method: ${method}`
-      );
-      throw new Error(`Invalid method: ${method}`);
-    }
-
-    return (guestContents as any)[method](...args);
+  if (!webContentsMethodsSync.has(method)) {
+    console.error(`Blocked ${event.sender.getURL()} from calling method: ${method}`);
+    throw new Error(`Invalid method: ${method}`);
   }
-);
+
+  return (guestContents as any)[method](...args);
+});

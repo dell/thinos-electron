@@ -7,7 +7,9 @@ import * as path from 'path';
 describe('tray module', () => {
   let tray: Tray;
 
-  beforeEach(() => { tray = new Tray(nativeImage.createEmpty()); });
+  beforeEach(() => {
+    tray = new Tray(nativeImage.createEmpty());
+  });
 
   afterEach(() => {
     tray.destroy();
@@ -55,8 +57,12 @@ describe('tray module', () => {
 
   describe('tray.setContextMenu(menu)', () => {
     it('accepts both null and Menu as parameters', () => {
-      expect(() => { tray.setContextMenu(new Menu()); }).to.not.throw();
-      expect(() => { tray.setContextMenu(null); }).to.not.throw();
+      expect(() => {
+        tray.setContextMenu(new Menu());
+      }).to.not.throw();
+      expect(() => {
+        tray.setContextMenu(null);
+      }).to.not.throw();
     });
   });
 
@@ -123,7 +129,9 @@ describe('tray module', () => {
   });
 
   describe('tray.getBounds()', () => {
-    afterEach(() => { tray.destroy(); });
+    afterEach(() => {
+      tray.destroy();
+    });
 
     ifit(process.platform !== 'linux')('returns a bounds object', function () {
       const bounds = tray.getBounds();

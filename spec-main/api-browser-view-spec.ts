@@ -18,8 +18,8 @@ describe('BrowserView module', () => {
       width: 400,
       height: 400,
       webPreferences: {
-        backgroundThrottling: false
-      }
+        backgroundThrottling: false,
+      },
     });
   });
 
@@ -198,7 +198,7 @@ describe('BrowserView module', () => {
       const rc = await startRemoteControlApp();
       await rc.remotely(() => {
         const { BrowserView, app } = require('electron');
-        new BrowserView({})  // eslint-disable-line
+        new BrowserView({}); // eslint-disable-line
         setTimeout(() => {
           app.quit();
         });

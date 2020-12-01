@@ -17,9 +17,9 @@ crashReporter.start({
   submitURL: url,
   ignoreSystemCrashHandler: true,
   extra: {
-    mainProcessSpecific: 'mps'
+    mainProcessSpecific: 'mps',
   },
-  globalExtra: addGlobalParam[0] ? { [addGlobalParam[0]]: addGlobalParam[1] } : {}
+  globalExtra: addGlobalParam[0] ? { [addGlobalParam[0]]: addGlobalParam[1] } : {},
 });
 
 app.whenReady().then(() => {
@@ -44,8 +44,8 @@ app.whenReady().then(() => {
       show: false,
       webPreferences: {
         sandbox: true,
-        preload: path.resolve(__dirname, 'sandbox-preload.js')
-      }
+        preload: path.resolve(__dirname, 'sandbox-preload.js'),
+      },
     });
     w.loadURL(`about:blank?set_extra=${setExtraParameters ? 1 : 0}`);
     w.webContents.on('crashed', () => process.exit(0));

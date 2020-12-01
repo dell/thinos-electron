@@ -3,7 +3,7 @@ import { app, deprecate } from 'electron/main';
 const binding = process._linkedBinding('electron_browser_crash_reporter');
 
 class CrashReporter {
-  start (options: Electron.CrashReporterStartOptions) {
+  start(options: Electron.CrashReporterStartOptions) {
     const {
       productName = app.name,
       companyName,
@@ -13,13 +13,15 @@ class CrashReporter {
       submitURL,
       uploadToServer = true,
       rateLimit = false,
-      compress = true
+      compress = true,
     } = options || {};
 
     if (submitURL == null) throw new Error('submitURL is a required option to crashReporter.start');
 
     if (!compress) {
-      deprecate.log('Sending uncompressed crash reports is deprecated and will be removed in a future version of Electron. Set { compress: true } to opt-in to the new behavior. Crash reports will be uploaded gzipped, which most crash reporting servers support.');
+      deprecate.log(
+        'Sending uncompressed crash reports is deprecated and will be removed in a future version of Electron. Set { compress: true } to opt-in to the new behavior. Crash reports will be uploaded gzipped, which most crash reporting servers support.',
+      );
     }
 
     const appVersion = app.getVersion();
@@ -29,29 +31,27 @@ class CrashReporter {
     const globalExtraAmended = {
       _productName: productName,
       _version: appVersion,
-      ...globalExtra
+      ...globalExtra,
     };
 
-    binding.start(submitURL, uploadToServer,
-      ignoreSystemCrashHandler, rateLimit, compress, globalExtraAmended, extra, false);
+    binding.start(submitURL, uploadToServer, ignoreSystemCrashHandler, rateLimit, compress, globalExtraAmended, extra, false);
   }
 
-  getLastCrashReport () {
-    const reports = this.getUploadedReports()
-      .sort((a, b) => {
-        const ats = (a && a.date) ? new Date(a.date).getTime() : 0;
-        const bts = (b && b.date) ? new Date(b.date).getTime() : 0;
-        return bts - ats;
-      });
+  getLastCrashReport() {
+    const reports = this.getUploadedReports().sort((a, b) => {
+      const ats = a && a.date ? new Date(a.date).getTime() : 0;
+      const bts = b && b.date ? new Date(b.date).getTime() : 0;
+      return bts - ats;
+    });
 
-    return (reports.length > 0) ? reports[0] : null;
+    return reports.length > 0 ? reports[0] : null;
   }
 
-  getUploadedReports (): Electron.CrashReport[] {
+  getUploadedReports(): Electron.CrashReport[] {
     return binding.getUploadedReports();
   }
 
-  getUploadToServer () {
+  getUploadToServer() {
     if (process.type === 'browser') {
       return binding.getUploadToServer();
     } else {
@@ -59,7 +59,7 @@ class CrashReporter {
     }
   }
 
-  setUploadToServer (uploadToServer: boolean) {
+  setUploadToServer(uploadToServer: boolean) {
     if (process.type === 'browser') {
       return binding.setUploadToServer(uploadToServer);
     } else {
@@ -67,15 +67,15 @@ class CrashReporter {
     }
   }
 
-  addExtraParameter (key: string, value: string) {
+  addExtraParameter(key: string, value: string) {
     binding.addExtraParameter(key, value);
   }
 
-  removeExtraParameter (key: string) {
+  removeExtraParameter(key: string) {
     binding.removeExtraParameter(key);
   }
 
-  getParameters () {
+  getParameters() {
     return binding.getParameters();
   }
 }

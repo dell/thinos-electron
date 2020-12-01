@@ -35,7 +35,12 @@ describe('clipboard module', () => {
   describe('clipboard.readHTML()', () => {
     it('returns markup correctly', () => {
       const text = '<string>Hi</string>';
-      const markup = process.platform === 'darwin' ? "<meta charset='utf-8'><string>Hi</string>" : process.platform === 'linux' ? '<meta http-equiv="content-type" ' + 'content="text/html; charset=utf-8"><string>Hi</string>' : '<string>Hi</string>';
+      const markup =
+        process.platform === 'darwin'
+          ? "<meta charset='utf-8'><string>Hi</string>"
+          : process.platform === 'linux'
+          ? '<meta http-equiv="content-type" ' + 'content="text/html; charset=utf-8"><string>Hi</string>'
+          : '<string>Hi</string>';
       clipboard.writeHTML(text);
       expect(clipboard.readHTML()).to.equal(markup);
     });
@@ -60,13 +65,13 @@ describe('clipboard module', () => {
       clipboard.writeBookmark('a title', 'https://electronjs.org');
       expect(clipboard.readBookmark()).to.deep.equal({
         title: 'a title',
-        url: 'https://electronjs.org'
+        url: 'https://electronjs.org',
       });
 
       clipboard.writeText('no bookmark');
       expect(clipboard.readBookmark()).to.deep.equal({
         title: '',
-        url: ''
+        url: '',
       });
     });
   });
@@ -77,14 +82,19 @@ describe('clipboard module', () => {
       const rtf = '{\\rtf1\\utf8 text}';
       const p = path.join(fixtures, 'assets', 'logo.png');
       const i = nativeImage.createFromPath(p);
-      const markup = process.platform === 'darwin' ? "<meta charset='utf-8'><b>Hi</b>" : process.platform === 'linux' ? '<meta http-equiv="content-type" ' + 'content="text/html; charset=utf-8"><b>Hi</b>' : '<b>Hi</b>';
+      const markup =
+        process.platform === 'darwin'
+          ? "<meta charset='utf-8'><b>Hi</b>"
+          : process.platform === 'linux'
+          ? '<meta http-equiv="content-type" ' + 'content="text/html; charset=utf-8"><b>Hi</b>'
+          : '<b>Hi</b>';
       const bookmark = { title: 'a title', url: 'test' };
       clipboard.write({
         text: 'test',
         html: '<b>Hi</b>',
         rtf: '{\\rtf1\\utf8 text}',
         bookmark: 'a title',
-        image: p
+        image: p,
       });
 
       expect(clipboard.readText()).to.equal(text);

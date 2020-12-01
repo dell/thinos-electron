@@ -13,7 +13,7 @@ const resolveURL = function (url?: string | null) {
 };
 
 interface MutationHandler {
-  handleMutation (_oldValue: any, _newValue: any): any;
+  handleMutation(_oldValue: any, _newValue: any): any;
 }
 
 // Attribute objects.
@@ -22,7 +22,7 @@ export class WebViewAttribute implements MutationHandler {
   public value: any;
   public ignoreMutation = false;
 
-  constructor (public name: string, public webViewImpl: WebViewImpl) {
+  constructor(public name: string, public webViewImpl: WebViewImpl) {
     this.name = name;
     this.value = (webViewImpl.webviewNode as Record<string, any>)[name] || '';
     this.webViewImpl = webViewImpl;
@@ -30,24 +30,24 @@ export class WebViewAttribute implements MutationHandler {
   }
 
   // Retrieves and returns the attribute's value.
-  public getValue () {
+  public getValue() {
     return this.webViewImpl.webviewNode.getAttribute(this.name) || this.value;
   }
 
   // Sets the attribute's value.
-  public setValue (value: any) {
+  public setValue(value: any) {
     this.webViewImpl.webviewNode.setAttribute(this.name, value || '');
   }
 
   // Changes the attribute's value without triggering its mutation handler.
-  public setValueIgnoreMutation (value: any) {
+  public setValueIgnoreMutation(value: any) {
     this.ignoreMutation = true;
     this.setValue(value);
     this.ignoreMutation = false;
   }
 
   // Defines this attribute as a property on the webview node.
-  public defineProperty () {
+  public defineProperty() {
     return Object.defineProperty(this.webViewImpl.webviewNode, this.name, {
       get: () => {
         return this.getValue();
@@ -55,21 +55,21 @@ export class WebViewAttribute implements MutationHandler {
       set: (value) => {
         return this.setValue(value);
       },
-      enumerable: true
+      enumerable: true,
     });
   }
 
   // Called when the attribute's value changes.
-  public handleMutation: MutationHandler['handleMutation'] = () => undefined as any
+  public handleMutation: MutationHandler['handleMutation'] = () => undefined as any;
 }
 
 // An attribute that is treated as a Boolean.
 class BooleanAttribute extends WebViewAttribute {
-  getValue () {
+  getValue() {
     return this.webViewImpl.webviewNode.hasAttribute(this.name);
   }
 
-  setValue (value: boolean) {
+  setValue(value: boolean) {
     if (value) {
       this.webViewImpl.webviewNode.setAttribute(this.name, '');
     } else {
@@ -80,9 +80,9 @@ class BooleanAttribute extends WebViewAttribute {
 
 // Attribute representing the state of the storage partition.
 export class PartitionAttribute extends WebViewAttribute {
-  public validPartitionId = true
+  public validPartitionId = true;
 
-  constructor (public webViewImpl: WebViewImpl) {
+  constructor(public webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_PARTITION, webViewImpl);
   }
 
@@ -99,19 +99,19 @@ export class PartitionAttribute extends WebViewAttribute {
       this.validPartitionId = false;
       console.error(WEB_VIEW_CONSTANTS.ERROR_MSG_INVALID_PARTITION_ATTRIBUTE);
     }
-  }
+  };
 }
 
 // Attribute that handles the location and navigation of the webview.
 export class SrcAttribute extends WebViewAttribute {
   public observer!: MutationObserver;
 
-  constructor (public webViewImpl: WebViewImpl) {
+  constructor(public webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_SRC, webViewImpl);
     this.setupMutationObserver();
   }
 
-  public getValue () {
+  public getValue() {
     if (this.webViewImpl.webviewNode.hasAttribute(this.name)) {
       return resolveURL(this.webViewImpl.webviewNode.getAttribute(this.name));
     } else {
@@ -119,7 +119,7 @@ export class SrcAttribute extends WebViewAttribute {
     }
   }
 
-  public setValueIgnoreMutation (value: any) {
+  public setValueIgnoreMutation(value: any) {
     super.setValueIgnoreMutation(value);
 
     // takeRecords() is needed to clear queued up src mutations. Without it, it
@@ -141,13 +141,13 @@ export class SrcAttribute extends WebViewAttribute {
       return;
     }
     this.parse();
-  }
+  };
 
   // The purpose of this mutation observer is to catch assignment to the src
   // attribute without any changes to its value. This is useful in the case
   // where the webview guest has crashed and navigating to the same address
   // spawns off a new process.
-  public setupMutationObserver () {
+  public setupMutationObserver() {
     this.observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         const { oldValue } = mutation;
@@ -162,14 +162,18 @@ export class SrcAttribute extends WebViewAttribute {
     const params = {
       attributes: true,
       attributeOldValue: true,
-      attributeFilter: [this.name]
+      attributeFilter: [this.name],
     };
 
     this.observer.observe(this.webViewImpl.webviewNode, params);
   }
 
-  public parse () {
-    if (!this.webViewImpl.elementAttached || !(this.webViewImpl.attributes.get(WEB_VIEW_CONSTANTS.ATTRIBUTE_PARTITION) as PartitionAttribute).validPartitionId || !this.getValue()) {
+  public parse() {
+    if (
+      !this.webViewImpl.elementAttached ||
+      !(this.webViewImpl.attributes.get(WEB_VIEW_CONSTANTS.ATTRIBUTE_PARTITION) as PartitionAttribute).validPartitionId ||
+      !this.getValue()
+    ) {
       return;
     }
     if (this.webViewImpl.guestInstanceId == null) {
@@ -203,25 +207,25 @@ export class SrcAttribute extends WebViewAttribute {
 
 // Attribute specifies HTTP referrer.
 class HttpReferrerAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_HTTPREFERRER, webViewImpl);
   }
 }
 
 // Attribute specifies user agent
 class UserAgentAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_USERAGENT, webViewImpl);
   }
 }
 
 // Attribute that set preload script.
 class PreloadAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_PRELOAD, webViewImpl);
   }
 
-  public getValue () {
+  public getValue() {
     if (!this.webViewImpl.webviewNode.hasAttribute(this.name)) {
       return this.value;
     }
@@ -240,35 +244,35 @@ class PreloadAttribute extends WebViewAttribute {
 
 // Attribute that specifies the blink features to be enabled.
 class BlinkFeaturesAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_BLINKFEATURES, webViewImpl);
   }
 }
 
 // Attribute that specifies the blink features to be disabled.
 class DisableBlinkFeaturesAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEBLINKFEATURES, webViewImpl);
   }
 }
 
 // Attribute that specifies the web preferences to be enabled.
 class WebPreferencesAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_WEBPREFERENCES, webViewImpl);
   }
 }
 
 class EnableRemoteModuleAttribute extends WebViewAttribute {
-  constructor (webViewImpl: WebViewImpl) {
+  constructor(webViewImpl: WebViewImpl) {
     super(WEB_VIEW_CONSTANTS.ATTRIBUTE_ENABLEREMOTEMODULE, webViewImpl);
   }
 
-  public getValue () {
+  public getValue() {
     return this.webViewImpl.webviewNode.getAttribute(this.name) !== 'false';
   }
 
-  public setValue (value: any) {
+  public setValue(value: any) {
     this.webViewImpl.webviewNode.setAttribute(this.name, value ? 'true' : 'false');
   }
 }
@@ -279,10 +283,19 @@ WebViewImpl.prototype.setupWebViewAttributes = function () {
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_SRC, new SrcAttribute(this));
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_HTTPREFERRER, new HttpReferrerAttribute(this));
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_USERAGENT, new UserAgentAttribute(this));
-  this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATION, new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATION, this));
-  this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATIONINSUBFRAMES, new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATIONINSUBFRAMES, this));
+  this.attributes.set(
+    WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATION,
+    new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATION, this),
+  );
+  this.attributes.set(
+    WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATIONINSUBFRAMES,
+    new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_NODEINTEGRATIONINSUBFRAMES, this),
+  );
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_PLUGINS, new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_PLUGINS, this));
-  this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEWEBSECURITY, new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEWEBSECURITY, this));
+  this.attributes.set(
+    WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEWEBSECURITY,
+    new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_DISABLEWEBSECURITY, this),
+  );
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_ALLOWPOPUPS, new BooleanAttribute(WEB_VIEW_CONSTANTS.ATTRIBUTE_ALLOWPOPUPS, this));
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_ENABLEREMOTEMODULE, new EnableRemoteModuleAttribute(this));
   this.attributes.set(WEB_VIEW_CONSTANTS.ATTRIBUTE_PRELOAD, new PreloadAttribute(this));

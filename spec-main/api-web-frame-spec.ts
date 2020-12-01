@@ -17,8 +17,8 @@ describe('webFrame module', () => {
           nodeIntegration: true,
           contextIsolation: true,
           worldSafeExecuteJavaScript: worldSafe,
-          preload: path.join(fixtures, 'pages', 'world-safe-preload.js')
-        }
+          preload: path.join(fixtures, 'pages', 'world-safe-preload.js'),
+        },
       });
       const isSafe = emittedOnce(ipcMain, 'executejs-safe');
       w.loadURL('about:blank');
@@ -34,8 +34,8 @@ describe('webFrame module', () => {
         nodeIntegration: true,
         contextIsolation: true,
         worldSafeExecuteJavaScript: true,
-        preload: path.join(fixtures, 'pages', 'world-safe-preload-error.js')
-      }
+        preload: path.join(fixtures, 'pages', 'world-safe-preload-error.js'),
+      },
     });
     const execError = emittedOnce(ipcMain, 'executejs-safe');
     w.loadURL('about:blank');
@@ -48,29 +48,28 @@ describe('webFrame module', () => {
     const w = new BrowserWindow({
       show: false,
       webPreferences: {
-        nodeIntegration: true
-      }
+        nodeIntegration: true,
+      },
     });
     await w.loadFile(path.join(fixtures, 'pages', 'webframe-spell-check.html'));
     w.focus();
     await w.webContents.executeJavaScript('document.querySelector("input").focus()', true);
 
-    const spellCheckerFeedback =
-      new Promise<[string[], boolean]>(resolve => {
-        ipcMain.on('spec-spell-check', (e, words, callbackDefined) => {
-          if (words.length === 5) {
-            // The API calls the provider after every completed word.
-            // The promise is resolved only after this event is received with all words.
-            resolve([words, callbackDefined]);
-          }
-        });
+    const spellCheckerFeedback = new Promise<[string[], boolean]>((resolve) => {
+      ipcMain.on('spec-spell-check', (e, words, callbackDefined) => {
+        if (words.length === 5) {
+          // The API calls the provider after every completed word.
+          // The promise is resolved only after this event is received with all words.
+          resolve([words, callbackDefined]);
+        }
       });
-    const inputText = 'spleling test you\'re ';
+    });
+    const inputText = "spleling test you're ";
     for (const keyCode of inputText) {
       w.webContents.sendInputEvent({ type: 'char', keyCode });
     }
     const [words, callbackDefined] = await spellCheckerFeedback;
-    expect(words.sort()).to.deep.equal(['spleling', 'test', 'you\'re', 'you', 're'].sort());
+    expect(words.sort()).to.deep.equal(['spleling', 'test', "you're", 'you', 're'].sort());
     expect(callbackDefined).to.be.true();
   });
 });

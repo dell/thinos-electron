@@ -21,8 +21,8 @@ describe('asar package', () => {
         width: 400,
         height: 400,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       const p = path.resolve(asarDir, 'web.asar', 'index.html');
       const dirnameEvent = emittedOnce(ipcMain, 'dirname');
@@ -41,8 +41,8 @@ describe('asar package', () => {
         width: 400,
         height: 400,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       const p = path.resolve(asarDir, 'script.asar', 'index.html');
       const ping = emittedOnce(ipcMain, 'ping');
@@ -63,8 +63,8 @@ describe('asar package', () => {
         width: 400,
         height: 400,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       const p = path.resolve(asarDir, 'video.asar', 'index.html');
       w.loadFile(p);

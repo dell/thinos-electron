@@ -18,41 +18,42 @@ const nativeASGetter = app.isAccessibilitySupportEnabled;
 const nativeASSetter = app.setAccessibilitySupportEnabled;
 Object.defineProperty(app, 'accessibilitySupportEnabled', {
   get: () => nativeASGetter.call(app),
-  set: (enabled) => nativeASSetter.call(app, enabled)
+  set: (enabled) => nativeASSetter.call(app, enabled),
 });
 
 const nativeBCGetter = app.getBadgeCount;
 const nativeBCSetter = app.setBadgeCount;
 Object.defineProperty(app, 'badgeCount', {
   get: () => nativeBCGetter.call(app),
-  set: (count) => nativeBCSetter.call(app, count)
+  set: (count) => nativeBCSetter.call(app, count),
 });
 
 const nativeNGetter = app.getName;
 const nativeNSetter = app.setName;
 Object.defineProperty(app, 'name', {
   get: () => nativeNGetter.call(app),
-  set: (name) => nativeNSetter.call(app, name)
+  set: (name) => nativeNSetter.call(app, name),
 });
 
 Object.assign(app, {
   commandLine: {
     hasSwitch: (theSwitch: string) => commandLine.hasSwitch(String(theSwitch)),
     getSwitchValue: (theSwitch: string) => commandLine.getSwitchValue(String(theSwitch)),
-    appendSwitch: (theSwitch: string, value?: string) => commandLine.appendSwitch(String(theSwitch), typeof value === 'undefined' ? value : String(value)),
-    appendArgument: (arg: string) => commandLine.appendArgument(String(arg))
-  } as Electron.CommandLine
+    appendSwitch: (theSwitch: string, value?: string) =>
+      commandLine.appendSwitch(String(theSwitch), typeof value === 'undefined' ? value : String(value)),
+    appendArgument: (arg: string) => commandLine.appendArgument(String(arg)),
+  } as Electron.CommandLine,
 });
 
 // we define this here because it'd be overly complicated to
 // do in native land
 Object.defineProperty(app, 'applicationMenu', {
-  get () {
+  get() {
     return Menu.getApplicationMenu();
   },
-  set (menu: Electron.Menu | null) {
+  set(menu: Electron.Menu | null) {
     return Menu.setApplicationMenu(menu);
-  }
+  },
 });
 
 (app as any).isPackaged = (() => {
@@ -107,7 +108,7 @@ if (process.platform === 'linux') {
 
     return {
       workingSetSize: getEntry(file, patternVmRSS),
-      peakWorkingSetSize: getEntry(file, patternVmHWM)
+      peakWorkingSetSize: getEntry(file, patternVmHWM),
     };
   };
 

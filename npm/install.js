@@ -25,13 +25,15 @@ downloadArtifact({
   force: process.env.force_no_cache === 'true',
   cacheRoot: process.env.electron_config_cache,
   platform: process.env.npm_config_platform || process.platform,
-  arch: process.env.npm_config_arch || process.arch
-}).then(extractFile).catch(err => {
-  console.error(err.stack);
-  process.exit(1);
-});
+  arch: process.env.npm_config_arch || process.arch,
+})
+  .then(extractFile)
+  .catch((err) => {
+    console.error(err.stack);
+    process.exit(1);
+  });
 
-function isInstalled () {
+function isInstalled() {
   try {
     if (fs.readFileSync(path.join(__dirname, 'dist', 'version'), 'utf-8').replace(/^v/, '') !== version) {
       return false;
@@ -50,12 +52,12 @@ function isInstalled () {
 }
 
 // unzips and makes path.txt point at the correct executable
-function extractFile (zipPath) {
+function extractFile(zipPath) {
   return new Promise((resolve, reject) => {
-    extract(zipPath, { dir: path.join(__dirname, 'dist') }, err => {
+    extract(zipPath, { dir: path.join(__dirname, 'dist') }, (err) => {
       if (err) return reject(err);
 
-      fs.writeFile(path.join(__dirname, 'path.txt'), platformPath, err => {
+      fs.writeFile(path.join(__dirname, 'path.txt'), platformPath, (err) => {
         if (err) return reject(err);
 
         resolve();
@@ -64,7 +66,7 @@ function extractFile (zipPath) {
   });
 }
 
-function getPlatformPath () {
+function getPlatformPath() {
   const platform = process.env.npm_config_platform || os.platform();
 
   switch (platform) {

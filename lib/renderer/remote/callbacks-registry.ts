@@ -2,10 +2,10 @@ const callbackIds = new WeakMap<Function, number>();
 const locationInfo = new WeakMap<Function, string>();
 
 export class CallbacksRegistry {
-  private nextId: number = 0
-  private callbacks = new Map<number, Function>()
+  private nextId: number = 0;
+  private callbacks = new Map<number, Function>();
 
-  add (callback: Function) {
+  add(callback: Function) {
     // The callback is already added.
     let id = callbackIds.get(callback);
     if (id != null) return id;
@@ -15,7 +15,7 @@ export class CallbacksRegistry {
     // Capture the location of the function and put it in the ID string,
     // so that release errors can be tracked down easily.
     const regexp = /at (.*)/gi;
-    const stackString = (new Error()).stack;
+    const stackString = new Error().stack;
     if (!stackString) return;
 
     let filenameAndLine: string;
@@ -38,19 +38,19 @@ export class CallbacksRegistry {
     return id;
   }
 
-  get (id: number) {
+  get(id: number) {
     return this.callbacks.get(id) || function () {};
   }
 
-  getLocation (callback: Function) {
+  getLocation(callback: Function) {
     return locationInfo.get(callback);
   }
 
-  apply (id: number, ...args: any[]) {
+  apply(id: number, ...args: any[]) {
     return this.get(id).apply(global, ...args);
   }
 
-  remove (id: number) {
+  remove(id: number) {
     const callback = this.callbacks.get(id);
     if (callback) {
       callbackIds.delete(callback);

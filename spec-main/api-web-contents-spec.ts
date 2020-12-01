@@ -21,7 +21,7 @@ describe('webContents module', () => {
     it('returns an array of web contents', async () => {
       const w = new BrowserWindow({
         show: false,
-        webPreferences: { webviewTag: true }
+        webPreferences: { webviewTag: true },
       });
       w.loadFile(path.join(fixturesPath, 'pages', 'webview-zoom-factor.html'));
 
@@ -70,7 +70,7 @@ describe('webContents module', () => {
 
     it('supports calling preventDefault on will-prevent-unload events', async () => {
       const w = new BrowserWindow({ show: false });
-      w.webContents.once('will-prevent-unload', event => event.preventDefault());
+      w.webContents.once('will-prevent-unload', (event) => event.preventDefault());
       await w.loadFile(path.join(__dirname, 'fixtures', 'api', 'beforeunload-false.html'));
       const wait = emittedOnce(w, 'closed');
       w.close();
@@ -102,8 +102,8 @@ describe('webContents module', () => {
         webPreferences: {
           nodeIntegration: true,
           sandbox: false,
-          contextIsolation: false
-        }
+          contextIsolation: false,
+        },
       });
       w.loadFile(path.join(fixturesPath, 'pages', 'send-after-node.html'));
       setTimeout(() => {
@@ -153,8 +153,8 @@ describe('webContents module', () => {
         w.webContents.print({
           pageSize: {
             width: 100,
-            height: 200
-          }
+            height: 200,
+          },
         });
       }).to.throw('height and width properties must be minimum 352 microns.');
     });
@@ -168,8 +168,8 @@ describe('webContents module', () => {
             top: 1,
             bottom: 1,
             left: 1,
-            right: 1
-          }
+            right: 1,
+          },
         });
       }).to.not.throw();
     });
@@ -182,15 +182,7 @@ describe('webContents module', () => {
       const code = `(() => "${expected}")()`;
       const asyncCode = `(() => new Promise(r => setTimeout(() => r("${expected}"), 500)))()`;
       const badAsyncCode = `(() => new Promise((r, e) => setTimeout(() => e("${expectedErrorMsg}"), 500)))()`;
-      const errorTypes = new Set([
-        Error,
-        ReferenceError,
-        EvalError,
-        RangeError,
-        SyntaxError,
-        TypeError,
-        URIError
-      ]);
+      const errorTypes = new Set([Error, ReferenceError, EvalError, RangeError, SyntaxError, TypeError, URIError]);
       let w: BrowserWindow;
 
       before(async () => {
@@ -212,8 +204,9 @@ describe('webContents module', () => {
       });
       it('rejects the returned promise with an error if an Error.prototype is thrown', async () => {
         for (const error of errorTypes) {
-          await expect(w.webContents.executeJavaScript(`Promise.reject(new ${error.name}("Wamp-wamp"))`))
-            .to.eventually.be.rejectedWith(error);
+          await expect(w.webContents.executeJavaScript(`Promise.reject(new ${error.name}("Wamp-wamp"))`)).to.eventually.be.rejectedWith(
+            error,
+          );
         }
       });
     });
@@ -225,16 +218,18 @@ describe('webContents module', () => {
       });
       afterEach(closeAllWindows);
 
-      let server: http.Server = null as unknown as http.Server;
-      let serverUrl: string = null as unknown as string;
+      let server: http.Server = (null as unknown) as http.Server;
+      let serverUrl: string = (null as unknown) as string;
 
       before((done) => {
-        server = http.createServer((request, response) => {
-          response.end();
-        }).listen(0, '127.0.0.1', () => {
-          serverUrl = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
-          done();
-        });
+        server = http
+          .createServer((request, response) => {
+            response.end();
+          })
+          .listen(0, '127.0.0.1', () => {
+            serverUrl = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
+            done();
+          });
       });
 
       after(() => {
@@ -250,7 +245,7 @@ describe('webContents module', () => {
           document.body.appendChild(iframe)
           null // don't return the iframe
         `);
-        await w.webContents.executeJavaScript('console.log(\'hello\')');
+        await w.webContents.executeJavaScript("console.log('hello')");
       });
 
       it('executes after page load', async () => {
@@ -295,21 +290,20 @@ describe('webContents module', () => {
     });
 
     it('rejects when failing to load a file URL', async () => {
-      await expect(w.loadURL('file:non-existent')).to.eventually.be.rejected()
-        .and.have.property('code', 'ERR_FILE_NOT_FOUND');
+      await expect(w.loadURL('file:non-existent')).to.eventually.be.rejected().and.have.property('code', 'ERR_FILE_NOT_FOUND');
     });
 
     // Temporarily disable on WOA until
     // https://github.com/electron/electron/issues/20008 is resolved
-    const testFn = (process.platform === 'win32' && process.arch === 'arm64' ? it.skip : it);
+    const testFn = process.platform === 'win32' && process.arch === 'arm64' ? it.skip : it;
     testFn('rejects when loading fails due to DNS not resolved', async () => {
-      await expect(w.loadURL('https://err.name.not.resolved')).to.eventually.be.rejected()
+      await expect(w.loadURL('https://err.name.not.resolved'))
+        .to.eventually.be.rejected()
         .and.have.property('code', 'ERR_NAME_NOT_RESOLVED');
     });
 
     it('rejects when navigation is cancelled due to a bad scheme', async () => {
-      await expect(w.loadURL('bad-scheme://foo')).to.eventually.be.rejected()
-        .and.have.property('code', 'ERR_FAILED');
+      await expect(w.loadURL('bad-scheme://foo')).to.eventually.be.rejected().and.have.property('code', 'ERR_FAILED');
     });
 
     it('sets appropriate error information on rejection', async () => {
@@ -326,8 +320,10 @@ describe('webContents module', () => {
     });
 
     it('rejects if the load is aborted', async () => {
-      const s = http.createServer(() => { /* never complete the request */ });
-      await new Promise(resolve => s.listen(0, '127.0.0.1', resolve));
+      const s = http.createServer(() => {
+        /* never complete the request */
+      });
+      await new Promise((resolve) => s.listen(0, '127.0.0.1', resolve));
       const { port } = s.address() as AddressInfo;
       const p = expect(w.loadURL(`http://127.0.0.1:${port}`)).to.eventually.be.rejectedWith(Error, /ERR_ABORTED/);
       // load a different file before the first load completes, causing the
@@ -338,16 +334,16 @@ describe('webContents module', () => {
     });
 
     it("doesn't reject when a subframe fails to load", async () => {
-      let resp = null as unknown as http.ServerResponse;
+      let resp = (null as unknown) as http.ServerResponse;
       const s = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.write('<iframe src="http://err.name.not.resolved"></iframe>');
         resp = res;
         // don't end the response yet
       });
-      await new Promise(resolve => s.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => s.listen(0, '127.0.0.1', resolve));
       const { port } = s.address() as AddressInfo;
-      const p = new Promise(resolve => {
+      const p = new Promise((resolve) => {
         w.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
           if (!isMainFrame) {
             resolve();
@@ -362,16 +358,16 @@ describe('webContents module', () => {
     });
 
     it("doesn't resolve when a subframe loads", async () => {
-      let resp = null as unknown as http.ServerResponse;
+      let resp = (null as unknown) as http.ServerResponse;
       const s = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.write('<iframe src="about:blank"></iframe>');
         resp = res;
         // don't end the response yet
       });
-      await new Promise(resolve => s.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => s.listen(0, '127.0.0.1', resolve));
       const { port } = s.address() as AddressInfo;
-      const p = new Promise(resolve => {
+      const p = new Promise((resolve) => {
         w.webContents.on('did-frame-finish-load', (event, isMainFrame) => {
           if (!isMainFrame) {
             resolve();
@@ -381,8 +377,7 @@ describe('webContents module', () => {
       const main = w.loadURL(`http://127.0.0.1:${port}`);
       await p;
       resp.destroy(); // cause the main request to fail
-      await expect(main).to.eventually.be.rejected()
-        .and.have.property('errno', -355); // ERR_INCOMPLETE_CHUNKED_ENCODING
+      await expect(main).to.eventually.be.rejected().and.have.property('errno', -355); // ERR_INCOMPLETE_CHUNKED_ENCODING
       s.close();
     });
   });
@@ -390,7 +385,7 @@ describe('webContents module', () => {
   describe('getFocusedWebContents() API', () => {
     afterEach(closeAllWindows);
 
-    const testFn = (process.platform === 'win32' && process.arch === 'arm64' ? it.skip : it);
+    const testFn = process.platform === 'win32' && process.arch === 'arm64' ? it.skip : it;
     testFn('returns the focused web contents', async () => {
       const w = new BrowserWindow({ show: true });
       await w.loadURL('about:blank');
@@ -415,7 +410,9 @@ describe('webContents module', () => {
       // For some reason we have to wait for two focused events...?
       await emittedOnce(w.webContents, 'devtools-focused');
 
-      expect(() => { webContents.getFocusedWebContents(); }).to.not.throw();
+      expect(() => {
+        webContents.getFocusedWebContents();
+      }).to.not.throw();
 
       // Work around https://github.com/electron/electron/issues/19985
       await delay();
@@ -423,7 +420,9 @@ describe('webContents module', () => {
       const devToolsClosed = emittedOnce(w.webContents, 'devtools-closed');
       w.webContents.closeDevTools();
       await devToolsClosed;
-      expect(() => { webContents.getFocusedWebContents(); }).to.not.throw();
+      expect(() => {
+        webContents.getFocusedWebContents();
+      }).to.not.throw();
     });
   });
 
@@ -496,10 +495,7 @@ describe('webContents module', () => {
       await focused;
       expect(w.isFocused()).to.be.true();
       w.webContents.openDevTools({ mode: 'detach', activate: true });
-      await Promise.all([
-        emittedOnce(w.webContents, 'devtools-opened'),
-        emittedOnce(w.webContents, 'devtools-focused')
-      ]);
+      await Promise.all([emittedOnce(w.webContents, 'devtools-opened'), emittedOnce(w.webContents, 'devtools-focused')]);
       await delay();
       expect(w.isFocused()).to.be.false();
     });
@@ -518,7 +514,7 @@ describe('webContents module', () => {
     it('can prevent document keyboard events', async () => {
       const w = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true } });
       await w.loadFile(path.join(fixturesPath, 'pages', 'key-events.html'));
-      const keyDown = new Promise(resolve => {
+      const keyDown = new Promise((resolve) => {
         ipcMain.once('keydown', (event, key) => resolve(key));
       });
       w.webContents.once('before-input-event', (event, input) => {
@@ -544,7 +540,7 @@ describe('webContents module', () => {
         w.webContents.sendInputEvent({
           type: opts.type,
           keyCode: opts.keyCode,
-          modifiers: modifiers as any
+          modifiers: modifiers as any,
         });
         const [, input] = await p;
 
@@ -566,7 +562,7 @@ describe('webContents module', () => {
         control: true,
         alt: true,
         meta: true,
-        isAutoRepeat: true
+        isAutoRepeat: true,
       });
       await testBeforeInput({
         type: 'keyUp',
@@ -577,7 +573,7 @@ describe('webContents module', () => {
         control: true,
         alt: true,
         meta: false,
-        isAutoRepeat: false
+        isAutoRepeat: false,
       });
       await testBeforeInput({
         type: 'keyUp',
@@ -588,7 +584,7 @@ describe('webContents module', () => {
         control: false,
         alt: false,
         meta: true,
-        isAutoRepeat: false
+        isAutoRepeat: false,
       });
       await testBeforeInput({
         type: 'keyUp',
@@ -599,7 +595,7 @@ describe('webContents module', () => {
         control: true,
         alt: false,
         meta: false,
-        isAutoRepeat: true
+        isAutoRepeat: true,
       });
     });
   });
@@ -620,7 +616,7 @@ describe('webContents module', () => {
           deltaY: 1,
           wheelTicksX: 0,
           wheelTicksY: 1,
-          modifiers: ['control', 'meta']
+          modifiers: ['control', 'meta'],
         });
 
         const [, zoomDirection] = await emittedOnce(w.webContents, 'zoom-changed');
@@ -643,7 +639,7 @@ describe('webContents module', () => {
           deltaY: -1,
           wheelTicksX: 0,
           wheelTicksY: -1,
-          modifiers: ['control', 'meta']
+          modifiers: ['control', 'meta'],
         });
 
         const [, zoomDirection] = await emittedOnce(w.webContents, 'zoom-changed');
@@ -750,7 +746,9 @@ describe('webContents module', () => {
     it('supports inspecting an element in the devtools', (done) => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('about:blank');
-      w.webContents.once('devtools-opened', () => { done(); });
+      w.webContents.once('devtools-opened', () => {
+        done();
+      });
       w.webContents.inspectElement(10, 10);
     });
   });
@@ -760,15 +758,15 @@ describe('webContents module', () => {
       const w = new BrowserWindow({ show: false });
       expect(() => {
         w.webContents.startDrag({ icon: path.join(fixturesPath, 'assets', 'logo.png') } as any);
-      }).to.throw('Must specify either \'file\' or \'files\' option');
+      }).to.throw("Must specify either 'file' or 'files' option");
 
       expect(() => {
         w.webContents.startDrag({ file: __filename } as any);
-      }).to.throw('Must specify non-empty \'icon\' option');
+      }).to.throw("Must specify non-empty 'icon' option");
 
       expect(() => {
         w.webContents.startDrag({ file: __filename, icon: path.join(mainFixturesPath, 'blank.png') });
-      }).to.throw('Must specify non-empty \'icon\' option');
+      }).to.throw("Must specify non-empty 'icon' option");
     });
   });
 
@@ -854,7 +852,7 @@ describe('webContents module', () => {
     const hostZoomMap: Record<string, number> = {
       host1: 0.3,
       host2: 0.7,
-      host3: 0.2
+      host3: 0.2,
     };
 
     before(() => {
@@ -1010,8 +1008,8 @@ describe('webContents module', () => {
       const w2 = new BrowserWindow({
         show: false,
         webPreferences: {
-          partition: 'temp'
-        }
+          partition: 'temp',
+        },
       });
       const protocol = w2.webContents.session.protocol;
       protocol.registerStringProtocol(scheme, (request, callback) => {
@@ -1135,12 +1133,7 @@ describe('webContents module', () => {
     afterEach(closeAllWindows);
     it('can set and get webrtc ip policies', () => {
       const w = new BrowserWindow({ show: false });
-      const policies = [
-        'default',
-        'default_public_interface_only',
-        'default_public_and_private_interfaces',
-        'disable_non_proxied_udp'
-      ];
+      const policies = ['default', 'default_public_interface_only', 'default_public_and_private_interfaces', 'disable_non_proxied_udp'];
       policies.forEach((policy) => {
         w.webContents.setWebRTCIPHandlingPolicy(policy as any);
         expect(w.webContents.getWebRTCIPHandlingPolicy()).to.equal(policy);
@@ -1165,7 +1158,7 @@ describe('webContents module', () => {
           } else if (req.url === '/first-window-open') {
             res.end(`<html><script>window.open('${serverUrl}/second-window-open', 'first child');</script></html>`);
           } else if (req.url === '/second-window-open') {
-            res.end('<html><script>window.open(\'wrong://url\', \'second child\');</script></html>');
+            res.end("<html><script>window.open('wrong://url', 'second child');</script></html>");
           } else {
             res.end();
           }
@@ -1237,7 +1230,7 @@ describe('webContents module', () => {
       const destroyed = emittedOnce(w.webContents, 'destroyed');
       w.loadURL(`${serverUrl}/redirect-cross-site`);
       await destroyed;
-      expect(currentRenderViewDeletedEmitted).to.be.true('current-render-view-deleted wasn\'t emitted');
+      expect(currentRenderViewDeletedEmitted).to.be.true("current-render-view-deleted wasn't emitted");
     });
 
     it('emits render-view-deleted if any RVHs are deleted', async () => {
@@ -1253,7 +1246,7 @@ describe('webContents module', () => {
       w.loadURL(`${serverUrl}/redirect-cross-site`);
       await destroyed;
       const expectedRenderViewDeletedEventCount = 1;
-      expect(rvhDeletedCount).to.equal(expectedRenderViewDeletedEventCount, 'render-view-deleted wasn\'t emitted the expected nr. of times');
+      expect(rvhDeletedCount).to.equal(expectedRenderViewDeletedEventCount, "render-view-deleted wasn't emitted the expected nr. of times");
     });
   });
 
@@ -1280,11 +1273,11 @@ describe('webContents module', () => {
 
   const crashPrefs = [
     {
-      nodeIntegration: true
+      nodeIntegration: true,
     },
     {
-      sandbox: true
-    }
+      sandbox: true,
+    },
   ];
 
   const nicePrefs = (o: any) => {
@@ -1333,21 +1326,23 @@ describe('webContents module', () => {
     let serverUrl: string;
 
     before((done) => {
-      server = http.createServer((request, response) => {
-        switch (request.url) {
-          case '/net-error':
-            response.destroy();
-            break;
-          case '/200':
-            response.end();
-            break;
-          default:
-            done('unsupported endpoint');
-        }
-      }).listen(0, '127.0.0.1', () => {
-        serverUrl = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
-        done();
-      });
+      server = http
+        .createServer((request, response) => {
+          switch (request.url) {
+            case '/net-error':
+              response.destroy();
+              break;
+            case '/200':
+              response.end();
+              break;
+            default:
+              done('unsupported endpoint');
+          }
+        })
+        .listen(0, '127.0.0.1', () => {
+          serverUrl = 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
+          done();
+        });
     });
 
     after(() => {
@@ -1363,7 +1358,7 @@ describe('webContents module', () => {
       // will be alive till end of the observer. Synchronous `destroy` api
       // violates this contract and crashes.
       { name: 'did-frame-finish-load', url: '/200' },
-      { name: 'did-fail-load', url: '/net-error' }
+      { name: 'did-fail-load', url: '/net-error' },
     ];
     for (const e of events) {
       it(`should not crash when invoked synchronously inside ${e.name} handler`, async function () {
@@ -1374,7 +1369,9 @@ describe('webContents module', () => {
 
         const contents = (webContents as any).create() as WebContents;
         const originalEmit = contents.emit.bind(contents);
-        contents.emit = (...args) => { return originalEmit(...args); };
+        contents.emit = (...args) => {
+          return originalEmit(...args);
+        };
         contents.once(e.name as any, () => (contents as any).destroy());
         const destroyed = emittedOnce(contents, 'destroyed');
         contents.loadURL(serverUrl + e.url);
@@ -1441,7 +1438,7 @@ describe('webContents module', () => {
     it('emits when the renderer process sends a synchronous message', async () => {
       const w = new BrowserWindow({ show: true, webPreferences: { nodeIntegration: true } });
       await w.webContents.loadURL('about:blank');
-      const promise: Promise<[string, string]> = new Promise(resolve => {
+      const promise: Promise<[string, string]> = new Promise((resolve) => {
         w.webContents.once('ipc-message-sync', (event, channel, arg) => {
           event.returnValue = 'foobar' as any;
           resolve([channel, arg]);
@@ -1538,8 +1535,8 @@ describe('webContents module', () => {
             show: false,
             webPreferences: {
               sandbox,
-              preload
-            }
+              preload,
+            },
           });
 
           const promise = emittedOnce(w.webContents, 'preload-error');
@@ -1557,8 +1554,8 @@ describe('webContents module', () => {
             show: false,
             webPreferences: {
               sandbox,
-              preload
-            }
+              preload,
+            },
           });
 
           const promise = emittedOnce(w.webContents, 'preload-error');
@@ -1576,8 +1573,8 @@ describe('webContents module', () => {
             show: false,
             webPreferences: {
               sandbox,
-              preload
-            }
+              preload,
+            },
           });
 
           const promise = emittedOnce(w.webContents, 'preload-error');
@@ -1601,8 +1598,8 @@ describe('webContents module', () => {
       const w = new BrowserWindow({
         show: false,
         webPreferences: {
-          sandbox: true
-        }
+          sandbox: true,
+        },
       });
 
       await w.loadURL('about:blank');
@@ -1630,8 +1627,8 @@ describe('webContents module', () => {
       const w = new BrowserWindow({
         show: false,
         webPreferences: {
-          sandbox: true
-        }
+          sandbox: true,
+        },
       });
 
       await w.loadURL('about:blank');
@@ -1723,7 +1720,7 @@ describe('webContents module', () => {
         headerFooter: '123',
         printSelectionOnly: 1,
         printBackground: 2,
-        pageSize: 'IAmAPageSize'
+        pageSize: 'IAmAPageSize',
       };
 
       // These will hard crash in Chromium unless we type-check
@@ -1744,9 +1741,9 @@ describe('webContents module', () => {
       const data = await w.webContents.printToPDF({
         pageRanges: {
           from: 0,
-          to: 2
+          to: 2,
         },
-        landscape: true
+        landscape: true,
       });
 
       const doc = await pdfjs.getDocument(data).promise;
@@ -1790,8 +1787,7 @@ describe('webContents module', () => {
     it('works as expected', async () => {
       const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
       await w.loadFile(path.join(fixturesPath, 'api', 'picture-in-picture.html'));
-      const result = await w.webContents.executeJavaScript(
-        `runTest(${features.isPictureInPictureEnabled()})`, true);
+      const result = await w.webContents.executeJavaScript(`runTest(${features.isPictureInPictureEnabled()})`, true);
       expect(result).to.be.true();
     });
   });
@@ -1803,7 +1799,9 @@ describe('webContents module', () => {
       // robotjs let's skip this test to avoid false negatives
       require('robotjs');
       hasRobotJS = true;
-    } catch (err) { /* no-op */ }
+    } catch (err) {
+      /* no-op */
+    }
 
     afterEach(closeAllWindows);
 
@@ -1896,37 +1894,37 @@ describe('webContents module', () => {
     let proxyServerPort: number;
 
     before((done) => {
-      server = http.createServer((request, response) => {
-        if (request.url === '/no-auth') {
-          return response.end('ok');
-        }
-        if (request.headers.authorization) {
-          response.writeHead(200, { 'Content-type': 'text/plain' });
-          return response.end(request.headers.authorization);
-        }
-        response
-          .writeHead(401, { 'WWW-Authenticate': 'Basic realm="Foo"' })
-          .end('401');
-      }).listen(0, '127.0.0.1', () => {
-        serverPort = (server.address() as AddressInfo).port;
-        serverUrl = `http://127.0.0.1:${serverPort}`;
-        done();
-      });
+      server = http
+        .createServer((request, response) => {
+          if (request.url === '/no-auth') {
+            return response.end('ok');
+          }
+          if (request.headers.authorization) {
+            response.writeHead(200, { 'Content-type': 'text/plain' });
+            return response.end(request.headers.authorization);
+          }
+          response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Foo"' }).end('401');
+        })
+        .listen(0, '127.0.0.1', () => {
+          serverPort = (server.address() as AddressInfo).port;
+          serverUrl = `http://127.0.0.1:${serverPort}`;
+          done();
+        });
     });
 
     before((done) => {
-      proxyServer = http.createServer((request, response) => {
-        if (request.headers['proxy-authorization']) {
-          response.writeHead(200, { 'Content-type': 'text/plain' });
-          return response.end(request.headers['proxy-authorization']);
-        }
-        response
-          .writeHead(407, { 'Proxy-Authenticate': 'Basic realm="Foo"' })
-          .end();
-      }).listen(0, '127.0.0.1', () => {
-        proxyServerPort = (proxyServer.address() as AddressInfo).port;
-        done();
-      });
+      proxyServer = http
+        .createServer((request, response) => {
+          if (request.headers['proxy-authorization']) {
+            response.writeHead(200, { 'Content-type': 'text/plain' });
+            return response.end(request.headers['proxy-authorization']);
+          }
+          response.writeHead(407, { 'Proxy-Authenticate': 'Basic realm="Foo"' }).end();
+        })
+        .listen(0, '127.0.0.1', () => {
+          proxyServerPort = (proxyServer.address() as AddressInfo).port;
+          done();
+        });
     });
 
     afterEach(async () => {
@@ -2000,8 +1998,8 @@ describe('webContents module', () => {
     const w = new BrowserWindow({
       show: false,
       webPreferences: {
-        sandbox: true
-      }
+        sandbox: true,
+      },
     });
     w.webContents.on('-will-add-new-contents' as any, (event: any, url: any) => {
       expect(url).to.equal('about:blank');
@@ -2012,8 +2010,10 @@ describe('webContents module', () => {
       wasCalled = true;
     });
     await w.loadURL('about:blank');
-    await w.webContents.executeJavaScript('window.open(\'about:blank\')');
-    await new Promise((resolve) => { process.nextTick(resolve); });
+    await w.webContents.executeJavaScript("window.open('about:blank')");
+    await new Promise((resolve) => {
+      process.nextTick(resolve);
+    });
     expect(wasCalled).to.equal(false);
     await closeAllWindows();
   });

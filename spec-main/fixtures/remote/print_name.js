@@ -15,7 +15,7 @@ const typedArrays = {
   Int32Array,
   Uint32Array,
   Float32Array,
-  Float64Array
+  Float64Array,
 };
 
 exports.typedArray = function (type, values) {

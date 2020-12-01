@@ -8,7 +8,7 @@ setImmediate(function () {
       nodeIntegration: webFrame.getWebPreference('nodeIntegration'),
       sandbox: webFrame.getWebPreference('sandbox'),
       typeofProcess: typeof global.process,
-      windowOpenerIsNull
+      windowOpenerIsNull,
     });
     window.close();
   }

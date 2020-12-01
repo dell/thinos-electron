@@ -3,5 +3,5 @@ module.exports = require('./webpack.config.base')({
   alwaysHasNode: true,
   targetDeletesNodeGlobals: true,
   wrapInitWithProfilingTimeout: true,
-  wrapInitWithTryCatch: true
+  wrapInitWithTryCatch: true,
 });

@@ -9,7 +9,7 @@ describe('version-bumper', () => {
       const components = {
         major: 2,
         minor: 0,
-        patch: 0
+        patch: 0,
       };
 
       const version = utils.makeVersion(components, '.');
@@ -21,7 +21,7 @@ describe('version-bumper', () => {
         major: 2,
         minor: 0,
         patch: 0,
-        pre: ['nightly', 12345678]
+        pre: ['nightly', 12345678],
       };
 
       const version = utils.makeVersion(components, '.', utils.preType.PARTIAL);
@@ -33,7 +33,7 @@ describe('version-bumper', () => {
         major: 2,
         minor: 0,
         patch: 0,
-        pre: ['nightly', 12345678]
+        pre: ['nightly', 12345678],
       };
 
       const version = utils.makeVersion(components, '.', utils.preType.FULL);
@@ -77,9 +77,7 @@ describe('version-bumper', () => {
 
     it('throws error when bumping to beta from stable', () => {
       const version = 'v2.0.0';
-      return expect(
-        nextVersion('beta', version)
-      ).to.be.rejectedWith('Cannot bump to beta from stable.');
+      return expect(nextVersion('beta', version)).to.be.rejectedWith('Cannot bump to beta from stable.');
     });
 
     it('bumps to beta from nightly', async () => {
@@ -129,16 +127,12 @@ describe('version-bumper', () => {
 
     it('throws on an invalid version', () => {
       const version = 'vI.AM.INVALID';
-      return expect(
-        nextVersion('beta', version)
-      ).to.be.rejectedWith(`Invalid current version: ${version}`);
+      return expect(nextVersion('beta', version)).to.be.rejectedWith(`Invalid current version: ${version}`);
     });
 
     it('throws on an invalid bump type', () => {
       const version = 'v2.0.0';
-      return expect(
-        nextVersion('WRONG', version)
-      ).to.be.rejectedWith('Invalid bump type.');
+      return expect(nextVersion('WRONG', version)).to.be.rejectedWith('Invalid bump type.');
     });
   });
 });

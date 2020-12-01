@@ -27,11 +27,13 @@ describe('systemPreferences module', () => {
       const defaultsMap = [
         { key: 'one', type: 'string', value: 'ONE' },
         { key: 'two', value: 2, type: 'integer' },
-        { key: 'three', value: [1, 2, 3], type: 'array' }
+        { key: 'three', value: [1, 2, 3], type: 'array' },
       ];
 
       const defaultsDict: Record<string, any> = {};
-      defaultsMap.forEach(row => { defaultsDict[row.key] = row.value; });
+      defaultsMap.forEach((row) => {
+        defaultsDict[row.key] = row.value;
+      });
 
       systemPreferences.registerDefaults(defaultsDict);
 
@@ -43,12 +45,7 @@ describe('systemPreferences module', () => {
     });
 
     it('throws when bad defaults are passed', () => {
-      const badDefaults = [
-        1,
-        null,
-        new Date(),
-        { one: null }
-      ];
+      const badDefaults = [1, null, new Date(), { one: null }];
 
       for (const badDefault of badDefaults) {
         expect(() => {
@@ -90,7 +87,7 @@ describe('systemPreferences module', () => {
       ['integer', 11],
       ['url', 'https://github.com/electron'],
       ['array', [1, 2, 3]],
-      ['dictionary', { a: 1, b: 2 }]
+      ['dictionary', { a: 1, b: 2 }],
     ];
 
     it('sets values', () => {
@@ -104,7 +101,7 @@ describe('systemPreferences module', () => {
     it('throws when type and value conflict', () => {
       for (const [type, value] of TEST_CASES) {
         expect(() => {
-          systemPreferences.setUserDefault(KEY, type as any, typeof value === 'string' ? {} : 'foo' as any);
+          systemPreferences.setUserDefault(KEY, type as any, typeof value === 'string' ? {} : ('foo' as any));
         }).to.throw(`Unable to convert value to: ${type}`);
       }
     });
@@ -127,7 +124,7 @@ describe('systemPreferences module', () => {
     it('returns a valid system color', () => {
       const colors = ['blue', 'brown', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'yellow'];
 
-      colors.forEach(color => {
+      colors.forEach((color) => {
         const sysColor = systemPreferences.getSystemColor(color as any);
         expect(sysColor).to.be.a('string');
       });
@@ -176,10 +173,10 @@ describe('systemPreferences module', () => {
         'unemphasized-selected-text-background',
         'unemphasized-selected-text',
         'window-background',
-        'window-frame-text'
+        'window-frame-text',
       ];
 
-      colors.forEach(color => {
+      colors.forEach((color) => {
         const sysColor = systemPreferences.getColor(color as any);
         expect(sysColor).to.be.a('string');
       });

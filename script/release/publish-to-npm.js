@@ -9,7 +9,7 @@ const rootPackageJson = require('../../package.json');
 
 const { Octokit } = require('@octokit/rest');
 const octokit = new Octokit({
-  userAgent: 'electron-npm-publisher'
+  userAgent: 'electron-npm-publisher',
 });
 
 if (!process.env.ELECTRON_NPM_OTP) {
@@ -20,24 +20,9 @@ if (!process.env.ELECTRON_NPM_OTP) {
 let tempDir;
 temp.track(); // track and cleanup files at exit
 
-const files = [
-  'cli.js',
-  'index.js',
-  'install.js',
-  'package.json',
-  'README.md',
-  'LICENSE'
-];
+const files = ['cli.js', 'index.js', 'install.js', 'package.json', 'README.md', 'LICENSE'];
 
-const jsonFields = [
-  'name',
-  'version',
-  'repository',
-  'description',
-  'license',
-  'author',
-  'keywords'
-];
+const jsonFields = ['name', 'version', 'repository', 'description', 'license', 'author', 'keywords'];
 
 let npmTag = '';
 
@@ -55,31 +40,23 @@ new Promise((resolve, reject) => {
     // copy files from `/npm` to temp directory
     files.forEach((name) => {
       const noThirdSegment = name === 'README.md' || name === 'LICENSE';
-      fs.writeFileSync(
-        path.join(tempDir, name),
-        fs.readFileSync(path.join(ELECTRON_DIR, noThirdSegment ? '' : 'npm', name))
-      );
+      fs.writeFileSync(path.join(tempDir, name), fs.readFileSync(path.join(ELECTRON_DIR, noThirdSegment ? '' : 'npm', name)));
     });
     // copy from root package.json to temp/package.json
     const packageJson = require(path.join(tempDir, 'package.json'));
     jsonFields.forEach((fieldName) => {
       packageJson[fieldName] = rootPackageJson[fieldName];
     });
-    fs.writeFileSync(
-      path.join(tempDir, 'package.json'),
-      JSON.stringify(packageJson, null, 2)
-    );
+    fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(packageJson, null, 2));
 
     return octokit.repos.listReleases({
       owner: 'electron',
-      repo: rootPackageJson.version.indexOf('nightly') > 0 ? 'nightlies' : 'electron'
+      repo: rootPackageJson.version.indexOf('nightly') > 0 ? 'nightlies' : 'electron',
     });
   })
   .then((releases) => {
-  // download electron.d.ts from release
-    const release = releases.data.find(
-      (release) => release.tag_name === `v${rootPackageJson.version}`
-    );
+    // download electron.d.ts from release
+    const release = releases.data.find((release) => release.tag_name === `v${rootPackageJson.version}`);
     if (!release) {
       throw new Error(`cannot find release with tag v${rootPackageJson.version}`);
     }
@@ -91,20 +68,23 @@ new Promise((resolve, reject) => {
       throw new Error(`cannot find electron.d.ts from v${rootPackageJson.version} release assets`);
     }
     return new Promise((resolve, reject) => {
-      request.get({
-        url: tsdAsset.url,
-        headers: {
-          accept: 'application/octet-stream',
-          'user-agent': 'electron-npm-publisher'
-        }
-      }, (err, response, body) => {
-        if (err || response.statusCode !== 200) {
-          reject(err || new Error('Cannot download electron.d.ts'));
-        } else {
-          fs.writeFileSync(path.join(tempDir, 'electron.d.ts'), body);
-          resolve(release);
-        }
-      });
+      request.get(
+        {
+          url: tsdAsset.url,
+          headers: {
+            accept: 'application/octet-stream',
+            'user-agent': 'electron-npm-publisher',
+          },
+        },
+        (err, response, body) => {
+          if (err || response.statusCode !== 200) {
+            reject(err || new Error('Cannot download electron.d.ts'));
+          } else {
+            fs.writeFileSync(path.join(tempDir, 'electron.d.ts'), body);
+            resolve(release);
+          }
+        },
+      );
     });
   })
   .then(async (release) => {
@@ -122,10 +102,7 @@ new Promise((resolve, reject) => {
       currentJson.name = 'electron-nightly';
       rootPackageJson.name = 'electron-nightly';
 
-      fs.writeFileSync(
-        path.join(tempDir, 'package.json'),
-        JSON.stringify(currentJson, null, 2)
-      );
+      fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify(currentJson, null, 2));
     } else {
       if (currentBranch === 'master') {
         // This should never happen, master releases should be nightly releases
@@ -142,12 +119,12 @@ new Promise((resolve, reject) => {
   })
   .then(() => childProcess.execSync('npm pack', { cwd: tempDir }))
   .then(() => {
-  // test that the package can install electron prebuilt from github release
+    // test that the package can install electron prebuilt from github release
     const tarballPath = path.join(tempDir, `${rootPackageJson.name}-${rootPackageJson.version}.tgz`);
     return new Promise((resolve, reject) => {
       childProcess.execSync(`npm install ${tarballPath} --force --silent`, {
         env: Object.assign({}, process.env, { electron_config_cache: tempDir }),
-        cwd: tempDir
+        cwd: tempDir,
       });
       resolve(tarballPath);
     });
@@ -160,12 +137,10 @@ new Promise((resolve, reject) => {
     if (rootPackageJson.name === 'electron') {
       // We should only customly add dist tags for non-nightly releases where the package name is still
       // "electron"
-      if (parsedLocalVersion.prerelease.length === 0 &&
-            semver.gt(localVersion, currentTags.latest)) {
+      if (parsedLocalVersion.prerelease.length === 0 && semver.gt(localVersion, currentTags.latest)) {
         childProcess.execSync(`npm dist-tag add electron@${localVersion} latest --otp=${process.env.ELECTRON_NPM_OTP}`);
       }
-      if (parsedLocalVersion.prerelease[0] === 'beta' &&
-            semver.gt(localVersion, currentTags.beta)) {
+      if (parsedLocalVersion.prerelease[0] === 'beta' && semver.gt(localVersion, currentTags.beta)) {
         childProcess.execSync(`npm dist-tag add electron@${localVersion} beta --otp=${process.env.ELECTRON_NPM_OTP}`);
       }
     }

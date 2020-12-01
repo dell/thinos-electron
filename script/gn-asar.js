@@ -53,11 +53,13 @@ try {
 }
 
 // Create the ASAR archive
-asar.createPackageWithOptions(tmpPath, out[0], {})
-  .catch(err => {
+asar
+  .createPackageWithOptions(tmpPath, out[0], {})
+  .catch((err) => {
     const exit = () => {
       console.error('Unexpected error while generating ASAR', err);
       process.exit(1);
     };
     fs.remove(tmpPath).then(exit).catch(exit);
-  }).then(() => fs.remove(tmpPath));
+  })
+  .then(() => fs.remove(tmpPath));

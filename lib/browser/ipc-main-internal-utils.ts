@@ -1,8 +1,8 @@
 import { ipcMainInternal } from '@electron/internal/browser/ipc-main-internal';
 
-type IPCHandler = (event: ElectronInternal.IpcMainInternalEvent, ...args: any[]) => any
+type IPCHandler = (event: ElectronInternal.IpcMainInternalEvent, ...args: any[]) => any;
 
-export const handleSync = function <T extends IPCHandler> (channel: string, handler: T) {
+export const handleSync = function <T extends IPCHandler>(channel: string, handler: T) {
   ipcMainInternal.on(channel, async (event, ...args) => {
     try {
       event.returnValue = [null, await handler(event, ...args)];
@@ -14,11 +14,11 @@ export const handleSync = function <T extends IPCHandler> (channel: string, hand
 
 let nextId = 0;
 
-export function invokeInWebContents<T> (sender: Electron.WebContents, sendToAll: boolean, command: string, ...args: any[]) {
+export function invokeInWebContents<T>(sender: Electron.WebContents, sendToAll: boolean, command: string, ...args: any[]) {
   return new Promise<T>((resolve, reject) => {
     const requestId = ++nextId;
     const channel = `${command}_RESPONSE_${requestId}`;
-    ipcMainInternal.on(channel, function handler (event, error: Error, result: any) {
+    ipcMainInternal.on(channel, function handler(event, error: Error, result: any) {
       if (event.sender !== sender) {
         console.error(`Reply to ${command} sent by unexpected WebContents (${event.sender.id})`);
         return;

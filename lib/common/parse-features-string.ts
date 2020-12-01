@@ -6,14 +6,13 @@ import { BrowserWindowConstructorOptions } from 'electron';
 
 type RequiredBrowserWindowConstructorOptions = Required<BrowserWindowConstructorOptions>;
 type IntegerBrowserWindowOptionKeys = {
-  [K in keyof RequiredBrowserWindowConstructorOptions]:
-    RequiredBrowserWindowConstructorOptions[K] extends number ? K : never
+  [K in keyof RequiredBrowserWindowConstructorOptions]: RequiredBrowserWindowConstructorOptions[K] extends number ? K : never;
 }[keyof RequiredBrowserWindowConstructorOptions];
 
 // This could be an array of keys, but an object allows us to add a compile-time
 // check validating that we haven't added an integer property to
 // BrowserWindowConstructorOptions that this module doesn't know about.
-const keysOfTypeNumberCompileTimeCheck: { [K in IntegerBrowserWindowOptionKeys] : true } = {
+const keysOfTypeNumberCompileTimeCheck: { [K in IntegerBrowserWindowOptionKeys]: true } = {
   x: true,
   y: true,
   width: true,
@@ -22,7 +21,7 @@ const keysOfTypeNumberCompileTimeCheck: { [K in IntegerBrowserWindowOptionKeys] 
   maxWidth: true,
   minHeight: true,
   maxHeight: true,
-  opacity: true
+  opacity: true,
 };
 // Note `top` / `left` are special cases from the browser which we later convert
 // to y / x.
@@ -36,7 +35,7 @@ const keysOfTypeNumber = ['top', 'left', ...Object.keys(keysOfTypeNumberCompileT
  * https://html.spec.whatwg.org/multipage/window-object.html#concept-window-open-features-parse-boolean
  */
 type CoercedValue = string | number | boolean;
-function coerce (key: string, value: string): CoercedValue {
+function coerce(key: string, value: string): CoercedValue {
   if (keysOfTypeNumber.includes(key)) {
     return parseInt(value, 10);
   }
@@ -56,11 +55,11 @@ function coerce (key: string, value: string): CoercedValue {
   }
 }
 
-export function parseCommaSeparatedKeyValue (source: string, useSoonToBeDeprecatedBehaviorForBareKeys: boolean) {
+export function parseCommaSeparatedKeyValue(source: string, useSoonToBeDeprecatedBehaviorForBareKeys: boolean) {
   const bareKeys = [] as string[];
   const parsed = {} as { [key: string]: any };
   for (const keyValuePair of source.split(',')) {
-    const [key, value] = keyValuePair.split('=').map(str => str.trim());
+    const [key, value] = keyValuePair.split('=').map((str) => str.trim());
     if (useSoonToBeDeprecatedBehaviorForBareKeys && value === undefined) {
       bareKeys.push(key);
       continue;
@@ -71,12 +70,19 @@ export function parseCommaSeparatedKeyValue (source: string, useSoonToBeDeprecat
   return { parsed, bareKeys };
 }
 
-export function parseWebViewWebPreferences (preferences: string) {
+export function parseWebViewWebPreferences(preferences: string) {
   return parseCommaSeparatedKeyValue(preferences, false).parsed;
 }
 
-const allowedWebPreferences = ['zoomFactor', 'nodeIntegration', 'enableRemoteModule', 'javascript', 'contextIsolation', 'webviewTag'] as const;
-type AllowedWebPreference = (typeof allowedWebPreferences)[number];
+const allowedWebPreferences = [
+  'zoomFactor',
+  'nodeIntegration',
+  'enableRemoteModule',
+  'javascript',
+  'contextIsolation',
+  'webviewTag',
+] as const;
+type AllowedWebPreference = typeof allowedWebPreferences[number];
 
 /**
  * Parses a feature string that has the format used in window.open().
@@ -86,10 +92,7 @@ type AllowedWebPreference = (typeof allowedWebPreferences)[number];
  * not respect this. In order to not break any applications, this will be
  * flipped in the next major version.
  */
-export function parseFeatures (
-  features: string,
-  useSoonToBeDeprecatedBehaviorForBareKeys: boolean = true
-) {
+export function parseFeatures(features: string, useSoonToBeDeprecatedBehaviorForBareKeys: boolean = true) {
   const { parsed, bareKeys } = parseCommaSeparatedKeyValue(features, useSoonToBeDeprecatedBehaviorForBareKeys);
 
   const webPreferences: { [K in AllowedWebPreference]?: any } = {};
@@ -105,6 +108,6 @@ export function parseFeatures (
   return {
     options: parsed as Omit<BrowserWindowConstructorOptions, 'webPreferences'>,
     webPreferences,
-    additionalFeatures: bareKeys
+    additionalFeatures: bareKeys,
   };
 }

@@ -15,17 +15,14 @@ describe('Menu module', function () {
       const menu = Menu.buildFromTemplate([
         {
           label: 'text',
-          extra: 'field'
-        } as MenuItem | Record<string, any>
+          extra: 'field',
+        } as MenuItem | Record<string, any>,
       ]);
       expect((menu.items[0] as any).extra).to.equal('field');
     });
 
     it('should be able to accept only MenuItems', () => {
-      const menu = Menu.buildFromTemplate([
-        new MenuItem({ label: 'one' }),
-        new MenuItem({ label: 'two' })
-      ]);
+      const menu = Menu.buildFromTemplate([new MenuItem({ label: 'one' }), new MenuItem({ label: 'two' })]);
       expect(menu.items[0].label).to.equal('one');
       expect(menu.items[1].label).to.equal('two');
     });
@@ -34,20 +31,15 @@ describe('Menu module', function () {
       const menu = Menu.buildFromTemplate([
         {
           label: 'one',
-          submenu: [
-            new MenuItem({ label: 'two' }) as any
-          ]
-        }
+          submenu: [new MenuItem({ label: 'two' }) as any],
+        },
       ]);
       expect(menu.items[0].label).to.equal('one');
       expect(menu.items[0].submenu!.items[0].label).to.equal('two');
     });
 
     it('should be able to accept MenuItems and plain objects', () => {
-      const menu = Menu.buildFromTemplate([
-        new MenuItem({ label: 'one' }),
-        { label: 'two' }
-      ]);
+      const menu = Menu.buildFromTemplate([new MenuItem({ label: 'one' }), { label: 'two' }]);
       expect(menu.items[0].label).to.equal('one');
       expect(menu.items[1].label).to.equal('two');
     });
@@ -64,12 +56,12 @@ describe('Menu module', function () {
         Menu.buildFromTemplate([
           {
             label: 'text',
-            accelerator: undefined
+            accelerator: undefined,
           },
           {
             label: 'text again',
-            accelerator: null as any
-          }
+            accelerator: null as any,
+          },
         ]);
       }).to.not.throw();
     });
@@ -105,26 +97,26 @@ describe('Menu module', function () {
             {
               label: 'two',
               id: '2',
-              afterGroupContaining: ['1']
+              afterGroupContaining: ['1'],
             },
             { type: 'separator' },
             {
               id: '1',
-              label: 'one'
-            }
+              label: 'one',
+            },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
               label: 'two',
-              afterGroupContaining: ['1']
-            }
+              afterGroupContaining: ['1'],
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -135,7 +127,7 @@ describe('Menu module', function () {
           const secondItem = new MenuItem({
             label: 'two',
             id: '2',
-            afterGroupContaining: ['1']
+            afterGroupContaining: ['1'],
           });
           const sep = new MenuItem({ type: 'separator' });
 
@@ -150,28 +142,28 @@ describe('Menu module', function () {
             {
               id: '2',
               label: 'two',
-              afterGroupContaining: ['1']
+              afterGroupContaining: ['1'],
             },
             { type: 'separator' },
             {
               id: '1',
               label: 'one',
-              afterGroupContaining: ['2']
-            }
+              afterGroupContaining: ['2'],
+            },
           ];
 
           const expected = [
             {
               id: '1',
               label: 'one',
-              afterGroupContaining: ['2']
+              afterGroupContaining: ['2'],
             },
             { type: 'separator' },
             {
               id: '2',
               label: 'two',
-              afterGroupContaining: ['1']
-            }
+              afterGroupContaining: ['1'],
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -181,27 +173,27 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
               label: 'two',
-              afterGroupContaining: ['does-not-exist']
-            }
+              afterGroupContaining: ['does-not-exist'],
+            },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
               label: 'two',
-              afterGroupContaining: ['does-not-exist']
-            }
+              afterGroupContaining: ['does-not-exist'],
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -211,47 +203,47 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
-              beforeGroupContaining: ['1']
+              beforeGroupContaining: ['1'],
             },
             {
               id: '4',
               label: 'four',
-              afterGroupContaining: ['2']
+              afterGroupContaining: ['2'],
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           const expected = [
             {
               id: '3',
               label: 'three',
-              beforeGroupContaining: ['1']
+              beforeGroupContaining: ['1'],
             },
             {
               id: '4',
               label: 'four',
-              afterGroupContaining: ['2']
+              afterGroupContaining: ['2'],
             },
             { type: 'separator' },
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -263,37 +255,37 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
-              after: ['1']
+              after: ['1'],
             },
-            { type: 'separator' }
+            { type: 'separator' },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             {
               id: '3',
               label: 'three',
-              after: ['1']
+              after: ['1'],
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -303,45 +295,45 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
-              after: ['1']
+              after: ['1'],
             },
             {
               id: '4',
-              label: 'four'
+              label: 'four',
             },
-            { type: 'separator' }
+            { type: 'separator' },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             {
               id: '3',
               label: 'three',
-              after: ['1']
+              after: ['1'],
             },
             {
               id: '4',
-              label: 'four'
+              label: 'four',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -351,47 +343,47 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
-              after: ['does-not-exist']
+              after: ['does-not-exist'],
             },
             {
               id: '4',
               label: 'four',
-              after: ['1']
+              after: ['1'],
             },
-            { type: 'separator' }
+            { type: 'separator' },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             {
               id: '3',
               label: 'three',
-              after: ['does-not-exist']
+              after: ['does-not-exist'],
             },
             {
               id: '4',
               label: 'four',
-              after: ['1']
+              after: ['1'],
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -402,34 +394,34 @@ describe('Menu module', function () {
             {
               id: '1',
               label: 'one',
-              after: ['3']
+              after: ['3'],
             },
             {
               id: '2',
               label: 'two',
-              before: ['1']
+              before: ['1'],
             },
             {
               id: '3',
-              label: 'three'
-            }
+              label: 'three',
+            },
           ];
 
           const expected = [
             {
               id: '3',
-              label: 'three'
+              label: 'three',
             },
             {
               id: '2',
               label: 'two',
-              before: ['1']
+              before: ['1'],
             },
             {
               id: '1',
               label: 'one',
-              after: ['3']
-            }
+              after: ['3'],
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -439,35 +431,35 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
-              after: ['1', '2']
-            }
+              after: ['1', '2'],
+            },
           ];
 
           const expected = [
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             {
               id: '3',
               label: 'three',
-              after: ['1', '2']
-            }
+              after: ['1', '2'],
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -477,37 +469,37 @@ describe('Menu module', function () {
           const items: Electron.MenuItemConstructorOptions[] = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             { type: 'separator' },
             {
               id: '2',
-              label: 'two'
+              label: 'two',
             },
             { type: 'separator' },
             {
               id: '3',
               label: 'three',
               after: ['1'],
-              before: ['2']
-            }
+              before: ['2'],
+            },
           ];
 
           const expected = [
             {
               id: '1',
-              label: 'one'
+              label: 'one',
             },
             {
               id: '3',
               label: 'three',
               after: ['1'],
-              before: ['2']
+              before: ['2'],
             },
             {
               id: '2',
-              label: 'two'
-            }
+              label: 'two',
+            },
           ];
 
           expect(sortMenuItems(items)).to.deep.equal(expected);
@@ -518,15 +510,17 @@ describe('Menu module', function () {
         const menu = Menu.buildFromTemplate([
           {
             id: '2',
-            label: 'two'
-          }, {
+            label: 'two',
+          },
+          {
             id: '3',
-            label: 'three'
-          }, {
+            label: 'three',
+          },
+          {
             id: '1',
             label: 'one',
-            before: ['2']
-          }
+            before: ['2'],
+          },
         ]);
 
         expect(menu.items[0].label).to.equal('one');
@@ -539,15 +533,16 @@ describe('Menu module', function () {
           {
             id: '2',
             label: 'two',
-            after: ['1']
+            after: ['1'],
           },
           {
             id: '1',
-            label: 'one'
-          }, {
+            label: 'one',
+          },
+          {
             id: '3',
-            label: 'three'
-          }
+            label: 'three',
+          },
         ]);
 
         expect(menu.items[0].label).to.equal('one');
@@ -558,16 +553,20 @@ describe('Menu module', function () {
       it('should filter excess menu separators', () => {
         const menuOne = Menu.buildFromTemplate([
           {
-            type: 'separator'
-          }, {
-            label: 'a'
-          }, {
-            label: 'b'
-          }, {
-            label: 'c'
-          }, {
-            type: 'separator'
-          }
+            type: 'separator',
+          },
+          {
+            label: 'a',
+          },
+          {
+            label: 'b',
+          },
+          {
+            label: 'c',
+          },
+          {
+            type: 'separator',
+          },
         ]);
 
         expect(menuOne.items).to.have.length(3);
@@ -577,20 +576,26 @@ describe('Menu module', function () {
 
         const menuTwo = Menu.buildFromTemplate([
           {
-            type: 'separator'
-          }, {
-            type: 'separator'
-          }, {
-            label: 'a'
-          }, {
-            label: 'b'
-          }, {
-            label: 'c'
-          }, {
-            type: 'separator'
-          }, {
-            type: 'separator'
-          }
+            type: 'separator',
+          },
+          {
+            type: 'separator',
+          },
+          {
+            label: 'a',
+          },
+          {
+            label: 'b',
+          },
+          {
+            label: 'c',
+          },
+          {
+            type: 'separator',
+          },
+          {
+            type: 'separator',
+          },
         ]);
 
         expect(menuTwo.items).to.have.length(3);
@@ -602,22 +607,23 @@ describe('Menu module', function () {
       it('should only filter excess menu separators AFTER the re-ordering for before/after is done', () => {
         const menuOne = Menu.buildFromTemplate([
           {
-            type: 'separator'
+            type: 'separator',
           },
           {
             type: 'normal',
             label: 'Foo',
-            id: 'foo'
+            id: 'foo',
           },
           {
             type: 'normal',
             label: 'Bar',
-            id: 'bar'
+            id: 'bar',
           },
           {
             type: 'separator',
-            before: ['bar']
-          }]);
+            before: ['bar'],
+          },
+        ]);
 
         expect(menuOne.items).to.have.length(3);
         expect(menuOne.items[0].label).to.equal('Foo');
@@ -629,21 +635,25 @@ describe('Menu module', function () {
         const menu = Menu.buildFromTemplate([
           {
             id: '2',
-            label: 'two'
-          }, {
+            label: 'two',
+          },
+          {
             id: '3',
-            label: 'three'
-          }, {
+            label: 'three',
+          },
+          {
             id: '4',
-            label: 'four'
-          }, {
+            label: 'four',
+          },
+          {
             id: '5',
-            label: 'five'
-          }, {
+            label: 'five',
+          },
+          {
             id: '1',
             label: 'one',
-            before: ['2']
-          }
+            before: ['2'],
+          },
         ]);
 
         expect(menu.items[0].label).to.equal('one');
@@ -657,21 +667,25 @@ describe('Menu module', function () {
         const menu = Menu.buildFromTemplate([
           new MenuItem({
             id: '2',
-            label: 'two'
-          }), new MenuItem({
+            label: 'two',
+          }),
+          new MenuItem({
             id: '3',
-            label: 'three'
-          }), new MenuItem({
+            label: 'three',
+          }),
+          new MenuItem({
             id: '4',
-            label: 'four'
-          }), new MenuItem({
+            label: 'four',
+          }),
+          new MenuItem({
             id: '5',
-            label: 'five'
-          }), new MenuItem({
+            label: 'five',
+          }),
+          new MenuItem({
             id: '1',
             label: 'one',
-            before: ['2']
-          })
+            before: ['2'],
+          }),
         ]);
 
         expect(menu.items[0].label).to.equal('one');
@@ -692,10 +706,10 @@ describe('Menu module', function () {
             {
               label: 'Enter Fullscreen',
               accelerator: 'ControlCommandF',
-              id: 'fullScreen'
-            }
-          ]
-        }
+              id: 'fullScreen',
+            },
+          ],
+        },
       ]);
       const fsc = menu.getMenuItemById('fullScreen');
       expect(menu.items[0].submenu!.items[0]).to.equal(fsc);
@@ -705,16 +719,16 @@ describe('Menu module', function () {
       const menu = Menu.buildFromTemplate([
         {
           label: 'Item 1',
-          id: 'item_1'
+          id: 'item_1',
         },
         {
           id: 'separator',
-          type: 'separator'
+          type: 'separator',
         },
         {
           label: 'Item 2',
-          id: 'item_2'
-        }
+          id: 'item_2',
+        },
       ]);
       const separator = menu.getMenuItemById('separator');
       expect(separator).to.be.an('object');
@@ -724,11 +738,7 @@ describe('Menu module', function () {
 
   describe('Menu.insert', () => {
     it('should throw when attempting to insert at out-of-range indices', () => {
-      const menu = Menu.buildFromTemplate([
-        { label: '1' },
-        { label: '2' },
-        { label: '3' }
-      ]);
+      const menu = Menu.buildFromTemplate([{ label: '1' }, { label: '2' }, { label: '3' }]);
 
       const item = new MenuItem({ label: 'badInsert' });
 
@@ -742,11 +752,7 @@ describe('Menu module', function () {
     });
 
     it('should store item in @items by its index', () => {
-      const menu = Menu.buildFromTemplate([
-        { label: '1' },
-        { label: '2' },
-        { label: '3' }
-      ]);
+      const menu = Menu.buildFromTemplate([{ label: '1' }, { label: '2' }, { label: '3' }]);
 
       const item = new MenuItem({ label: 'inserted' });
 
@@ -760,11 +766,7 @@ describe('Menu module', function () {
 
   describe('Menu.append', () => {
     it('should add the item to the end of the menu', () => {
-      const menu = Menu.buildFromTemplate([
-        { label: '1' },
-        { label: '2' },
-        { label: '3' }
-      ]);
+      const menu = Menu.buildFromTemplate([{ label: '1' }, { label: '2' }, { label: '3' }]);
 
       const item = new MenuItem({ label: 'inserted' });
       menu.append(item);
@@ -782,18 +784,14 @@ describe('Menu module', function () {
 
     beforeEach(() => {
       w = new BrowserWindow({ show: false, width: 200, height: 200 });
-      menu = Menu.buildFromTemplate([
-        { label: '1' },
-        { label: '2' },
-        { label: '3' }
-      ]);
+      menu = Menu.buildFromTemplate([{ label: '1' }, { label: '2' }, { label: '3' }]);
     });
 
     afterEach(async () => {
       menu.closePopup();
       menu.closePopup(w);
       await closeWindow(w);
-      w = null as unknown as BrowserWindow;
+      w = (null as unknown) as BrowserWindow;
     });
 
     it('throws an error if options is not an object', () => {
@@ -809,12 +807,16 @@ describe('Menu module', function () {
     });
 
     it('should emit menu-will-show event', (done) => {
-      menu.on('menu-will-show', () => { done(); });
+      menu.on('menu-will-show', () => {
+        done();
+      });
       menu.popup({ window: w });
     });
 
     it('should emit menu-will-close event', (done) => {
-      menu.on('menu-will-close', () => { done(); });
+      menu.on('menu-will-close', () => {
+        done();
+      });
       menu.popup({ window: w });
       // https://github.com/electron/electron/issues/19411
       setTimeout(() => {
@@ -824,14 +826,14 @@ describe('Menu module', function () {
 
     it('returns immediately', () => {
       const input = { window: w, x: 100, y: 101 };
-      const output = menu.popup(input) as unknown as {x: number, y: number, browserWindow: BrowserWindow};
+      const output = (menu.popup(input) as unknown) as { x: number; y: number; browserWindow: BrowserWindow };
       expect(output.x).to.equal(input.x);
       expect(output.y).to.equal(input.y);
       expect(output.browserWindow).to.equal(input.window);
     });
 
     it('works without a given BrowserWindow and options', () => {
-      const { browserWindow, x, y } = menu.popup({ x: 100, y: 101 }) as unknown as {x: number, y: number, browserWindow: BrowserWindow};
+      const { browserWindow, x, y } = (menu.popup({ x: 100, y: 101 }) as unknown) as { x: number; y: number; browserWindow: BrowserWindow };
 
       expect(browserWindow.constructor.name).to.equal('BrowserWindow');
       expect(x).to.equal(100);
@@ -839,12 +841,12 @@ describe('Menu module', function () {
     });
 
     it('works with a given BrowserWindow, options and callback', (done) => {
-      const { x, y } = menu.popup({
+      const { x, y } = (menu.popup({
         window: w,
         x: 100,
         y: 101,
-        callback: () => done()
-      }) as unknown as {x: number, y: number};
+        callback: () => done(),
+      }) as unknown) as { x: number; y: number };
 
       expect(x).to.equal(100);
       expect(y).to.equal(101);
@@ -890,10 +892,7 @@ describe('Menu module', function () {
 
   describe('Menu.setApplicationMenu', () => {
     it('sets a menu', () => {
-      const menu = Menu.buildFromTemplate([
-        { label: '1' },
-        { label: '2' }
-      ]);
+      const menu = Menu.buildFromTemplate([{ label: '1' }, { label: '2' }]);
 
       Menu.setApplicationMenu(menu);
       expect(Menu.getApplicationMenu()).to.not.be.null('application menu');
@@ -911,7 +910,7 @@ describe('Menu module', function () {
 
       let output = '';
       await new Promise((resolve) => {
-        appProcess.stdout.on('data', data => {
+        appProcess.stdout.on('data', (data) => {
           output += data;
           if (data.indexOf('Window has') > -1) {
             resolve();
@@ -926,8 +925,12 @@ describe('Menu module', function () {
       const appProcess = cp.spawn(process.execPath, [appPath]);
 
       let output = '';
-      appProcess.stdout.on('data', data => { output += data; });
-      appProcess.stderr.on('data', data => { output += data; });
+      appProcess.stdout.on('data', (data) => {
+        output += data;
+      });
+      appProcess.stderr.on('data', (data) => {
+        output += data;
+      });
 
       const [code] = await emittedOnce(appProcess, 'exit');
       if (!output.includes('Window has no menu')) {

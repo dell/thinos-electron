@@ -12,7 +12,7 @@ const features = process._linkedBinding('electron_common_features');
 const fixturesPath = path.resolve(__dirname, 'fixtures');
 
 // We can only test the auto updater on darwin non-component builds
-const describeFn = (process.platform === 'darwin' && !process.mas && !features.isComponentBuild() ? describe : describe.skip);
+const describeFn = process.platform === 'darwin' && !process.mas && !features.isComponentBuild() ? describe : describe.skip;
 
 describeFn('autoUpdater behavior', function () {
   this.timeout(120000);
@@ -47,7 +47,9 @@ describeFn('autoUpdater behavior', function () {
     const plistPath = path.resolve(newPath, 'Contents', 'Info.plist');
     await fs.writeFile(
       plistPath,
-      (await fs.readFile(plistPath, 'utf8')).replace('<key>BuildMachineOSBuild</key>', `<key>NSAppTransportSecurity</key>
+      (await fs.readFile(plistPath, 'utf8')).replace(
+        '<key>BuildMachineOSBuild</key>',
+        `<key>NSAppTransportSecurity</key>
       <dict>
           <key>NSAllowsArbitraryLoads</key>
           <true/>
@@ -61,7 +63,8 @@ describeFn('autoUpdater behavior', function () {
                   <true/>
               </dict>
           </dict>
-      </dict><key>BuildMachineOSBuild</key>`)
+      </dict><key>BuildMachineOSBuild</key>`,
+      ),
     );
     return newPath;
   };
@@ -75,12 +78,12 @@ describeFn('autoUpdater behavior', function () {
     child.stderr.on('data', (chunk: Buffer) => {
       out += chunk.toString();
     });
-    return new Promise<{ code: number, out: string }>((resolve) => {
+    return new Promise<{ code: number; out: string }>((resolve) => {
       child.on('exit', (code, signal) => {
         expect(signal).to.equal(null);
         resolve({
           code: code!,
-          out
+          out,
         });
       });
     });
@@ -123,14 +126,11 @@ describeFn('autoUpdater behavior', function () {
       await withTempDirectory(async (dir) => {
         const secondAppPath = await copyApp(dir, fixture);
         const appPJPath = path.resolve(secondAppPath, 'Contents', 'Resources', 'app', 'package.json');
-        await fs.writeFile(
-          appPJPath,
-          (await fs.readFile(appPJPath, 'utf8')).replace('1.0.0', version)
-        );
+        await fs.writeFile(appPJPath, (await fs.readFile(appPJPath, 'utf8')).replace('1.0.0', version));
         await signApp(secondAppPath);
         updateZipPath = path.resolve(dir, 'update.zip');
         await spawn('zip', ['-r', '--symlinks', updateZipPath, './'], {
-          cwd: dir
+          cwd: dir,
         });
       }, false);
       cachedZips[key] = updateZipPath!;
@@ -184,7 +184,7 @@ describeFn('autoUpdater behavior', function () {
 
     afterEach(async () => {
       if (httpServer) {
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
           httpServer.close(() => {
             httpServer = null as any;
             server = null as any;
@@ -240,7 +240,7 @@ describeFn('autoUpdater behavior', function () {
             url: `http://localhost:${port}/update-file`,
             name: 'My Release Name',
             notes: 'Theses are some release notes innit',
-            pub_date: (new Date()).toString()
+            pub_date: new Date().toString(),
           });
         });
         const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
@@ -256,11 +256,14 @@ describeFn('autoUpdater behavior', function () {
       });
     });
 
-    const withUpdatableApp = async (opts: {
-      nextVersion: string;
-      startFixture: string;
-      endFixture: string;
-    }, fn: (appPath: string, zipPath: string) => Promise<void>) => {
+    const withUpdatableApp = async (
+      opts: {
+        nextVersion: string;
+        startFixture: string;
+        endFixture: string;
+      },
+      fn: (appPath: string, zipPath: string) => Promise<void>,
+    ) => {
       await withTempDirectory(async (dir) => {
         const appPath = await copyApp(dir, opts.startFixture);
         await signApp(appPath);
@@ -272,131 +275,140 @@ describeFn('autoUpdater behavior', function () {
     };
 
     it('should hit the download endpoint when an update is available and update successfully when the zip is provided', async () => {
-      await withUpdatableApp({
-        nextVersion: '2.0.0',
-        startFixture: 'update',
-        endFixture: 'update'
-      }, async (appPath, updateZipPath) => {
-        server.get('/update-file', (req, res) => {
-          res.download(updateZipPath);
-        });
-        server.get('/update-check', (req, res) => {
-          res.json({
-            url: `http://localhost:${port}/update-file`,
-            name: 'My Release Name',
-            notes: 'Theses are some release notes innit',
-            pub_date: (new Date()).toString()
+      await withUpdatableApp(
+        {
+          nextVersion: '2.0.0',
+          startFixture: 'update',
+          endFixture: 'update',
+        },
+        async (appPath, updateZipPath) => {
+          server.get('/update-file', (req, res) => {
+            res.download(updateZipPath);
           });
-        });
-        const relaunchPromise = new Promise((resolve) => {
-          server.get('/update-check/updated/:version', (req, res) => {
-            res.status(204).send();
-            resolve();
+          server.get('/update-check', (req, res) => {
+            res.json({
+              url: `http://localhost:${port}/update-file`,
+              name: 'My Release Name',
+              notes: 'Theses are some release notes innit',
+              pub_date: new Date().toString(),
+            });
           });
-        });
-        const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
-        logOnError(launchResult, () => {
-          expect(launchResult).to.have.property('code', 0);
-          expect(launchResult.out).to.include('Update Downloaded');
-          expect(requests).to.have.lengthOf(2);
-          expect(requests[0]).to.have.property('url', '/update-check');
-          expect(requests[1]).to.have.property('url', '/update-file');
-          expect(requests[0].header('user-agent')).to.include('Electron/');
-          expect(requests[1].header('user-agent')).to.include('Electron/');
-        });
+          const relaunchPromise = new Promise((resolve) => {
+            server.get('/update-check/updated/:version', (req, res) => {
+              res.status(204).send();
+              resolve();
+            });
+          });
+          const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
+          logOnError(launchResult, () => {
+            expect(launchResult).to.have.property('code', 0);
+            expect(launchResult.out).to.include('Update Downloaded');
+            expect(requests).to.have.lengthOf(2);
+            expect(requests[0]).to.have.property('url', '/update-check');
+            expect(requests[1]).to.have.property('url', '/update-file');
+            expect(requests[0].header('user-agent')).to.include('Electron/');
+            expect(requests[1].header('user-agent')).to.include('Electron/');
+          });
 
-        await relaunchPromise;
-        expect(requests).to.have.lengthOf(3);
-        expect(requests[2].url).to.equal('/update-check/updated/2.0.0');
-        expect(requests[2].header('user-agent')).to.include('Electron/');
-      });
+          await relaunchPromise;
+          expect(requests).to.have.lengthOf(3);
+          expect(requests[2].url).to.equal('/update-check/updated/2.0.0');
+          expect(requests[2].header('user-agent')).to.include('Electron/');
+        },
+      );
     });
 
     it('should hit the download endpoint when an update is available and update successfully when the zip is provided with JSON update mode', async () => {
-      await withUpdatableApp({
-        nextVersion: '2.0.0',
-        startFixture: 'update-json',
-        endFixture: 'update-json'
-      }, async (appPath, updateZipPath) => {
-        server.get('/update-file', (req, res) => {
-          res.download(updateZipPath);
-        });
-        server.get('/update-check', (req, res) => {
-          res.json({
-            currentRelease: '2.0.0',
-            releases: [
-              {
-                version: '2.0.0',
-                updateTo: {
+      await withUpdatableApp(
+        {
+          nextVersion: '2.0.0',
+          startFixture: 'update-json',
+          endFixture: 'update-json',
+        },
+        async (appPath, updateZipPath) => {
+          server.get('/update-file', (req, res) => {
+            res.download(updateZipPath);
+          });
+          server.get('/update-check', (req, res) => {
+            res.json({
+              currentRelease: '2.0.0',
+              releases: [
+                {
                   version: '2.0.0',
-                  url: `http://localhost:${port}/update-file`,
-                  name: 'My Release Name',
-                  notes: 'Theses are some release notes innit',
-                  pub_date: (new Date()).toString()
-                }
-              }
-            ]
+                  updateTo: {
+                    version: '2.0.0',
+                    url: `http://localhost:${port}/update-file`,
+                    name: 'My Release Name',
+                    notes: 'Theses are some release notes innit',
+                    pub_date: new Date().toString(),
+                  },
+                },
+              ],
+            });
           });
-        });
-        const relaunchPromise = new Promise((resolve) => {
-          server.get('/update-check/updated/:version', (req, res) => {
-            res.status(204).send();
-            resolve();
+          const relaunchPromise = new Promise((resolve) => {
+            server.get('/update-check/updated/:version', (req, res) => {
+              res.status(204).send();
+              resolve();
+            });
           });
-        });
-        const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
-        logOnError(launchResult, () => {
-          expect(launchResult).to.have.property('code', 0);
-          expect(launchResult.out).to.include('Update Downloaded');
-          expect(requests).to.have.lengthOf(2);
-          expect(requests[0]).to.have.property('url', '/update-check');
-          expect(requests[1]).to.have.property('url', '/update-file');
-          expect(requests[0].header('user-agent')).to.include('Electron/');
-          expect(requests[1].header('user-agent')).to.include('Electron/');
-        });
+          const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
+          logOnError(launchResult, () => {
+            expect(launchResult).to.have.property('code', 0);
+            expect(launchResult.out).to.include('Update Downloaded');
+            expect(requests).to.have.lengthOf(2);
+            expect(requests[0]).to.have.property('url', '/update-check');
+            expect(requests[1]).to.have.property('url', '/update-file');
+            expect(requests[0].header('user-agent')).to.include('Electron/');
+            expect(requests[1].header('user-agent')).to.include('Electron/');
+          });
 
-        await relaunchPromise;
-        expect(requests).to.have.lengthOf(3);
-        expect(requests[2]).to.have.property('url', '/update-check/updated/2.0.0');
-        expect(requests[2].header('user-agent')).to.include('Electron/');
-      });
+          await relaunchPromise;
+          expect(requests).to.have.lengthOf(3);
+          expect(requests[2]).to.have.property('url', '/update-check/updated/2.0.0');
+          expect(requests[2].header('user-agent')).to.include('Electron/');
+        },
+      );
     });
 
     it('should hit the download endpoint when an update is available and not update in JSON update mode when the currentRelease is older than the current version', async () => {
-      await withUpdatableApp({
-        nextVersion: '0.1.0',
-        startFixture: 'update-json',
-        endFixture: 'update-json'
-      }, async (appPath, updateZipPath) => {
-        server.get('/update-file', (req, res) => {
-          res.download(updateZipPath);
-        });
-        server.get('/update-check', (req, res) => {
-          res.json({
-            currentRelease: '0.1.0',
-            releases: [
-              {
-                version: '0.1.0',
-                updateTo: {
-                  version: '0.1.0',
-                  url: `http://localhost:${port}/update-file`,
-                  name: 'My Release Name',
-                  notes: 'Theses are some release notes innit',
-                  pub_date: (new Date()).toString()
-                }
-              }
-            ]
+      await withUpdatableApp(
+        {
+          nextVersion: '0.1.0',
+          startFixture: 'update-json',
+          endFixture: 'update-json',
+        },
+        async (appPath, updateZipPath) => {
+          server.get('/update-file', (req, res) => {
+            res.download(updateZipPath);
           });
-        });
-        const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
-        logOnError(launchResult, () => {
-          expect(launchResult).to.have.property('code', 1);
-          expect(launchResult.out).to.include('No update available');
-          expect(requests).to.have.lengthOf(1);
-          expect(requests[0]).to.have.property('url', '/update-check');
-          expect(requests[0].header('user-agent')).to.include('Electron/');
-        });
-      });
+          server.get('/update-check', (req, res) => {
+            res.json({
+              currentRelease: '0.1.0',
+              releases: [
+                {
+                  version: '0.1.0',
+                  updateTo: {
+                    version: '0.1.0',
+                    url: `http://localhost:${port}/update-file`,
+                    name: 'My Release Name',
+                    notes: 'Theses are some release notes innit',
+                    pub_date: new Date().toString(),
+                  },
+                },
+              ],
+            });
+          });
+          const launchResult = await launchApp(appPath, [`http://localhost:${port}/update-check`]);
+          logOnError(launchResult, () => {
+            expect(launchResult).to.have.property('code', 1);
+            expect(launchResult.out).to.include('No update available');
+            expect(requests).to.have.lengthOf(1);
+            expect(requests[0]).to.have.property('url', '/update-check');
+            expect(requests[0].header('user-agent')).to.include('Electron/');
+          });
+        },
+      );
     });
   });
 });

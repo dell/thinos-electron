@@ -7,7 +7,7 @@ const configPath = path.resolve(__dirname, '..', 'patches', 'config.json');
 
 // Re-export all the patches to check if there were changes.
 const proc = spawnSync('python', [patchExportFnPath, configPath, '--dry-run'], {
-  cwd: srcPath
+  cwd: srcPath,
 });
 
 // Fail if patch exporting returned 1, e.g dry run failed.

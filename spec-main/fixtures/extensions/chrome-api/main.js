@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 const testMap = {
-  connect () {
+  connect() {
     let success = false;
     try {
       chrome.runtime.connect(chrome.runtime.id);
@@ -16,28 +16,28 @@ const testMap = {
       console.log(JSON.stringify(success));
     }
   },
-  getManifest () {
+  getManifest() {
     const manifest = chrome.runtime.getManifest();
     console.log(JSON.stringify(manifest));
   },
-  sendMessage (message) {
-    chrome.runtime.sendMessage({ method: 'sendMessage', args: [message] }, response => {
+  sendMessage(message) {
+    chrome.runtime.sendMessage({ method: 'sendMessage', args: [message] }, (response) => {
       console.log(JSON.stringify(response));
     });
   },
-  executeScript (code) {
-    chrome.runtime.sendMessage({ method: 'executeScript', args: [code] }, response => {
+  executeScript(code) {
+    chrome.runtime.sendMessage({ method: 'executeScript', args: [code] }, (response) => {
       console.log(JSON.stringify(response));
     });
   },
-  connectTab (name) {
-    chrome.runtime.onConnect.addListener(port => {
-      port.onMessage.addListener(message => {
+  connectTab(name) {
+    chrome.runtime.onConnect.addListener((port) => {
+      port.onMessage.addListener((message) => {
         console.log([port.name, message].join());
       });
     });
     chrome.runtime.sendMessage({ method: 'connectTab', args: [name] });
-  }
+  },
 };
 
 const dispatchTest = (event) => {

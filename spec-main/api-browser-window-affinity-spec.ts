@@ -18,18 +18,18 @@ describe('BrowserWindow with affinity module', () => {
     app.allowRendererProcessReuse = true;
   });
 
-  async function createWindowWithWebPrefs (webPrefs: WebPreferences) {
+  async function createWindowWithWebPrefs(webPrefs: WebPreferences) {
     const w = new BrowserWindow({
       show: false,
       width: 400,
       height: 400,
-      webPreferences: webPrefs || {}
+      webPreferences: webPrefs || {},
     });
     await w.loadFile(path.join(fixtures, 'api', 'blank.html'));
     return w;
   }
 
-  function testAffinityProcessIds (name: string, webPreferences: WebPreferences = {}) {
+  function testAffinityProcessIds(name: string, webPreferences: WebPreferences = {}) {
     describe(name, () => {
       let mAffinityWindow: BrowserWindow;
       before(async () => {
@@ -38,7 +38,7 @@ describe('BrowserWindow with affinity module', () => {
 
       after(async () => {
         await closeWindow(mAffinityWindow, { assertNotWindows: false });
-        mAffinityWindow = null as unknown as BrowserWindow;
+        mAffinityWindow = (null as unknown) as BrowserWindow;
       });
 
       it('should have a different process id than a default window', async () => {
@@ -88,7 +88,7 @@ describe('BrowserWindow with affinity module', () => {
     const affinityWithNodeTrue = 'affinityWithNodeTrue';
     const affinityWithNodeFalse = 'affinityWithNodeFalse';
 
-    function testNodeIntegration (present: boolean) {
+    function testNodeIntegration(present: boolean) {
       return new Promise<void>((resolve) => {
         ipcMain.once('answer', (event, typeofProcess, typeofBuffer) => {
           if (present) {
@@ -109,8 +109,8 @@ describe('BrowserWindow with affinity module', () => {
         createWindowWithWebPrefs({
           affinity: affinityWithNodeTrue,
           preload,
-          nodeIntegration: false
-        })
+          nodeIntegration: false,
+        }),
       ]);
       await closeWindow(w, { assertNotWindows: false });
     });
@@ -120,21 +120,18 @@ describe('BrowserWindow with affinity module', () => {
         createWindowWithWebPrefs({
           affinity: affinityWithNodeTrue,
           preload,
-          nodeIntegration: false
-        })
+          nodeIntegration: false,
+        }),
       ]);
       const [, w2] = await Promise.all([
         testNodeIntegration(true),
         createWindowWithWebPrefs({
           affinity: affinityWithNodeTrue,
           preload,
-          nodeIntegration: true
-        })
+          nodeIntegration: true,
+        }),
       ]);
-      await Promise.all([
-        closeWindow(w1, { assertNotWindows: false }),
-        closeWindow(w2, { assertNotWindows: false })
-      ]);
+      await Promise.all([closeWindow(w1, { assertNotWindows: false }), closeWindow(w2, { assertNotWindows: false })]);
     });
 
     it('enables node integration when specified to true', async () => {
@@ -143,8 +140,8 @@ describe('BrowserWindow with affinity module', () => {
         createWindowWithWebPrefs({
           affinity: affinityWithNodeFalse,
           preload,
-          nodeIntegration: true
-        })
+          nodeIntegration: true,
+        }),
       ]);
       await closeWindow(w, { assertNotWindows: false });
     });
@@ -155,21 +152,18 @@ describe('BrowserWindow with affinity module', () => {
         createWindowWithWebPrefs({
           affinity: affinityWithNodeFalse,
           preload,
-          nodeIntegration: true
-        })
+          nodeIntegration: true,
+        }),
       ]);
       const [, w2] = await Promise.all([
         testNodeIntegration(false),
         createWindowWithWebPrefs({
           affinity: affinityWithNodeFalse,
           preload,
-          nodeIntegration: false
-        })
+          nodeIntegration: false,
+        }),
       ]);
-      await Promise.all([
-        closeWindow(w1, { assertNotWindows: false }),
-        closeWindow(w2, { assertNotWindows: false })
-      ]);
+      await Promise.all([closeWindow(w1, { assertNotWindows: false }), closeWindow(w2, { assertNotWindows: false })]);
     });
   });
 });

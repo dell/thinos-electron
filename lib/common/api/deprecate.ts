@@ -1,6 +1,6 @@
 let deprecationHandler: ElectronInternal.DeprecationHandler | null = null;
 
-function warnOnce (oldName: string, newName?: string) {
+function warnOnce(oldName: string, newName?: string) {
   let warned = false;
   const msg = newName
     ? `'${oldName}' is deprecated and will be removed. Please use '${newName}' instead.`
@@ -15,7 +15,9 @@ function warnOnce (oldName: string, newName?: string) {
 
 const deprecate: ElectronInternal.DeprecationUtil = {
   warnOnce,
-  setHandler: (handler) => { deprecationHandler = handler; },
+  setHandler: (handler) => {
+    deprecationHandler = handler;
+  },
   getHandler: () => deprecationHandler,
   warn: (oldName, newName) => {
     if (!process.noDeprecation) {
@@ -36,31 +38,33 @@ const deprecate: ElectronInternal.DeprecationUtil = {
 
   // remove a function with no replacement
   removeFunction: (fn, removedName) => {
-    if (!fn) { throw Error(`'${removedName} function' is invalid or does not exist.`); }
+    if (!fn) {
+      throw Error(`'${removedName} function' is invalid or does not exist.`);
+    }
 
     // wrap the deprecated function to warn user
     const warn = warnOnce(`${fn.name} function`);
-    return function (this: any) {
+    return (function (this: any) {
       warn();
       fn.apply(this, arguments);
-    } as unknown as typeof fn;
+    } as unknown) as typeof fn;
   },
 
   // change the name of a function
   renameFunction: (fn, newName) => {
     const warn = warnOnce(`${fn.name} function`, `${newName} function`);
-    return function (this: any) {
+    return (function (this: any) {
       warn();
       return fn.apply(this, arguments);
-    } as unknown as typeof fn;
+    } as unknown) as typeof fn;
   },
 
-  moveAPI<T extends Function> (fn: T, oldUsage: string, newUsage: string): T {
+  moveAPI<T extends Function>(fn: T, oldUsage: string, newUsage: string): T {
     const warn = warnOnce(oldUsage, newUsage);
-    return function (this: any) {
+    return (function (this: any) {
       warn();
       return fn.apply(this, arguments);
-    } as unknown as typeof fn;
+    } as unknown) as typeof fn;
   },
 
   // change the name of an event
@@ -79,7 +83,7 @@ const deprecate: ElectronInternal.DeprecationUtil = {
   // remove a property with no replacement
   removeProperty: (o, removedName, onlyForValues) => {
     // if the property's already been removed, warn about it
-    const info = Object.getOwnPropertyDescriptor((o as any).__proto__, removedName) // eslint-disable-line
+    const info = Object.getOwnPropertyDescriptor((o as any).__proto__, removedName); // eslint-disable-line
     if (!info) {
       deprecate.log(`Unable to remove property '${removedName}' from an object that lacks it.`);
       return o;
@@ -97,12 +101,12 @@ const deprecate: ElectronInternal.DeprecationUtil = {
         warn();
         return info.get!.call(o);
       },
-      set: newVal => {
+      set: (newVal) => {
         if (!onlyForValues || onlyForValues.includes(newVal)) {
           warn();
         }
         return info.set!.call(o, newVal);
-      }
+      },
     });
   },
 
@@ -112,7 +116,7 @@ const deprecate: ElectronInternal.DeprecationUtil = {
 
     // if the new property isn't there yet,
     // inject it and warn about it
-    if ((oldName in o) && !(newName in o)) {
+    if (oldName in o && !(newName in o)) {
       warn();
       o[newName] = (o as any)[oldName];
     }
@@ -124,12 +128,12 @@ const deprecate: ElectronInternal.DeprecationUtil = {
         warn();
         return o[newName];
       },
-      set: value => {
+      set: (value) => {
         warn();
         o[newName] = value;
-      }
+      },
     });
-  }
+  },
 };
 
 export default deprecate;

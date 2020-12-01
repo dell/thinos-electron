@@ -21,7 +21,7 @@ describe('modules support', () => {
       it('can be required in renderer', async () => {
         const w = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true } });
         w.loadURL('about:blank');
-        await expect(w.webContents.executeJavaScript('{ require(\'echo\'); null }')).to.be.fulfilled();
+        await expect(w.webContents.executeJavaScript("{ require('echo'); null }")).to.be.fulfilled();
       });
 
       ifit(features.isRunAsNodeEnabled())('can be required in node binary', async function () {
@@ -44,24 +44,22 @@ describe('modules support', () => {
       });
     });
 
-    const enablePlatforms: NodeJS.Platform[] = [
-      'linux',
-      'darwin',
-      'win32'
-    ];
+    const enablePlatforms: NodeJS.Platform[] = ['linux', 'darwin', 'win32'];
     ifdescribe(nativeModulesEnabled && enablePlatforms.includes(process.platform))('module that use uv_dlopen', () => {
       it('can be required in renderer', async () => {
         const w = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true } });
         w.loadURL('about:blank');
-        await expect(w.webContents.executeJavaScript('{ require(\'uv-dlopen\'); null }')).to.be.fulfilled();
+        await expect(w.webContents.executeJavaScript("{ require('uv-dlopen'); null }")).to.be.fulfilled();
       });
 
       ifit(features.isRunAsNodeEnabled())('can be required in node binary', async function () {
         const child = childProcess.fork(path.join(fixtures, 'module', 'uv-dlopen.js'));
-        await new Promise(resolve => child.once('exit', (exitCode) => {
-          expect(exitCode).to.equal(0);
-          resolve();
-        }));
+        await new Promise((resolve) =>
+          child.once('exit', (exitCode) => {
+            expect(exitCode).to.equal(0);
+            resolve();
+          }),
+        );
       });
     });
 
@@ -111,9 +109,7 @@ describe('modules support', () => {
     describe('when the path is inside the resources path', () => {
       it('does not include paths outside of the resources path', () => {
         let modulePath = process.resourcesPath;
-        expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
-          path.join(process.resourcesPath, 'node_modules')
-        ]);
+        expect(Module._nodeModulePaths(modulePath)).to.deep.equal([path.join(process.resourcesPath, 'node_modules')]);
 
         modulePath = process.resourcesPath + '-foo';
         const nodeModulePaths = Module._nodeModulePaths(modulePath);
@@ -123,27 +119,27 @@ describe('modules support', () => {
         modulePath = path.join(process.resourcesPath, 'foo');
         expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
           path.join(process.resourcesPath, 'foo', 'node_modules'),
-          path.join(process.resourcesPath, 'node_modules')
+          path.join(process.resourcesPath, 'node_modules'),
         ]);
 
         modulePath = path.join(process.resourcesPath, 'node_modules', 'foo');
         expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
           path.join(process.resourcesPath, 'node_modules', 'foo', 'node_modules'),
-          path.join(process.resourcesPath, 'node_modules')
+          path.join(process.resourcesPath, 'node_modules'),
         ]);
 
         modulePath = path.join(process.resourcesPath, 'node_modules', 'foo', 'bar');
         expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
           path.join(process.resourcesPath, 'node_modules', 'foo', 'bar', 'node_modules'),
           path.join(process.resourcesPath, 'node_modules', 'foo', 'node_modules'),
-          path.join(process.resourcesPath, 'node_modules')
+          path.join(process.resourcesPath, 'node_modules'),
         ]);
 
         modulePath = path.join(process.resourcesPath, 'node_modules', 'foo', 'node_modules', 'bar');
         expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
           path.join(process.resourcesPath, 'node_modules', 'foo', 'node_modules', 'bar', 'node_modules'),
           path.join(process.resourcesPath, 'node_modules', 'foo', 'node_modules'),
-          path.join(process.resourcesPath, 'node_modules')
+          path.join(process.resourcesPath, 'node_modules'),
         ]);
       });
     });
@@ -151,10 +147,7 @@ describe('modules support', () => {
     describe('when the path is outside the resources path', () => {
       it('includes paths outside of the resources path', () => {
         const modulePath = path.resolve('/foo');
-        expect(Module._nodeModulePaths(modulePath)).to.deep.equal([
-          path.join(modulePath, 'node_modules'),
-          path.resolve('/node_modules')
-        ]);
+        expect(Module._nodeModulePaths(modulePath)).to.deep.equal([path.join(modulePath, 'node_modules'), path.resolve('/node_modules')]);
       });
     });
   });

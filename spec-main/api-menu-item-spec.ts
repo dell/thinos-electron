@@ -12,13 +12,13 @@ describe('MenuItems', () => {
         role: 'close',
         sublabel: 'goodbye',
         accelerator: 'CmdOrControl+Q',
-        click: () => { },
+        click: () => {},
         enabled: true,
         visible: true,
         checked: false,
         type: 'normal',
         registerAccelerator: true,
-        submenu: [{ role: 'about' }]
+        submenu: [{ role: 'about' }],
       });
 
       expect(item).to.have.property('id').that.is.a('string');
@@ -39,29 +39,33 @@ describe('MenuItems', () => {
   });
 
   describe('MenuItem.click', () => {
-    it('should be called with the item object passed', done => {
-      const menu = Menu.buildFromTemplate([{
-        label: 'text',
-        click: (item) => {
-          try {
-            expect(item.constructor.name).to.equal('MenuItem');
-            expect(item.label).to.equal('text');
-            done();
-          } catch (e) {
-            done(e);
-          }
-        }
-      }]);
+    it('should be called with the item object passed', (done) => {
+      const menu = Menu.buildFromTemplate([
+        {
+          label: 'text',
+          click: (item) => {
+            try {
+              expect(item.constructor.name).to.equal('MenuItem');
+              expect(item.label).to.equal('text');
+              done();
+            } catch (e) {
+              done(e);
+            }
+          },
+        },
+      ]);
       menu._executeCommand({}, menu.items[0].commandId);
     });
   });
 
   describe('MenuItem with checked/radio property', () => {
     it('clicking an checkbox item should flip the checked property', () => {
-      const menu = Menu.buildFromTemplate([{
-        label: 'text',
-        type: 'checkbox'
-      }]);
+      const menu = Menu.buildFromTemplate([
+        {
+          label: 'text',
+          type: 'checkbox',
+        },
+      ]);
 
       expect(menu.items[0].checked).to.be.false('menu item checked');
       menu._executeCommand({}, menu.items[0].commandId);
@@ -69,10 +73,12 @@ describe('MenuItems', () => {
     });
 
     it('clicking an radio item should always make checked property true', () => {
-      const menu = Menu.buildFromTemplate([{
-        label: 'text',
-        type: 'radio'
-      }]);
+      const menu = Menu.buildFromTemplate([
+        {
+          label: 'text',
+          type: 'radio',
+        },
+      ]);
 
       menu._executeCommand({}, menu.items[0].commandId);
       expect(menu.items[0].checked).to.be.true('menu item checked');
@@ -85,9 +91,9 @@ describe('MenuItems', () => {
 
       const findRadioGroups = (template: MenuItemConstructorOptions[]) => {
         const groups = [];
-        let cur: { begin?: number, end?: number } | null = null;
+        let cur: { begin?: number; end?: number } | null = null;
         for (let i = 0; i <= template.length; i++) {
-          if (cur && ((i === template.length) || (template[i].type !== 'radio'))) {
+          if (cur && (i === template.length || template[i].type !== 'radio')) {
             cur.end = i;
             groups.push(cur);
             cur = null;
@@ -111,7 +117,7 @@ describe('MenuItems', () => {
         for (let i = 0; i <= 10; i++) {
           template.push({
             label: `${i}`,
-            type: 'radio'
+            type: 'radio',
           });
         }
 
@@ -120,7 +126,7 @@ describe('MenuItems', () => {
         for (let i = 12; i <= 20; i++) {
           template.push({
             label: `${i}`,
-            type: 'radio'
+            type: 'radio',
           });
         }
       });
@@ -131,7 +137,7 @@ describe('MenuItems', () => {
 
         const groups = findRadioGroups(template);
 
-        groups.forEach(g => {
+        groups.forEach((g) => {
           expect(findChecked(menu.items, g.begin!, g.end!)).to.deep.equal([g.begin]);
         });
       });
@@ -141,7 +147,7 @@ describe('MenuItems', () => {
 
         const usedGroupIds = new Set();
         const groups = findRadioGroups(template);
-        groups.forEach(g => {
+        groups.forEach((g) => {
           const groupId = (menu.items[g.begin!] as any).groupId;
 
           // groupId should be previously unused
@@ -160,7 +166,7 @@ describe('MenuItems', () => {
         const menu = Menu.buildFromTemplate(template);
 
         const groups = findRadioGroups(template);
-        groups.forEach(g => {
+        groups.forEach((g) => {
           expect(findChecked(menu.items, g.begin!, g.end!)).to.deep.equal([]);
 
           menu.items[g.begin!].checked = true;
@@ -216,10 +222,12 @@ describe('MenuItems', () => {
   describe('MenuItem with invalid type', () => {
     it('throws an exception', () => {
       expect(() => {
-        Menu.buildFromTemplate([{
-          label: 'text',
-          type: 'not-a-type' as any
-        }]);
+        Menu.buildFromTemplate([
+          {
+            label: 'text',
+            type: 'not-a-type' as any,
+          },
+        ]);
       }).to.throw(/Unknown menu item type: not-a-type/);
     });
   });
@@ -227,17 +235,19 @@ describe('MenuItems', () => {
   describe('MenuItem with submenu type and missing submenu', () => {
     it('throws an exception', () => {
       expect(() => {
-        Menu.buildFromTemplate([{
-          label: 'text',
-          type: 'submenu'
-        }]);
+        Menu.buildFromTemplate([
+          {
+            label: 'text',
+            type: 'submenu',
+          },
+        ]);
       }).to.throw(/Invalid submenu/);
     });
   });
 
   describe('MenuItem role', () => {
     it('returns undefined for items without default accelerator', () => {
-      const list = Object.keys(roleList).filter(key => !roleList[key].accelerator);
+      const list = Object.keys(roleList).filter((key) => !roleList[key].accelerator);
 
       for (const role of list) {
         const item = new MenuItem({ role: role as any });
@@ -254,7 +264,7 @@ describe('MenuItems', () => {
     });
 
     it('returns the correct default accelerator', () => {
-      const list = Object.keys(roleList).filter(key => roleList[key].accelerator);
+      const list = Object.keys(roleList).filter((key) => roleList[key].accelerator);
 
       for (const role of list) {
         const item = new MenuItem({ role: role as any });
@@ -267,7 +277,7 @@ describe('MenuItems', () => {
       const item = new MenuItem({
         role: 'close',
         label: 'Custom Close!',
-        accelerator: 'D'
+        accelerator: 'D',
       });
 
       expect(item.label).to.equal('Custom Close!');
@@ -301,9 +311,11 @@ describe('MenuItems', () => {
     it('overrides default layout when submenu is specified', () => {
       const item = new MenuItem({
         role: 'appMenu',
-        submenu: [{
-          role: 'close'
-        }]
+        submenu: [
+          {
+            role: 'close',
+          },
+        ],
       });
       expect(item.label).to.equal(app.name);
       expect(item.submenu!.items[0].role).to.equal('close');
@@ -325,9 +337,11 @@ describe('MenuItems', () => {
     it('overrides default layout when submenu is specified', () => {
       const item = new MenuItem({
         role: 'fileMenu',
-        submenu: [{
-          role: 'about'
-        }]
+        submenu: [
+          {
+            role: 'about',
+          },
+        ],
       });
       expect(item.label).to.equal('File');
       expect(item.submenu!.items[0].role).to.equal('about');
@@ -364,9 +378,11 @@ describe('MenuItems', () => {
     it('overrides default layout when submenu is specified', () => {
       const item = new MenuItem({
         role: 'editMenu',
-        submenu: [{
-          role: 'close'
-        }]
+        submenu: [
+          {
+            role: 'close',
+          },
+        ],
       });
       expect(item.label).to.equal('Edit');
       expect(item.submenu!.items[0].role).to.equal('close');
@@ -392,9 +408,11 @@ describe('MenuItems', () => {
     it('overrides default layout when submenu is specified', () => {
       const item = new MenuItem({
         role: 'viewMenu',
-        submenu: [{
-          role: 'close'
-        }]
+        submenu: [
+          {
+            role: 'close',
+          },
+        ],
       });
       expect(item.label).to.equal('View');
       expect(item.submenu!.items[0].role).to.equal('close');
@@ -420,7 +438,7 @@ describe('MenuItems', () => {
     it('overrides default layout when submenu is specified', () => {
       const item = new MenuItem({
         role: 'windowMenu',
-        submenu: [{ role: 'copy' }]
+        submenu: [{ role: 'copy' }],
       });
 
       expect(item.label).to.equal('Window');
@@ -430,18 +448,22 @@ describe('MenuItems', () => {
 
   describe('MenuItem with custom properties in constructor', () => {
     it('preserves the custom properties', () => {
-      const template = [{
-        label: 'menu 1',
-        customProp: 'foo',
-        submenu: []
-      }];
+      const template = [
+        {
+          label: 'menu 1',
+          customProp: 'foo',
+          submenu: [],
+        },
+      ];
 
       const menu = Menu.buildFromTemplate(template);
-      menu.items[0].submenu!.append(new MenuItem({
-        label: 'item 1',
-        customProp: 'bar',
-        overrideProperty: 'oops not allowed'
-      } as any));
+      menu.items[0].submenu!.append(
+        new MenuItem({
+          label: 'item 1',
+          customProp: 'bar',
+          overrideProperty: 'oops not allowed',
+        } as any),
+      );
 
       expect((menu.items[0] as any).customProp).to.equal('foo');
       expect(menu.items[0].submenu!.items[0].label).to.equal('item 1');
@@ -452,14 +474,14 @@ describe('MenuItems', () => {
 
   describe('MenuItem accelerators', () => {
     const isDarwin = () => {
-      return (process.platform === 'darwin');
+      return process.platform === 'darwin';
     };
 
     it('should display modifiers correctly for simple keys', () => {
       const menu = Menu.buildFromTemplate([
         { label: 'text', accelerator: 'CmdOrCtrl+A' },
         { label: 'text', accelerator: 'Shift+A' },
-        { label: 'text', accelerator: 'Alt+A' }
+        { label: 'text', accelerator: 'Alt+A' },
       ]);
 
       expect(menu.getAcceleratorTextAt(0)).to.equal(isDarwin() ? '⌘A' : 'Ctrl+A');
@@ -471,7 +493,7 @@ describe('MenuItems', () => {
       const menu = Menu.buildFromTemplate([
         { label: 'text', accelerator: 'CmdOrCtrl+Tab' },
         { label: 'text', accelerator: 'Shift+Tab' },
-        { label: 'text', accelerator: 'Alt+Tab' }
+        { label: 'text', accelerator: 'Alt+Tab' },
       ]);
 
       expect(menu.getAcceleratorTextAt(0)).to.equal(isDarwin() ? '⌘⇥' : 'Ctrl+Tab');
@@ -482,7 +504,7 @@ describe('MenuItems', () => {
     it('should not display modifiers twice', () => {
       const menu = Menu.buildFromTemplate([
         { label: 'text', accelerator: 'Shift+Shift+A' },
-        { label: 'text', accelerator: 'Shift+Shift+Tab' }
+        { label: 'text', accelerator: 'Shift+Shift+Tab' },
       ]);
 
       expect(menu.getAcceleratorTextAt(0)).to.equal(isDarwin() ? '⇧A' : 'Shift+A');
@@ -492,7 +514,7 @@ describe('MenuItems', () => {
     it('should display correctly for edge cases', () => {
       const menu = Menu.buildFromTemplate([
         { label: 'text', accelerator: 'Control+Shift+=' },
-        { label: 'text', accelerator: 'Control+Plus' }
+        { label: 'text', accelerator: 'Control+Plus' },
       ]);
 
       expect(menu.getAcceleratorTextAt(0)).to.equal(isDarwin() ? '⌃⇧=' : 'Ctrl+Shift+=');

@@ -9,9 +9,7 @@ const Module = require('module');
 
 const Promise: PromiseConstructor = global.Promise;
 
-const envNoAsar = process.env.ELECTRON_NO_ASAR &&
-    process.type !== 'browser' &&
-    process.type !== 'renderer';
+const envNoAsar = process.env.ELECTRON_NO_ASAR && process.type !== 'browser' && process.type !== 'renderer';
 const isAsarDisabled = () => process.noAsar || envNoAsar;
 
 const internalBinding = process.internalBinding!;
@@ -90,7 +88,7 @@ const asarStatsToFsStats = function (stats: NodeJS.AsarFileStat) {
     fakeTime.getTime(), // atim_msec
     fakeTime.getTime(), // mtim_msec
     fakeTime.getTime(), // ctim_msec
-    fakeTime.getTime() // birthtim_msec
+    fakeTime.getTime(), // birthtim_msec
   );
 };
 
@@ -98,12 +96,12 @@ const enum AsarError {
   NOT_FOUND = 'NOT_FOUND',
   NOT_DIR = 'NOT_DIR',
   NO_ACCESS = 'NO_ACCESS',
-  INVALID_ARCHIVE = 'INVALID_ARCHIVE'
+  INVALID_ARCHIVE = 'INVALID_ARCHIVE',
 }
 
-type AsarErrorObject = Error & { code?: string, errno?: number };
+type AsarErrorObject = Error & { code?: string; errno?: number };
 
-const createError = (errorType: AsarError, { asarPath, filePath }: { asarPath?: string, filePath?: string } = {}) => {
+const createError = (errorType: AsarError, { asarPath, filePath }: { asarPath?: string; filePath?: string } = {}) => {
   let error: AsarErrorObject;
   switch (errorType) {
     case AsarError.NOT_FOUND:
@@ -130,7 +128,12 @@ const createError = (errorType: AsarError, { asarPath, filePath }: { asarPath?: 
   return error;
 };
 
-const overrideAPISync = function (module: Record<string, any>, name: string, pathArgumentIndex?: number | null, fromAsync: boolean = false) {
+const overrideAPISync = function (
+  module: Record<string, any>,
+  name: string,
+  pathArgumentIndex?: number | null,
+  fromAsync: boolean = false,
+) {
   if (pathArgumentIndex == null) pathArgumentIndex = 0;
   const old = module[name];
   const func = function (this: any, ...args: any[]) {
@@ -379,7 +382,7 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
       return;
     }
 
-    const pathExists = (archive.stat(filePath) !== false);
+    const pathExists = archive.stat(filePath) !== false;
     nextTick(callback, [pathExists]);
   };
 
@@ -533,15 +536,18 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
     }
 
     logASARAccess(asarPath, filePath, info.offset);
-    archive.read(info.offset, info.size).then((buf) => {
-      const buffer = Buffer.from(buf);
-      callback(null, encoding ? buffer.toString(encoding) : buffer);
-    }, (err) => {
-      const error: AsarErrorObject = new Error(`EINVAL, ${err.message} while reading ${filePath} in ${asarPath}`);
-      error.code = 'EINVAL';
-      error.errno = -22;
-      callback(error);
-    });
+    archive.read(info.offset, info.size).then(
+      (buf) => {
+        const buffer = Buffer.from(buf);
+        callback(null, encoding ? buffer.toString(encoding) : buffer);
+      },
+      (err) => {
+        const error: AsarErrorObject = new Error(`EINVAL, ${err.message} while reading ${filePath} in ${asarPath}`);
+        error.code = 'EINVAL';
+        error.errno = -22;
+        callback(error);
+      },
+    );
   };
 
   fs.promises.readFile = util.promisify(fs.readFile);
@@ -558,7 +564,7 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
     const info = archive.getFileInfo(filePath);
     if (!info) throw createError(AsarError.NOT_FOUND, { asarPath, filePath });
 
-    if (info.size === 0) return (options) ? '' : Buffer.alloc(0);
+    if (info.size === 0) return options ? '' : Buffer.alloc(0);
     if (info.unpacked) {
       const realPath = archive.copyFileOut(filePath);
       return fs.readFileSync(realPath, options);
@@ -639,7 +645,10 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
   fs.promises.readdir = util.promisify(fs.readdir);
 
   const { readdirSync } = fs;
-  fs.readdirSync = function (pathArgument: string, options: { encoding: BufferEncoding | null; withFileTypes?: false } | BufferEncoding | null) {
+  fs.readdirSync = function (
+    pathArgument: string,
+    options: { encoding: BufferEncoding | null; withFileTypes?: false } | BufferEncoding | null,
+  ) {
     const pathInfo = splitPath(pathArgument);
     if (!pathInfo.isAsar) return readdirSync.apply(this, arguments);
     const { asarPath, filePath } = pathInfo;
@@ -721,7 +730,7 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
     const stats = archive.stat(filePath);
     if (!stats) return -34;
 
-    return (stats.isDirectory) ? 1 : 0;
+    return stats.isDirectory ? 1 : 0;
   };
 
   // Calling mkdir for directory inside asar archive should throw ENOTDIR
@@ -754,7 +763,7 @@ export const wrapFsWithAsar = (fs: Record<string, any>) => {
     };
   }
 
-  function invokeWithNoAsar (func: Function) {
+  function invokeWithNoAsar(func: Function) {
     return function (this: any) {
       const processNoAsarOriginalValue = process.noAsar;
       process.noAsar = true;

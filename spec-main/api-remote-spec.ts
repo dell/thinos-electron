@@ -19,8 +19,8 @@ const expectPathsEqual = (path1: string, path2: string) => {
   expect(path1).to.equal(path2);
 };
 
-function makeRemotely (windowGetter: () => BrowserWindow) {
-  async function remotely (script: Function, ...args: any[]) {
+function makeRemotely(windowGetter: () => BrowserWindow) {
+  async function remotely(script: Function, ...args: any[]) {
     // executeJavaScript obfuscates the error if the script throws, so catch any
     // errors manually.
     const assembledScript = `(async function() {
@@ -46,7 +46,7 @@ function makeRemotely (windowGetter: () => BrowserWindow) {
   return remotely;
 }
 
-function makeWindow () {
+function makeWindow() {
   let w: BrowserWindow;
   before(async () => {
     w = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true, enableRemoteModule: true } });
@@ -62,7 +62,7 @@ function makeWindow () {
   return () => w;
 }
 
-function makeEachWindow () {
+function makeEachWindow() {
   let w: BrowserWindow;
   beforeEach(async () => {
     w = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: true, enableRemoteModule: true } });
@@ -99,7 +99,8 @@ describe('typeUtils serialization/deserialization', () => {
   });
 
   it('serializes and deserializes a non-empty NativeImage', () => {
-    const dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==';
+    const dataURL =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==';
     const image = nativeImage.createFromDataURL(dataURL);
     const serializedImage = serialize(image);
     const nonEmpty = deserialize(serializedImage);
@@ -119,7 +120,8 @@ describe('typeUtils serialization/deserialization', () => {
     const dataURL1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYlWNgAAIAAAUAAdafFs0AAAAASUVORK5CYII=';
     image.addRepresentation({ scaleFactor: 1.0, dataURL: dataURL1 });
 
-    const dataURL2 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==';
+    const dataURL2 =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==';
     image.addRepresentation({ scaleFactor: 2.0, dataURL: dataURL2 });
 
     const serializedImage = serialize(image);
@@ -232,7 +234,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         w().webContents.once('remote-get-global', (event) => {
           event.preventDefault();
         });
-        await expect(remotely(() => require('electron').remote.getGlobal('test'))).to.eventually.be.rejected('Blocked remote.getGlobal(\'test\')');
+        await expect(remotely(() => require('electron').remote.getGlobal('test'))).to.eventually.be.rejected(
+          "Blocked remote.getGlobal('test')",
+        );
       });
     });
 
@@ -248,7 +252,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         w().webContents.once('remote-get-builtin', (event) => {
           event.preventDefault();
         });
-        await expect(remotely(() => (require('electron').remote as any).getBuiltin('test'))).to.eventually.be.rejected('Blocked remote.getGlobal(\'test\')');
+        await expect(remotely(() => (require('electron').remote as any).getBuiltin('test'))).to.eventually.be.rejected(
+          "Blocked remote.getGlobal('test')",
+        );
       });
     });
 
@@ -264,7 +270,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         w().webContents.once('remote-require', (event) => {
           event.preventDefault();
         });
-        await expect(remotely(() => require('electron').remote.require('test'))).to.eventually.be.rejected('Blocked remote.require(\'test\')');
+        await expect(remotely(() => require('electron').remote.require('test'))).to.eventually.be.rejected(
+          "Blocked remote.require('test')",
+        );
       });
     });
 
@@ -280,7 +288,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         w().webContents.once('remote-get-current-window', (event) => {
           event.preventDefault();
         });
-        await expect(remotely(() => require('electron').remote.getCurrentWindow())).to.eventually.be.rejected('Blocked remote.getCurrentWindow()');
+        await expect(remotely(() => require('electron').remote.getCurrentWindow())).to.eventually.be.rejected(
+          'Blocked remote.getCurrentWindow()',
+        );
       });
     });
 
@@ -296,7 +306,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         w().webContents.once('remote-get-current-web-contents', (event) => {
           event.preventDefault();
         });
-        await expect(remotely(() => require('electron').remote.getCurrentWebContents())).to.eventually.be.rejected('Blocked remote.getCurrentWebContents()');
+        await expect(remotely(() => require('electron').remote.getCurrentWebContents())).to.eventually.be.rejected(
+          'Blocked remote.getCurrentWebContents()',
+        );
       });
     });
   });
@@ -312,7 +324,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
     // The ELECTRON_BROWSER_CONTEXT_RELEASE message relies on this to work.
     it('message can be sent on exit when page is being navigated', async () => {
-      after(() => { ipcMain.removeAllListeners('SENT_ON_EXIT'); });
+      after(() => {
+        ipcMain.removeAllListeners('SENT_ON_EXIT');
+      });
       w().webContents.once('did-finish-load', () => {
         w().webContents.loadURL('about:blank');
       });
@@ -333,8 +347,8 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         show: false,
         webPreferences: {
           preload,
-          enableRemoteModule: true
-        }
+          enableRemoteModule: true,
+        },
       });
       w.loadURL('about:blank');
       await emittedOnce(ipcMain, 'done');
@@ -347,8 +361,8 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          enableRemoteModule: true
-        }
+          enableRemoteModule: true,
+        },
       });
 
       const message = emittedOnce(ipcMain, 'error-message');
@@ -369,10 +383,12 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         event.returnValue = getImageEmpty;
       });
 
-      await expect(remotely(() => {
-        const emptyImage = require('electron').nativeImage.createEmpty();
-        return require('electron').remote.getGlobal('someFunction')(emptyImage);
-      })).to.eventually.be.true();
+      await expect(
+        remotely(() => {
+          const emptyImage = require('electron').nativeImage.createEmpty();
+          return require('electron').remote.getGlobal('someFunction')(emptyImage);
+        }),
+      ).to.eventually.be.true();
     });
 
     it('can serialize an empty nativeImage from main to renderer', async () => {
@@ -381,10 +397,12 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         event.returnValue = emptyImage;
       });
 
-      await expect(remotely(() => {
-        const image = require('electron').remote.getGlobal('someFunction');
-        return image.isEmpty();
-      })).to.eventually.be.true();
+      await expect(
+        remotely(() => {
+          const image = require('electron').remote.getGlobal('someFunction');
+          return image.isEmpty();
+        }),
+      ).to.eventually.be.true();
     });
 
     it('can serialize a non-empty nativeImage from renderer to main', async () => {
@@ -394,35 +412,45 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         event.returnValue = getImageSize;
       });
 
-      await expect(remotely(() => {
-        const { nativeImage } = require('electron');
-        const nonEmptyImage = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==');
-        return require('electron').remote.getGlobal('someFunction')(nonEmptyImage);
-      })).to.eventually.deep.equal({ width: 2, height: 2 });
+      await expect(
+        remotely(() => {
+          const { nativeImage } = require('electron');
+          const nonEmptyImage = nativeImage.createFromDataURL(
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==',
+          );
+          return require('electron').remote.getGlobal('someFunction')(nonEmptyImage);
+        }),
+      ).to.eventually.deep.equal({ width: 2, height: 2 });
     });
 
     it('can serialize a non-empty nativeImage from main to renderer', async () => {
       w().webContents.once('remote-get-global', (event) => {
-        const nonEmptyImage = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==');
+        const nonEmptyImage = nativeImage.createFromDataURL(
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==',
+        );
         event.returnValue = nonEmptyImage;
       });
 
-      await expect(remotely(() => {
-        const image = require('electron').remote.getGlobal('someFunction');
-        return image.getSize();
-      })).to.eventually.deep.equal({ width: 2, height: 2 });
+      await expect(
+        remotely(() => {
+          const image = require('electron').remote.getGlobal('someFunction');
+          return image.getSize();
+        }),
+      ).to.eventually.deep.equal({ width: 2, height: 2 });
     });
 
     it('can properly create a menu with an nativeImage icon in the renderer', async () => {
-      await expect(remotely(() => {
-        const { remote, nativeImage } = require('electron');
-        remote.Menu.buildFromTemplate([
-          {
-            label: 'hello',
-            icon: nativeImage.createEmpty()
-          }
-        ]);
-      })).to.be.fulfilled();
+      await expect(
+        remotely(() => {
+          const { remote, nativeImage } = require('electron');
+          remote.Menu.buildFromTemplate([
+            {
+              label: 'hello',
+              icon: nativeImage.createEmpty(),
+            },
+          ]);
+        }),
+      ).to.be.fulfilled();
     });
   });
 
@@ -434,8 +462,8 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          enableRemoteModule: true
-        }
+          enableRemoteModule: true,
+        },
       });
       await w.loadFile(path.join(fixtures, 'remote-event-handler.html'));
       w.webContents.reload();
@@ -444,14 +472,14 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       const expectedMessage = [
         'Attempting to call a function in a renderer window that has been closed or released.',
         'Function provided here: remote-event-handler.html:11:33',
-        'Remote event names: remote-handler, other-remote-handler'
+        'Remote event names: remote-handler, other-remote-handler',
       ].join('\n');
 
       expect(w.webContents.listenerCount('remote-handler')).to.equal(2);
       let warnMessage: string | null = null;
       const originalWarn = console.warn;
       let warned: Function;
-      const warnPromise = new Promise(resolve => {
+      const warnPromise = new Promise((resolve) => {
         warned = resolve;
       });
       try {
@@ -496,18 +524,22 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
     it('should search module from the user app', async () => {
       expectPathsEqual(
-        path.normalize(await remotely(() => {
-          const { remote } = require('electron');
-          return (remote as any).process.mainModule.filename;
-        })),
-        path.resolve(__dirname, 'index.js')
+        path.normalize(
+          await remotely(() => {
+            const { remote } = require('electron');
+            return (remote as any).process.mainModule.filename;
+          }),
+        ),
+        path.resolve(__dirname, 'index.js'),
       );
       expectPathsEqual(
-        path.normalize(await remotely(() => {
-          const { remote } = require('electron');
-          return (remote as any).process.mainModule.paths[0];
-        })),
-        path.resolve(__dirname, 'node_modules')
+        path.normalize(
+          await remotely(() => {
+            const { remote } = require('electron');
+            return (remote as any).process.mainModule.paths[0];
+          }),
+        ),
+        path.resolve(__dirname, 'node_modules'),
       );
     });
 
@@ -565,7 +597,7 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       arrayA.push(arrayB);
       expect(a.returnArgs(arrayA, arrayB)).to.deep.equal([
         ['foo', [null, 'bar']],
-        [['foo', null], 'bar']
+        [['foo', null], 'bar'],
       ]);
 
       let objectA: any = { foo: 'bar' };
@@ -573,40 +605,28 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       objectA.objectB = objectB;
       expect(a.returnArgs(objectA, objectB)).to.deep.equal([
         { foo: 'bar', objectB: { baz: null } },
-        { baz: { foo: 'bar', objectB: null } }
+        { baz: { foo: 'bar', objectB: null } },
       ]);
 
       arrayA = [1, 2, 3];
-      expect(a.returnArgs({ foo: arrayA }, { bar: arrayA })).to.deep.equal([
-        { foo: [1, 2, 3] },
-        { bar: [1, 2, 3] }
-      ]);
+      expect(a.returnArgs({ foo: arrayA }, { bar: arrayA })).to.deep.equal([{ foo: [1, 2, 3] }, { bar: [1, 2, 3] }]);
 
       objectA = { foo: 'bar' };
-      expect(a.returnArgs({ foo: objectA }, { bar: objectA })).to.deep.equal([
-        { foo: { foo: 'bar' } },
-        { bar: { foo: 'bar' } }
-      ]);
+      expect(a.returnArgs({ foo: objectA }, { bar: objectA })).to.deep.equal([{ foo: { foo: 'bar' } }, { bar: { foo: 'bar' } }]);
 
       arrayA = [];
       arrayA.push(arrayA);
-      expect(a.returnArgs(arrayA)).to.deep.equal([
-        [null]
-      ]);
+      expect(a.returnArgs(arrayA)).to.deep.equal([[null]]);
 
       objectA = {};
       objectA.foo = objectA;
       objectA.bar = 'baz';
-      expect(a.returnArgs(objectA)).to.deep.equal([
-        { foo: null, bar: 'baz' }
-      ]);
+      expect(a.returnArgs(objectA)).to.deep.equal([{ foo: null, bar: 'baz' }]);
 
       objectA = {};
       objectA.foo = { bar: objectA };
       objectA.bar = 'baz';
-      expect(a.returnArgs(objectA)).to.deep.equal([
-        { foo: { bar: null }, bar: 'baz' }
-      ]);
+      expect(a.returnArgs(objectA)).to.deep.equal([{ foo: { bar: null }, bar: 'baz' }]);
     });
   });
 
@@ -629,7 +649,7 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
     const mainModules = Object.keys(require('electron'));
     remotely.it(mainModules)('includes browser process modules as properties', (mainModules: string[]) => {
       const { remote } = require('electron');
-      const remoteModules = mainModules.filter(name => (remote as any)[name]);
+      const remoteModules = mainModules.filter((name) => (remote as any)[name]);
       expect(remoteModules).to.be.deep.equal(mainModules);
     });
 
@@ -674,7 +694,7 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
       expect(() => {
         // eslint-disable-next-line
-        foo.bar
+        foo.bar;
       }).to.throw('getting error');
 
       expect(() => {
@@ -698,7 +718,9 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       const remoteFunctions = require('electron').remote.require(require('path').join(fixtures, 'function.js'));
       expect(remoteFunctions.aFunction()).to.equal(1127);
 
-      remoteFunctions.aFunction = () => { return 1234; };
+      remoteFunctions.aFunction = () => {
+        return 1234;
+      };
       expect(remoteFunctions.aFunction()).to.equal(1234);
 
       expect(delete remoteFunctions.aFunction).to.equal(true);
@@ -712,7 +734,11 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
     it('can handle objects without constructors', async () => {
       win().webContents.once('remote-get-global', (event) => {
-        class Foo { bar () { return 'bar'; } }
+        class Foo {
+          bar() {
+            return 'bar';
+          }
+        }
         Foo.prototype.constructor = undefined as any;
         event.returnValue = new Foo();
       });
@@ -808,15 +834,19 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       ['Int32Array', [0x12345678, 0x23456789]],
       ['Uint32Array', [0x12345678, 0x23456789]],
       ['Float32Array', [0.5, 1.0, 1.5]],
-      ['Float64Array', [0.5, 1.0, 1.5]]
+      ['Float64Array', [0.5, 1.0, 1.5]],
     ];
 
     arrayTests.forEach(([arrayType, values]) => {
-      remotely.it(print, arrayType, values)(`supports instanceof ${arrayType}`, (print: string, arrayType: string, values: number[]) => {
+      remotely.it(
+        print,
+        arrayType,
+        values,
+      )(`supports instanceof ${arrayType}`, (print: string, arrayType: string, values: number[]) => {
         const printName = require('electron').remote.require(print);
         expect([...printName.typedArray(arrayType, values)]).to.deep.equal(values);
 
-        const int8values = new ((window as any)[arrayType])(values);
+        const int8values = new (window as any)[arrayType](values);
         expect(printName.typedArray(arrayType, int8values)).to.deep.equal(int8values);
         expect(printName.print(int8values)).to.equal(arrayType);
       });
@@ -825,7 +855,7 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
     describe('constructing a Uint8Array', () => {
       remotely.it()('does not crash', () => {
         const RUint8Array = require('electron').remote.getGlobal('Uint8Array');
-        new RUint8Array() // eslint-disable-line
+        new RUint8Array(); // eslint-disable-line
       });
     });
   });
@@ -841,7 +871,7 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
     remotely.it(fixtures)('handles rejections via catch(onRejected)', async (fixtures: string) => {
       const promise = require('electron').remote.require(require('path').join(fixtures, 'rejected-promise.js'));
-      const error = await new Promise<Error>(resolve => {
+      const error = await new Promise<Error>((resolve) => {
         promise.reject(Promise.resolve(1234)).catch(resolve);
       });
       expect(error.message).to.equal('rejected');
@@ -849,14 +879,14 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
 
     remotely.it(fixtures)('handles rejections via then(onFulfilled, onRejected)', async (fixtures: string) => {
       const promise = require('electron').remote.require(require('path').join(fixtures, 'rejected-promise.js'));
-      const error = await new Promise<Error>(resolve => {
+      const error = await new Promise<Error>((resolve) => {
         promise.reject(Promise.resolve(1234)).then(() => {}, resolve);
       });
       expect(error.message).to.equal('rejected');
     });
 
     it('does not emit unhandled rejection events in the main process', (done) => {
-      function onUnhandledRejection () {
+      function onUnhandledRejection() {
         done(new Error('Unexpected unhandledRejection event'));
       }
       process.once('unhandledRejection', onUnhandledRejection);
@@ -864,13 +894,16 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
       remotely(async (fixtures: string) => {
         const promise = require('electron').remote.require(require('path').join(fixtures, 'unhandled-rejection.js'));
         return new Promise((resolve, reject) => {
-          promise.reject().then(() => {
-            reject(new Error('Promise was not rejected'));
-          }).catch((error: Error) => {
-            resolve(error);
-          });
+          promise
+            .reject()
+            .then(() => {
+              reject(new Error('Promise was not rejected'));
+            })
+            .catch((error: Error) => {
+              resolve(error);
+            });
         });
-      }, fixtures).then(error => {
+      }, fixtures).then((error) => {
         try {
           expect(error.message).to.equal('rejected');
           done();
@@ -883,29 +916,30 @@ ifdescribe(features.isRemoteModuleEnabled())('remote module', () => {
     });
 
     it('emits unhandled rejection events in the renderer process', (done) => {
-      remotely((module: string) => new Promise((resolve, reject) => {
-        const promise = require('electron').remote.require(module);
+      remotely(
+        (module: string) =>
+          new Promise((resolve, reject) => {
+            const promise = require('electron').remote.require(module);
 
-        window.addEventListener('unhandledrejection', function handler (event) {
-          event.preventDefault();
-          window.removeEventListener('unhandledrejection', handler);
-          resolve(event.reason.message);
-        });
+            window.addEventListener('unhandledrejection', function handler(event) {
+              event.preventDefault();
+              window.removeEventListener('unhandledrejection', handler);
+              resolve(event.reason.message);
+            });
 
-        promise.reject().then(() => {
-          reject(new Error('Promise was not rejected'));
-        });
-      }), path.join(fixtures, 'unhandled-rejection.js')).then(
-        (message) => {
-          try {
-            expect(message).to.equal('rejected');
-            done();
-          } catch (e) {
-            done(e);
-          }
-        },
-        done
-      );
+            promise.reject().then(() => {
+              reject(new Error('Promise was not rejected'));
+            });
+          }),
+        path.join(fixtures, 'unhandled-rejection.js'),
+      ).then((message) => {
+        try {
+          expect(message).to.equal('rejected');
+          done();
+        } catch (e) {
+          done(e);
+        }
+      }, done);
     });
 
     before(() => {

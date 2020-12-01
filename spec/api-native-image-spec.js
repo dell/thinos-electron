@@ -8,7 +8,7 @@ const path = require('path');
 describe('nativeImage module', () => {
   const ImageFormat = {
     PNG: 'png',
-    JPEG: 'jpeg'
+    JPEG: 'jpeg',
   };
 
   const images = [
@@ -18,7 +18,7 @@ describe('nativeImage module', () => {
       hasAlphaChannel: true,
       hasDataUrl: false,
       width: 538,
-      height: 190
+      height: 190,
     },
     {
       dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQYlWNgAAIAAAUAAdafFs0AAAAASUVORK5CYII=',
@@ -27,16 +27,17 @@ describe('nativeImage module', () => {
       hasAlphaChannel: true,
       hasDataUrl: true,
       height: 1,
-      width: 1
+      width: 1,
     },
     {
-      dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==',
+      dataUrl:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVQYlWP8//8/AwMDEwMDAwMDAwAkBgMBBMzldwAAAABJRU5ErkJggg==',
       filename: '2x2.jpg',
       format: ImageFormat.JPEG,
       hasAlphaChannel: false,
       hasDataUrl: true,
       height: 2,
-      width: 2
+      width: 2,
     },
     {
       dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAYAAABWKLW/AAAADElEQVQYlWNgIAoAAAAnAAGZWEMnAAAAAElFTkSuQmCC',
@@ -45,8 +46,8 @@ describe('nativeImage module', () => {
       hasAlphaChannel: true,
       hasDataUrl: true,
       height: 3,
-      width: 3
-    }
+      width: 3,
+    },
   ];
 
   /**
@@ -54,8 +55,7 @@ describe('nativeImage module', () => {
    * @returns {?string} Full path.
    */
   const getImagePathFromFilename = (filename) => {
-    return (filename === null) ? null
-      : path.join(__dirname, 'fixtures', 'assets', filename);
+    return filename === null ? null : path.join(__dirname, 'fixtures', 'assets', filename);
   };
 
   /**
@@ -68,8 +68,7 @@ describe('nativeImage module', () => {
       return true;
     }
 
-    return Object.entries(filters)
-      .every(([key, value]) => image[key] === value);
+    return Object.entries(filters).every(([key, value]) => image[key] === value);
   };
 
   /**
@@ -77,12 +76,12 @@ describe('nativeImage module', () => {
    * @returns {!Array} A matching images list.
    */
   const getImages = (filters) => {
-    const matchingImages = images
-      .filter(i => imageMatchesTheFilters(i, filters));
+    const matchingImages = images.filter((i) => imageMatchesTheFilters(i, filters));
 
     // Add `.path` property to every image.
-    matchingImages
-      .forEach(i => { i.path = getImagePathFromFilename(i.filename); });
+    matchingImages.forEach((i) => {
+      i.path = getImagePathFromFilename(i.filename);
+    });
 
     return matchingImages;
   };
@@ -206,27 +205,22 @@ describe('nativeImage module', () => {
       const imageC = nativeImage.createFromBuffer(imageA.toJPEG(100));
       expect(imageC.getSize()).to.deep.equal({ width: 538, height: 190 });
 
-      const imageD = nativeImage.createFromBuffer(imageA.toBitmap(),
-        { width: 538, height: 190 });
+      const imageD = nativeImage.createFromBuffer(imageA.toBitmap(), { width: 538, height: 190 });
       expect(imageD.getSize()).to.deep.equal({ width: 538, height: 190 });
 
-      const imageE = nativeImage.createFromBuffer(imageA.toBitmap(),
-        { width: 100, height: 200 });
+      const imageE = nativeImage.createFromBuffer(imageA.toBitmap(), { width: 100, height: 200 });
       expect(imageE.getSize()).to.deep.equal({ width: 100, height: 200 });
 
       const imageF = nativeImage.createFromBuffer(imageA.toBitmap());
       expect(imageF.isEmpty()).to.be.true();
 
-      const imageG = nativeImage.createFromBuffer(imageA.toPNG(),
-        { width: 100, height: 200 });
+      const imageG = nativeImage.createFromBuffer(imageA.toPNG(), { width: 100, height: 200 });
       expect(imageG.getSize()).to.deep.equal({ width: 538, height: 190 });
 
-      const imageH = nativeImage.createFromBuffer(imageA.toJPEG(100),
-        { width: 100, height: 200 });
+      const imageH = nativeImage.createFromBuffer(imageA.toJPEG(100), { width: 100, height: 200 });
       expect(imageH.getSize()).to.deep.equal({ width: 538, height: 190 });
 
-      const imageI = nativeImage.createFromBuffer(imageA.toBitmap(),
-        { width: 538, height: 190, scaleFactor: 2.0 });
+      const imageI = nativeImage.createFromBuffer(imageA.toBitmap(), { width: 538, height: 190, scaleFactor: 2.0 });
       expect(imageI.getSize()).to.deep.equal({ width: 269, height: 95 });
     });
 
@@ -249,8 +243,7 @@ describe('nativeImage module', () => {
 
         expect(imageFromDataUrl.isEmpty()).to.be.false();
         expect(imageFromDataUrl.getSize()).to.deep.equal(imageFromPath.getSize());
-        expect(imageFromDataUrl.toBitmap()).to.satisfy(
-          bitmap => imageFromPath.toBitmap().equals(bitmap));
+        expect(imageFromDataUrl.toBitmap()).to.satisfy((bitmap) => imageFromPath.toBitmap().equals(bitmap));
         expect(imageFromDataUrl.toDataURL()).to.equal(imageFromPath.toDataURL());
       }
     });
@@ -276,14 +269,12 @@ describe('nativeImage module', () => {
       const imageOne = nativeImage.createFromBuffer(image.toPNG(), {
         width: image.getSize().width,
         height: image.getSize().height,
-        scaleFactor: 2.0
+        scaleFactor: 2.0,
       });
-      expect(imageOne.getSize()).to.deep.equal(
-        { width: imageData.width / 2, height: imageData.height / 2 });
+      expect(imageOne.getSize()).to.deep.equal({ width: imageData.width / 2, height: imageData.height / 2 });
 
       const imageTwo = nativeImage.createFromDataURL(imageOne.toDataURL());
-      expect(imageTwo.getSize()).to.deep.equal(
-        { width: imageData.width, height: imageData.height });
+      expect(imageTwo.getSize()).to.deep.equal({ width: imageData.width, height: imageData.height });
 
       expect(imageOne.toBitmap().equals(imageTwo.toBitmap())).to.be.true();
     });
@@ -293,12 +284,10 @@ describe('nativeImage module', () => {
       const image = nativeImage.createFromPath(imageData.path);
       const expectedSize = { width: imageData.width, height: imageData.height };
 
-      const imageFromDataUrlOne = nativeImage.createFromDataURL(
-        image.toDataURL({ scaleFactor: 1.0 }));
+      const imageFromDataUrlOne = nativeImage.createFromDataURL(image.toDataURL({ scaleFactor: 1.0 }));
       expect(imageFromDataUrlOne.getSize()).to.deep.equal(expectedSize);
 
-      const imageFromDataUrlTwo = nativeImage.createFromDataURL(
-        image.toDataURL({ scaleFactor: 2.0 }));
+      const imageFromDataUrlTwo = nativeImage.createFromDataURL(image.toDataURL({ scaleFactor: 2.0 }));
       expect(imageFromDataUrlTwo.getSize()).to.deep.equal(expectedSize);
     });
   });
@@ -311,14 +300,12 @@ describe('nativeImage module', () => {
       const imageB = nativeImage.createFromBuffer(imageA.toPNG(), {
         width: imageA.getSize().width,
         height: imageA.getSize().height,
-        scaleFactor: 2.0
+        scaleFactor: 2.0,
       });
-      expect(imageB.getSize()).to.deep.equal(
-        { width: imageData.width / 2, height: imageData.height / 2 });
+      expect(imageB.getSize()).to.deep.equal({ width: imageData.width / 2, height: imageData.height / 2 });
 
       const imageC = nativeImage.createFromBuffer(imageB.toPNG());
-      expect(imageC.getSize()).to.deep.equal(
-        { width: imageData.width, height: imageData.height });
+      expect(imageC.getSize()).to.deep.equal({ width: imageData.width, height: imageData.height });
 
       expect(imageB.toBitmap().equals(imageC.toBitmap())).to.be.true();
     });
@@ -327,15 +314,11 @@ describe('nativeImage module', () => {
       const imageData = getImage({ filename: 'logo.png' });
       const image = nativeImage.createFromPath(imageData.path);
 
-      const imageFromBufferOne = nativeImage.createFromBuffer(
-        image.toPNG({ scaleFactor: 1.0 }));
-      expect(imageFromBufferOne.getSize()).to.deep.equal(
-        { width: imageData.width, height: imageData.height });
+      const imageFromBufferOne = nativeImage.createFromBuffer(image.toPNG({ scaleFactor: 1.0 }));
+      expect(imageFromBufferOne.getSize()).to.deep.equal({ width: imageData.width, height: imageData.height });
 
-      const imageFromBufferTwo = nativeImage.createFromBuffer(
-        image.toPNG({ scaleFactor: 2.0 }), { scaleFactor: 2.0 });
-      expect(imageFromBufferTwo.getSize()).to.deep.equal(
-        { width: imageData.width / 2, height: imageData.height / 2 });
+      const imageFromBufferTwo = nativeImage.createFromBuffer(image.toPNG({ scaleFactor: 2.0 }), { scaleFactor: 2.0 });
+      expect(imageFromBufferTwo.getSize()).to.deep.equal({ width: imageData.width / 2, height: imageData.height / 2 });
     });
   });
 
@@ -377,7 +360,7 @@ describe('nativeImage module', () => {
       expect(nsimage).to.have.lengthOf(8);
 
       // If all bytes are null, that's Bad
-      const allBytesAreNotNull = nsimage.reduce((acc, x) => acc || (x !== 0), false);
+      const allBytesAreNotNull = nsimage.reduce((acc, x) => acc || x !== 0, false);
       expect(allBytesAreNotNull);
     });
 
@@ -420,10 +403,22 @@ describe('nativeImage module', () => {
         [{ width: 600 }, { width: 600, height: 212 }],
         [{ height: 95 }, { width: 269, height: 95 }],
         [{ height: 200 }, { width: 566, height: 200 }],
-        [{ width: 80, height: 65 }, { width: 80, height: 65 }],
-        [{ width: 600, height: 200 }, { width: 600, height: 200 }],
-        [{ width: 0, height: 0 }, { width: 0, height: 0 }],
-        [{ width: -1, height: -1 }, { width: 0, height: 0 }]
+        [
+          { width: 80, height: 65 },
+          { width: 80, height: 65 },
+        ],
+        [
+          { width: 600, height: 200 },
+          { width: 600, height: 200 },
+        ],
+        [
+          { width: 0, height: 0 },
+          { width: 0, height: 0 },
+        ],
+        [
+          { width: -1, height: -1 },
+          { width: 0, height: 0 },
+        ],
       ])) {
         const actualSize = image.resize(resizeTo).getSize();
         expect(actualSize).to.deep.equal(expectedSize);
@@ -495,18 +490,14 @@ describe('nativeImage module', () => {
     it('throws when invalid size is passed', async () => {
       const badSize = { width: -1, height: -1 };
 
-      await expect(
-        nativeImage.createThumbnailFromPath('path', badSize)
-      ).to.eventually.be.rejectedWith('size must not be empty');
+      await expect(nativeImage.createThumbnailFromPath('path', badSize)).to.eventually.be.rejectedWith('size must not be empty');
     });
 
     it('throws when a bad path is passed', async () => {
       const badPath = process.platform === 'win32' ? '\\hey\\hi\\hello' : '/hey/hi/hello';
       const goodSize = { width: 100, height: 100 };
 
-      await expect(
-        nativeImage.createThumbnailFromPath(badPath, goodSize)
-      ).to.eventually.be.rejected();
+      await expect(nativeImage.createThumbnailFromPath(badPath, goodSize)).to.eventually.be.rejected();
     });
 
     it('returns native image given valid params', async () => {
@@ -524,7 +515,7 @@ describe('nativeImage module', () => {
       image.addRepresentation({
         buffer: Buffer.from([1, 2, 3, 4]),
         width: 100,
-        height: 100
+        height: 100,
       });
 
       expect(image.isEmpty()).to.be.true();
@@ -536,7 +527,7 @@ describe('nativeImage module', () => {
       const imageDataOne = getImage({ width: 1, height: 1 });
       image.addRepresentation({
         scaleFactor: 1.0,
-        buffer: nativeImage.createFromPath(imageDataOne.path).toPNG()
+        buffer: nativeImage.createFromPath(imageDataOne.path).toPNG(),
       });
 
       expect(image.getScaleFactors()).to.deep.equal([1]);
@@ -544,7 +535,7 @@ describe('nativeImage module', () => {
       const imageDataTwo = getImage({ width: 2, height: 2 });
       image.addRepresentation({
         scaleFactor: 2.0,
-        buffer: nativeImage.createFromPath(imageDataTwo.path).toPNG()
+        buffer: nativeImage.createFromPath(imageDataTwo.path).toPNG(),
       });
 
       expect(image.getScaleFactors()).to.deep.equal([1, 2]);
@@ -552,14 +543,14 @@ describe('nativeImage module', () => {
       const imageDataThree = getImage({ width: 3, height: 3 });
       image.addRepresentation({
         scaleFactor: 3.0,
-        buffer: nativeImage.createFromPath(imageDataThree.path).toPNG()
+        buffer: nativeImage.createFromPath(imageDataThree.path).toPNG(),
       });
 
       expect(image.getScaleFactors()).to.deep.equal([1, 2, 3]);
 
       image.addRepresentation({
         scaleFactor: 4.0,
-        buffer: 'invalid'
+        buffer: 'invalid',
       });
 
       // this one failed, so it shouldn't show up in the scale factors
@@ -580,24 +571,24 @@ describe('nativeImage module', () => {
       const imageDataOne = getImage({ width: 1, height: 1 });
       image.addRepresentation({
         scaleFactor: 1.0,
-        dataURL: imageDataOne.dataUrl
+        dataURL: imageDataOne.dataUrl,
       });
 
       const imageDataTwo = getImage({ width: 2, height: 2 });
       image.addRepresentation({
         scaleFactor: 2.0,
-        dataURL: imageDataTwo.dataUrl
+        dataURL: imageDataTwo.dataUrl,
       });
 
       const imageDataThree = getImage({ width: 3, height: 3 });
       image.addRepresentation({
         scaleFactor: 3.0,
-        dataURL: imageDataThree.dataUrl
+        dataURL: imageDataThree.dataUrl,
       });
 
       image.addRepresentation({
         scaleFactor: 4.0,
-        dataURL: 'invalid'
+        dataURL: 'invalid',
       });
 
       expect(image.isEmpty()).to.be.false();
@@ -616,13 +607,13 @@ describe('nativeImage module', () => {
       const imageDataTwo = getImage({ width: 2, height: 2 });
       image.addRepresentation({
         scaleFactor: 2.0,
-        dataURL: imageDataTwo.dataUrl
+        dataURL: imageDataTwo.dataUrl,
       });
 
       const imageDataThree = getImage({ width: 3, height: 3 });
       image.addRepresentation({
         scaleFactor: 2.0,
-        dataURL: imageDataThree.dataUrl
+        dataURL: imageDataThree.dataUrl,
       });
 
       expect(image.toDataURL({ scaleFactor: 1.0 })).to.equal(imageDataOne.dataUrl);

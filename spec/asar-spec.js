@@ -10,7 +10,7 @@ const nativeImage = require('electron').nativeImage;
 
 const features = process._linkedBinding('electron_common_features');
 
-async function expectToThrowErrorWithCode (func, code) {
+async function expectToThrowErrorWithCode(func, code) {
   let error;
   try {
     await func();
@@ -650,7 +650,7 @@ describe('asar package', function () {
     });
 
     describe('fs.realpath', () => {
-      it('returns real path root', done => {
+      it('returns real path root', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = 'a.asar';
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -664,7 +664,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a normal file', done => {
+      it('returns real path of a normal file', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('a.asar', 'file1');
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -678,7 +678,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a normal directory', done => {
+      it('returns real path of a normal directory', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('a.asar', 'dir1');
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -692,7 +692,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a linked file', done => {
+      it('returns real path of a linked file', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('a.asar', 'link2', 'link1');
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -706,7 +706,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a linked directory', done => {
+      it('returns real path of a linked directory', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('a.asar', 'link2', 'link2');
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -720,7 +720,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of an unpacked file', done => {
+      it('returns real path of an unpacked file', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('unpack.asar', 'a.txt');
         fs.realpath(path.join(parent, p), (err, r) => {
@@ -734,10 +734,10 @@ describe('asar package', function () {
         });
       });
 
-      it('throws ENOENT error when can not find file', done => {
+      it('throws ENOENT error when can not find file', (done) => {
         const parent = fs.realpathSync(asarDir);
         const p = path.join('a.asar', 'not-exist');
-        fs.realpath(path.join(parent, p), err => {
+        fs.realpath(path.join(parent, p), (err) => {
           try {
             expect(err.code).to.equal('ENOENT');
             done();
@@ -799,7 +799,7 @@ describe('asar package', function () {
     });
 
     describe('fs.realpath.native', () => {
-      it('returns real path root', done => {
+      it('returns real path root', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = 'a.asar';
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -813,7 +813,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a normal file', done => {
+      it('returns real path of a normal file', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('a.asar', 'file1');
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -827,7 +827,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a normal directory', done => {
+      it('returns real path of a normal directory', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('a.asar', 'dir1');
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -841,7 +841,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a linked file', done => {
+      it('returns real path of a linked file', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('a.asar', 'link2', 'link1');
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -855,7 +855,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of a linked directory', done => {
+      it('returns real path of a linked directory', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('a.asar', 'link2', 'link2');
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -869,7 +869,7 @@ describe('asar package', function () {
         });
       });
 
-      it('returns real path of an unpacked file', done => {
+      it('returns real path of an unpacked file', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('unpack.asar', 'a.txt');
         fs.realpath.native(path.join(parent, p), (err, r) => {
@@ -883,10 +883,10 @@ describe('asar package', function () {
         });
       });
 
-      it('throws ENOENT error when can not find file', done => {
+      it('throws ENOENT error when can not find file', (done) => {
         const parent = fs.realpathSync.native(asarDir);
         const p = path.join('a.asar', 'not-exist');
-        fs.realpath.native(path.join(parent, p), err => {
+        fs.realpath.native(path.join(parent, p), (err) => {
           try {
             expect(err.code).to.equal('ENOENT');
             done();
@@ -916,7 +916,7 @@ describe('asar package', function () {
         for (const dir of dirs) {
           expect(dir instanceof fs.Dirent).to.be.true();
         }
-        const names = dirs.map(a => a.name);
+        const names = dirs.map((a) => a.name);
         expect(names).to.deep.equal(['dir1', 'dir2', 'dir3', 'file1', 'file2', 'file3', 'link1', 'link2', 'ping.js']);
       });
 
@@ -958,7 +958,7 @@ describe('asar package', function () {
               expect(dir instanceof fs.Dirent).to.be.true();
             }
 
-            const names = dirs.map(a => a.name);
+            const names = dirs.map((a) => a.name);
             expect(names).to.deep.equal(['dir1', 'dir2', 'dir3', 'file1', 'file2', 'file3', 'link1', 'link2', 'ping.js']);
             done();
           } catch (e) {
@@ -1019,7 +1019,7 @@ describe('asar package', function () {
         for (const dir of dirs) {
           expect(dir instanceof fs.Dirent).to.be.true();
         }
-        const names = dirs.map(a => a.name);
+        const names = dirs.map((a) => a.name);
         expect(names).to.deep.equal(['dir1', 'dir2', 'dir3', 'file1', 'file2', 'file3', 'link1', 'link2', 'ping.js']);
       });
 
@@ -1166,27 +1166,31 @@ describe('asar package', function () {
       it('promisified version handles an existing file', (done) => {
         const p = path.join(asarDir, 'a.asar', 'file1');
         // eslint-disable-next-line
-        util.promisify(fs.exists)(p).then(exists => {
-          try {
-            expect(exists).to.be.true();
-            done();
-          } catch (e) {
-            done(e);
-          }
-        });
+        util
+          .promisify(fs.exists)(p)
+          .then((exists) => {
+            try {
+              expect(exists).to.be.true();
+              done();
+            } catch (e) {
+              done(e);
+            }
+          });
       });
 
       it('promisified version handles a non-existent file', function (done) {
         const p = path.join(asarDir, 'a.asar', 'not-exist');
         // eslint-disable-next-line
-        util.promisify(fs.exists)(p).then(exists => {
-          try {
-            expect(exists).to.be.false();
-            done();
-          } catch (e) {
-            done(e);
-          }
-        });
+        util
+          .promisify(fs.exists)(p)
+          .then((exists) => {
+            try {
+              expect(exists).to.be.false();
+              done();
+            } catch (e) {
+              done(e);
+            }
+          });
       });
     });
 
@@ -1355,9 +1359,11 @@ describe('asar package', function () {
       });
 
       it('can be promisified', () => {
-        return util.promisify(ChildProcess.exec)('echo ' + echo + ' foo bar').then(({ stdout }) => {
-          expect(stdout.toString().replace(/\r/g, '')).to.equal(echo + ' foo bar\n');
-        });
+        return util
+          .promisify(ChildProcess.exec)('echo ' + echo + ' foo bar')
+          .then(({ stdout }) => {
+            expect(stdout.toString().replace(/\r/g, '')).to.equal(echo + ' foo bar\n');
+          });
       });
     });
 
@@ -1419,9 +1425,11 @@ describe('asar package', function () {
       });
 
       it('can be promisified', () => {
-        return util.promisify(ChildProcess.execFile)(echo, ['test']).then(({ stdout }) => {
-          expect(stdout).to.equal('test\n');
-        });
+        return util
+          .promisify(ChildProcess.execFile)(echo, ['test'])
+          .then(({ stdout }) => {
+            expect(stdout).to.equal('test\n');
+          });
       });
     });
 
@@ -1461,8 +1469,7 @@ describe('asar package', function () {
           if (typeof originalValue === 'undefined' || originalValue === null) continue;
 
           if (hasOwnProperty.call(originalValue, util.promisify.custom)) {
-            expect(fs).to.have.own.property(propertyName)
-              .that.has.own.property(util.promisify.custom);
+            expect(fs).to.have.own.property(propertyName).that.has.own.property(util.promisify.custom);
           }
         }
       });
@@ -1553,8 +1560,8 @@ describe('asar package', function () {
       it('disables asar support in forked processes', function (done) {
         const forked = ChildProcess.fork(path.join(__dirname, 'fixtures', 'module', 'no-asar.js'), [], {
           env: {
-            ELECTRON_NO_ASAR: true
-          }
+            ELECTRON_NO_ASAR: true,
+          },
         });
         forked.on('message', function (stats) {
           try {
@@ -1571,8 +1578,8 @@ describe('asar package', function () {
         const spawned = ChildProcess.spawn(process.execPath, [path.join(__dirname, 'fixtures', 'module', 'no-asar.js')], {
           env: {
             ELECTRON_NO_ASAR: true,
-            ELECTRON_RUN_AS_NODE: true
-          }
+            ELECTRON_RUN_AS_NODE: true,
+          },
         });
 
         let output = '';
@@ -1653,7 +1660,7 @@ describe('asar package', function () {
           } catch (e) {
             done(e);
           }
-        }
+        },
       });
     });
   });
@@ -1722,7 +1729,7 @@ describe('asar package', function () {
       const logo = nativeImage.createFromPath(p);
       expect(logo.getSize()).to.deep.equal({
         width: 55,
-        height: 55
+        height: 55,
       });
     });
 
@@ -1731,7 +1738,7 @@ describe('asar package', function () {
       const logo = nativeImage.createFromPath(p);
       expect(logo.getSize()).to.deep.equal({
         width: 1024,
-        height: 1024
+        height: 1024,
       });
     });
   });

@@ -3,7 +3,7 @@
 if (!process.env.CI) require('dotenv-safe').load();
 const args = require('minimist')(process.argv.slice(2), {
   string: ['tag', 'releaseID'],
-  default: { releaseID: '' }
+  default: { releaseID: '' },
 });
 const { execSync } = require('child_process');
 const { GitProcess } = require('dugite');
@@ -11,19 +11,19 @@ const { getCurrentBranch, ELECTRON_DIR } = require('../lib/utils.js');
 const { Octokit } = require('@octokit/rest');
 
 const octokit = new Octokit({
-  auth: process.env.ELECTRON_GITHUB_TOKEN
+  auth: process.env.ELECTRON_GITHUB_TOKEN,
 });
 
 require('colors');
 const pass = '✓'.green;
 const fail = '✗'.red;
 
-function getLastBumpCommit (tag) {
+function getLastBumpCommit(tag) {
   const data = execSync(`git log -n1 --grep "Bump ${tag}" --format='format:{"hash": "%H", "message": "%s"}'`).toString();
   return JSON.parse(data);
 }
 
-async function revertBumpCommit (tag) {
+async function revertBumpCommit(tag) {
   const branch = await getCurrentBranch();
   const commitToRevert = getLastBumpCommit(tag).hash;
   await GitProcess.exec(['revert', commitToRevert], ELECTRON_DIR);
@@ -37,12 +37,12 @@ async function revertBumpCommit (tag) {
   }
 }
 
-async function deleteDraft (releaseId, targetRepo) {
+async function deleteDraft(releaseId, targetRepo) {
   try {
     const result = await octokit.repos.getRelease({
       owner: 'electron',
       repo: targetRepo,
-      release_id: parseInt(releaseId, 10)
+      release_id: parseInt(releaseId, 10),
     });
     if (!result.data.draft) {
       console.log(`${fail} published releases cannot be deleted.`);
@@ -51,7 +51,7 @@ async function deleteDraft (releaseId, targetRepo) {
       await octokit.repos.deleteRelease({
         owner: 'electron',
         repo: targetRepo,
-        release_id: result.data.id
+        release_id: result.data.id,
       });
     }
     console.log(`${pass} successfully deleted draft with id ${releaseId} from ${targetRepo}`);
@@ -62,12 +62,12 @@ async function deleteDraft (releaseId, targetRepo) {
   }
 }
 
-async function deleteTag (tag, targetRepo) {
+async function deleteTag(tag, targetRepo) {
   try {
     await octokit.git.deleteRef({
       owner: 'electron',
       repo: targetRepo,
-      ref: `tags/${tag}`
+      ref: `tags/${tag}`,
     });
     console.log(`${pass} successfully deleted tag ${tag} from ${targetRepo}`);
   } catch (err) {
@@ -75,7 +75,7 @@ async function deleteTag (tag, targetRepo) {
   }
 }
 
-async function cleanReleaseArtifacts () {
+async function cleanReleaseArtifacts() {
   const releaseId = args.releaseID.length > 0 ? args.releaseID : null;
   const isNightly = args.tag.includes('nightly');
 
@@ -97,10 +97,7 @@ async function cleanReleaseArtifacts () {
       }
     }
   } else {
-    await Promise.all([
-      deleteTag(args.tag, 'electron'),
-      deleteTag(args.tag, 'nightlies')
-    ]);
+    await Promise.all([deleteTag(args.tag, 'electron'), deleteTag(args.tag, 'nightlies')]);
   }
 
   console.log(`${pass} failed release artifact cleanup complete`);

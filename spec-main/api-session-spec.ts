@@ -51,12 +51,12 @@ describe('session module', () => {
         res.end('finished');
         server.close();
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const { port } = server.address() as AddressInfo;
       const w = new BrowserWindow({ show: false });
       await w.loadURL(`${url}:${port}`);
       const list = await w.webContents.session.cookies.get({ url });
-      const cookie = list.find(cookie => cookie.name === name);
+      const cookie = list.find((cookie) => cookie.name === name);
       expect(cookie).to.exist.and.to.have.property('value', value);
     });
 
@@ -65,7 +65,7 @@ describe('session module', () => {
       const name = '1';
       const value = '1';
 
-      await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+      await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
       const c = (await cookies.get({ url }))[0];
       expect(c.name).to.equal(name);
       expect(c.value).to.equal(value);
@@ -109,7 +109,9 @@ describe('session module', () => {
     it('fails to set cookies with samesite=garbage', async () => {
       const { cookies } = session.defaultSession;
       const value = 'hithere';
-      await expect(cookies.set({ url, value, sameSite: 'garbage' as any })).to.eventually.be.rejectedWith('Failed to convert \'garbage\' to an appropriate cookie same site value');
+      await expect(cookies.set({ url, value, sameSite: 'garbage' as any })).to.eventually.be.rejectedWith(
+        "Failed to convert 'garbage' to an appropriate cookie same site value",
+      );
     });
 
     it('gets cookies without url', async () => {
@@ -117,9 +119,9 @@ describe('session module', () => {
       const name = '1';
       const value = '1';
 
-      await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+      await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
       const cs = await cookies.get({ domain: '127.0.0.1' });
-      expect(cs.some(c => c.name === name && c.value === value)).to.equal(true);
+      expect(cs.some((c) => c.name === name && c.value === value)).to.equal(true);
     });
 
     it('yields an error when setting a cookie with missing required fields', async () => {
@@ -127,9 +129,7 @@ describe('session module', () => {
       const name = '1';
       const value = '1';
 
-      await expect(
-        cookies.set({ url: '', name, value })
-      ).to.eventually.be.rejectedWith('Failed to get cookie domain');
+      await expect(cookies.set({ url: '', name, value })).to.eventually.be.rejectedWith('Failed to get cookie domain');
     });
 
     it('yields an error when setting a cookie with an invalid URL', async () => {
@@ -137,19 +137,17 @@ describe('session module', () => {
       const name = '1';
       const value = '1';
 
-      await expect(
-        cookies.set({ url: 'asdf', name, value })
-      ).to.eventually.be.rejectedWith('Failed to get cookie domain');
+      await expect(cookies.set({ url: 'asdf', name, value })).to.eventually.be.rejectedWith('Failed to get cookie domain');
     });
 
     it('should overwrite previous cookies', async () => {
       const { cookies } = session.defaultSession;
       const name = 'DidOverwrite';
       for (const value of ['No', 'Yes']) {
-        await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+        await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
         const list = await cookies.get({ url });
 
-        expect(list.some(cookie => cookie.name === name && cookie.value === value)).to.equal(true);
+        expect(list.some((cookie) => cookie.name === name && cookie.value === value)).to.equal(true);
       }
     });
 
@@ -158,11 +156,11 @@ describe('session module', () => {
       const name = '2';
       const value = '2';
 
-      await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+      await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
       await cookies.remove(url, name);
       const list = await cookies.get({ url });
 
-      expect(list.some(cookie => cookie.name === name && cookie.value === value)).to.equal(false);
+      expect(list.some((cookie) => cookie.name === name && cookie.value === value)).to.equal(false);
     });
 
     it.skip('should set cookie for standard scheme', async () => {
@@ -172,7 +170,7 @@ describe('session module', () => {
       const name = 'custom';
       const value = '1';
 
-      await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+      await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
       const list = await cookies.get({ url });
 
       expect(list).to.have.lengthOf(1);
@@ -187,7 +185,7 @@ describe('session module', () => {
       const value = 'bar';
 
       const a = emittedOnce(cookies, 'changed');
-      await cookies.set({ url, name, value, expirationDate: (+new Date()) / 1000 + 120 });
+      await cookies.set({ url, name, value, expirationDate: +new Date() / 1000 + 120 });
       const [, setEventCookie, setEventCause, setEventRemoved] = await a;
 
       const b = emittedOnce(cookies, 'changed');
@@ -223,13 +221,11 @@ describe('session module', () => {
         return new Promise((resolve) => {
           let output = '';
 
-          const appProcess = ChildProcess.spawn(
-            process.execPath,
-            [appPath],
-            { env: { PHASE: phase, ...process.env } }
-          );
+          const appProcess = ChildProcess.spawn(process.execPath, [appPath], { env: { PHASE: phase, ...process.env } });
 
-          appProcess.stdout.on('data', data => { output += data; });
+          appProcess.stdout.on('data', (data) => {
+            output += data;
+          });
           appProcess.on('exit', () => {
             resolve(output.replace(/(\r\n|\n|\r)/gm, ''));
           });
@@ -249,10 +245,10 @@ describe('session module', () => {
       const options = {
         origin: 'file://',
         storages: ['localstorage'],
-        quotas: ['persistent']
+        quotas: ['persistent'],
       };
       await w.webContents.session.clearStorageData(options);
-      while (await w.webContents.executeJavaScript('localStorage.length') !== 0) {
+      while ((await w.webContents.executeJavaScript('localStorage.length')) !== 0) {
         // The storage clear isn't instantly visible to the renderer, so keep
         // trying until it is.
       }
@@ -269,17 +265,17 @@ describe('session module', () => {
         res.writeHead(200, {
           'Content-Length': mockFile.length,
           'Content-Type': 'application/plain',
-          'Content-Disposition': contentDisposition
+          'Content-Disposition': contentDisposition,
         });
         res.end(mockFile);
         downloadServer.close();
       });
-      await new Promise(resolve => downloadServer.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => downloadServer.listen(0, '127.0.0.1', resolve));
 
       const port = (downloadServer.address() as AddressInfo).port;
       const url = `http://127.0.0.1:${port}/`;
 
-      const downloadPrevented: Promise<{itemUrl: string, itemFilename: string, item: Electron.DownloadItem}> = new Promise(resolve => {
+      const downloadPrevented: Promise<{ itemUrl: string; itemFilename: string; item: Electron.DownloadItem }> = new Promise((resolve) => {
         w.webContents.session.once('will-download', function (e, item) {
           e.preventDefault();
           resolve({ itemUrl: item.getURL(), itemFilename: item.getFilename(), item });
@@ -290,7 +286,7 @@ describe('session module', () => {
       expect(itemUrl).to.equal(url);
       expect(itemFilename).to.equal('mockFile.txt');
       // Delay till the next tick.
-      await new Promise(resolve => setImmediate(() => resolve()));
+      await new Promise((resolve) => setImmediate(() => resolve()));
       expect(() => item.getURL()).to.throw('DownloadItem used after being destroyed');
     });
   });
@@ -301,7 +297,7 @@ describe('session module', () => {
     let customSession: Session;
     const protocol = session.defaultSession.protocol;
     const handler = (ignoredError: any, callback: Function) => {
-      callback({ data: '<script>require(\'electron\').ipcRenderer.send(\'hello\')</script>', mimeType: 'text/html' });
+      callback({ data: "<script>require('electron').ipcRenderer.send('hello')</script>", mimeType: 'text/html' });
     };
 
     beforeEach(async () => {
@@ -328,8 +324,8 @@ describe('session module', () => {
         show: false,
         webPreferences: {
           partition: partitionName,
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       customSession = session.fromPartition(partitionName);
       await customSession.protocol.registerStringProtocol(protocolName, handler);
@@ -370,7 +366,7 @@ describe('session module', () => {
     it('allows removing the implicit bypass rules for localhost', async () => {
       const config = {
         proxyRules: 'http=myproxy:80',
-        proxyBypassRules: '<-loopback>'
+        proxyBypassRules: '<-loopback>',
       };
 
       await customSession.setProxy(config);
@@ -386,11 +382,11 @@ describe('session module', () => {
           }
         `;
         res.writeHead(200, {
-          'Content-Type': 'application/x-ns-proxy-autoconfig'
+          'Content-Type': 'application/x-ns-proxy-autoconfig',
         });
         res.end(pac);
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       {
         const config = { pacScript: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
         await customSession.setProxy(config);
@@ -408,7 +404,7 @@ describe('session module', () => {
     it('allows bypassing proxy settings', async () => {
       const config = {
         proxyRules: 'http=myproxy:80',
-        proxyBypassRules: '<local>'
+        proxyBypassRules: '<local>',
       };
       await customSession.setProxy(config);
       const proxy = await customSession.resolveProxy('http://example/');
@@ -460,11 +456,11 @@ describe('session module', () => {
           }
         `;
         res.writeHead(200, {
-          'Content-Type': 'application/x-ns-proxy-autoconfig'
+          'Content-Type': 'application/x-ns-proxy-autoconfig',
         });
         res.end(pac);
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const config = { mode: 'pac_script' as any, pacScript: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
       await customSession.setProxy(config);
       {
@@ -492,7 +488,7 @@ describe('session module', () => {
     it('returns blob data for uuid', (done) => {
       const postData = JSON.stringify({
         type: 'blob',
-        value: 'hello'
+        value: 'hello',
       });
       const content = `<html>
                        <script>
@@ -509,7 +505,7 @@ describe('session module', () => {
           } else if (request.method === 'POST') {
             const uuid = request.uploadData![1].blobUUID;
             expect(uuid).to.be.a('string');
-            session.defaultSession.getBlobData(uuid!).then(result => {
+            session.defaultSession.getBlobData(uuid!).then((result) => {
               try {
                 expect(result.toString()).to.equal(postData);
                 done();
@@ -535,11 +531,8 @@ describe('session module', () => {
       const options = {
         key: fs.readFileSync(path.join(certPath, 'server.key')),
         cert: fs.readFileSync(path.join(certPath, 'server.pem')),
-        ca: [
-          fs.readFileSync(path.join(certPath, 'rootCA.pem')),
-          fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))
-        ],
-        rejectUnauthorized: false
+        ca: [fs.readFileSync(path.join(certPath, 'rootCA.pem')), fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))],
+        rejectUnauthorized: false,
       };
 
       server = https.createServer(options, (req, res) => {
@@ -618,14 +611,16 @@ describe('session module', () => {
       setTimeout(() => {
         ses2.setCertificateVerifyProc((opts, callback) => callback(0));
       });
-      await expect(new Promise((resolve, reject) => {
-        req.on('error', (err) => {
-          reject(err);
-        });
-        req.on('response', () => {
-          resolve();
-        });
-      })).to.eventually.be.fulfilled();
+      await expect(
+        new Promise((resolve, reject) => {
+          req.on('error', (err) => {
+            reject(err);
+          });
+          req.on('response', () => {
+            resolve();
+          });
+        }),
+      ).to.eventually.be.fulfilled();
     });
   });
 
@@ -642,30 +637,35 @@ describe('session module', () => {
           res.end('authenticated');
         }
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const port = (server.address() as AddressInfo).port;
-      const fetch = (url: string) => new Promise((resolve, reject) => {
-        const request = net.request({ url, session: ses });
-        request.on('response', (response) => {
-          let data: string | null = null;
-          response.on('data', (chunk) => {
-            if (!data) {
-              data = '';
-            }
-            data += chunk;
+      const fetch = (url: string) =>
+        new Promise((resolve, reject) => {
+          const request = net.request({ url, session: ses });
+          request.on('response', (response) => {
+            let data: string | null = null;
+            response.on('data', (chunk) => {
+              if (!data) {
+                data = '';
+              }
+              data += chunk;
+            });
+            response.on('end', () => {
+              if (!data) {
+                reject(new Error('Empty response'));
+              } else {
+                resolve(data);
+              }
+            });
+            response.on('error', (error: any) => {
+              reject(new Error(error));
+            });
           });
-          response.on('end', () => {
-            if (!data) {
-              reject(new Error('Empty response'));
-            } else {
-              resolve(data);
-            }
+          request.on('error', (error: any) => {
+            reject(new Error(error));
           });
-          response.on('error', (error: any) => { reject(new Error(error)); });
+          request.end();
         });
-        request.on('error', (error: any) => { reject(new Error(error)); });
-        request.end();
-      });
       // the first time should throw due to unauthenticated
       await expect(fetch(`http://127.0.0.1:${port}`)).to.eventually.be.rejected();
       // passing the password should let us in
@@ -690,15 +690,15 @@ describe('session module', () => {
         res.writeHead(200, {
           'Content-Length': mockPDF.length,
           'Content-Type': 'application/pdf',
-          'Content-Disposition': req.url === '/?testFilename' ? 'inline' : contentDisposition
+          'Content-Disposition': req.url === '/?testFilename' ? 'inline' : contentDisposition,
         });
         res.end(mockPDF);
       });
-      await new Promise(resolve => downloadServer.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => downloadServer.listen(0, '127.0.0.1', resolve));
       address = downloadServer.address() as AddressInfo;
     });
     after(async () => {
-      await new Promise(resolve => downloadServer.close(resolve));
+      await new Promise((resolve) => downloadServer.close(resolve));
     });
     afterEach(closeAllWindows);
 
@@ -782,7 +782,7 @@ describe('session module', () => {
       const port = address.port;
       const w = new BrowserWindow({ show: false, webPreferences: { webviewTag: true } });
       await w.loadURL('about:blank');
-      function webviewDownload ({ fixtures, url, port }: {fixtures: string, url: string, port: string}) {
+      function webviewDownload({ fixtures, url, port }: { fixtures: string; url: string; port: string }) {
         const webview = new (window as any).WebView();
         webview.addEventListener('did-finish-load', () => {
           webview.downloadURL(`${url}:${port}/`);
@@ -790,7 +790,7 @@ describe('session module', () => {
         webview.src = `file://${fixtures}/api/blank.html`;
         document.body.appendChild(webview);
       }
-      const done: Promise<[string, Electron.DownloadItem]> = new Promise(resolve => {
+      const done: Promise<[string, Electron.DownloadItem]> = new Promise((resolve) => {
         w.webContents.session.once('will-download', function (e, item) {
           item.savePath = downloadFilePath;
           item.on('done', function (e, state) {
@@ -860,13 +860,18 @@ describe('session module', () => {
         buttonLabel: 'buttonLabel',
         nameFieldLabel: 'nameFieldLabel',
         defaultPath: '/',
-        filters: [{
-          name: '1', extensions: ['.1', '.2']
-        }, {
-          name: '2', extensions: ['.3', '.4', '.5']
-        }],
+        filters: [
+          {
+            name: '1',
+            extensions: ['.1', '.2'],
+          },
+          {
+            name: '2',
+            extensions: ['.3', '.4', '.5'],
+          },
+        ],
         showsTagField: true,
-        securityScopedBookmarks: true
+        securityScopedBookmarks: true,
       };
 
       const w = new BrowserWindow({ show: false });
@@ -917,7 +922,7 @@ describe('session module', () => {
         urlChain: ['http://127.0.0.1/'],
         mimeType: 'application/pdf',
         offset: 0,
-        length: 5242880
+        length: 5242880,
       };
       const w = new BrowserWindow({ show: false });
       const p = emittedOnce(w.webContents.session, 'will-download');
@@ -937,10 +942,13 @@ describe('session module', () => {
       const rangeServer = http.createServer((req, res) => {
         const options = { root: fixtures };
         send(req, req.url!, options)
-          .on('error', (error: any) => { throw error; }).pipe(res);
+          .on('error', (error: any) => {
+            throw error;
+          })
+          .pipe(res);
       });
       try {
-        await new Promise(resolve => rangeServer.listen(0, '127.0.0.1', resolve));
+        await new Promise((resolve) => rangeServer.listen(0, '127.0.0.1', resolve));
         const port = (rangeServer.address() as AddressInfo).port;
         const w = new BrowserWindow({ show: false });
         const downloadCancelled: Promise<Electron.DownloadItem> = new Promise((resolve) => {
@@ -964,7 +972,7 @@ describe('session module', () => {
           offset: item.getReceivedBytes(),
           length: item.getTotalBytes(),
           lastModified: item.getLastModifiedTime(),
-          eTag: item.getETag()
+          eTag: item.getETag(),
         };
         const downloadResumed: Promise<Electron.DownloadItem> = new Promise((resolve) => {
           w.webContents.session.once('will-download', function (e, item) {
@@ -999,8 +1007,8 @@ describe('session module', () => {
         show: false,
         webPreferences: {
           partition: 'very-temp-permision-handler',
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
 
       const ses = w.webContents.session;
@@ -1014,10 +1022,13 @@ describe('session module', () => {
 
       const result = emittedOnce(require('electron').ipcMain, 'message');
 
-      function remote () {
-        (navigator as any).requestMIDIAccess({ sysex: true }).then(() => {}, (err: any) => {
-          require('electron').ipcRenderer.send('message', err.name);
-        });
+      function remote() {
+        (navigator as any).requestMIDIAccess({ sysex: true }).then(
+          () => {},
+          (err: any) => {
+            require('electron').ipcRenderer.send('message', err.name);
+          },
+        );
       }
 
       await w.loadURL('https://myfakesite');
@@ -1032,7 +1043,7 @@ describe('session module', () => {
 
     it('returns default session as persistent', () => {
       const w = new BrowserWindow({
-        show: false
+        show: false,
       });
 
       const ses = w.webContents.session;
@@ -1072,7 +1083,7 @@ describe('session module', () => {
         res.end();
         server.close();
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       await w.loadURL(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
       expect(headers!['user-agent']).to.equal(userAgent);
       expect(headers!['accept-language']).to.equal('en-US,fr;q=0.9,de;q=0.8');
@@ -1093,28 +1104,28 @@ describe('session module', () => {
       const ses = session.fromPartition('' + Math.random());
       const fixturesPath = path.resolve(__dirname, '..', 'spec', 'fixtures');
       const certPath = path.join(fixturesPath, 'certificates');
-      const server = https.createServer({
-        key: fs.readFileSync(path.join(certPath, 'server.key')),
-        cert: fs.readFileSync(path.join(certPath, 'server.pem')),
-        ca: [
-          fs.readFileSync(path.join(certPath, 'rootCA.pem')),
-          fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))
-        ],
-        minVersion: 'TLSv1.2',
-        maxVersion: 'TLSv1.2',
-        ciphers: 'AES128-GCM-SHA256'
-      }, (req, res) => {
-        res.end('hi');
-      });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      const server = https.createServer(
+        {
+          key: fs.readFileSync(path.join(certPath, 'server.key')),
+          cert: fs.readFileSync(path.join(certPath, 'server.pem')),
+          ca: [fs.readFileSync(path.join(certPath, 'rootCA.pem')), fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))],
+          minVersion: 'TLSv1.2',
+          maxVersion: 'TLSv1.2',
+          ciphers: 'AES128-GCM-SHA256',
+        },
+        (req, res) => {
+          res.end('hi');
+        },
+      );
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       defer(() => server.close());
       const { port } = server.address() as AddressInfo;
 
-      function request () {
+      function request() {
         return new Promise((resolve, reject) => {
           const r = net.request({
             url: `https://127.0.0.1:${port}`,
-            session: ses
+            session: ses,
           });
           r.on('response', (res) => {
             let data = '';
@@ -1134,7 +1145,7 @@ describe('session module', () => {
 
       await expect(request()).to.be.rejectedWith(/ERR_CERT_AUTHORITY_INVALID/);
       ses.setSSLConfig({
-        disabledCipherSuites: [0x009C]
+        disabledCipherSuites: [0x009c],
       });
       await expect(request()).to.be.rejectedWith(/ERR_SSL_VERSION_OR_CIPHER_MISMATCH/);
     });

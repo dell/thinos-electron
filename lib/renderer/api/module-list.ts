@@ -8,19 +8,19 @@ export const rendererModuleList: ElectronInternal.ModuleEntry[] = [
   { name: 'crashReporter', loader: () => require('./crash-reporter') },
   { name: 'ipcRenderer', loader: () => require('./ipc-renderer') },
   { name: 'nativeImage', loader: () => require('./native-image') },
-  { name: 'webFrame', loader: () => require('./web-frame') }
+  { name: 'webFrame', loader: () => require('./web-frame') },
 ];
 
 if (BUILDFLAG(ENABLE_DESKTOP_CAPTURER)) {
   rendererModuleList.push({
     name: 'desktopCapturer',
-    loader: () => require('@electron/internal/renderer/api/desktop-capturer')
+    loader: () => require('@electron/internal/renderer/api/desktop-capturer'),
   });
 }
 
 if (BUILDFLAG(ENABLE_REMOTE_MODULE) && enableRemoteModule) {
   rendererModuleList.push({
     name: 'remote',
-    loader: () => require('@electron/internal/renderer/api/remote')
+    loader: () => require('@electron/internal/renderer/api/remote'),
   });
 }

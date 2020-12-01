@@ -14,9 +14,9 @@ if (process.mainModule === module) {
     stdio: 'inherit',
     env: {
       ...process.env,
-      npm_config_yes: 'true'
-    }
+      npm_config_yes: 'true',
+    },
   });
 
-  child.on('exit', code => process.exit(code));
+  child.on('exit', (code) => process.exit(code));
 }

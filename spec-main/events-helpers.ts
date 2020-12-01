@@ -9,7 +9,7 @@
  * @return {!Promise<!Event>}
  */
 export const waitForEvent = (target: EventTarget, eventName: string) => {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     target.addEventListener(eventName, resolve, { once: true });
   });
 };
@@ -25,7 +25,7 @@ export const emittedOnce = (emitter: NodeJS.EventEmitter, eventName: string, tri
 
 export const emittedNTimes = async (emitter: NodeJS.EventEmitter, eventName: string, times: number, trigger?: () => void) => {
   const events: any[][] = [];
-  const p = new Promise<any[][]>(resolve => {
+  const p = new Promise<any[][]>((resolve) => {
     const handler = (...args: any[]) => {
       events.push(args);
       if (events.length === times) {
@@ -42,7 +42,7 @@ export const emittedNTimes = async (emitter: NodeJS.EventEmitter, eventName: str
 };
 
 export const emittedUntil = async (emitter: NodeJS.EventEmitter, eventName: string, untilFn: Function) => {
-  const p = new Promise<any[]>(resolve => {
+  const p = new Promise<any[]>((resolve) => {
     const handler = (...args: any[]) => {
       if (untilFn(...args)) {
         emitter.removeListener(eventName, handler);

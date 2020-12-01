@@ -1,7 +1,8 @@
 const { BrowserWindow } = require('electron');
 
 class Foo {
-  set bar (value) { // eslint-disable-line accessor-pairs
+  // eslint-disable-next-line accessor-pairs
+  set bar(value) {
     if (!(value instanceof BrowserWindow)) {
       throw new Error('setting error');
     }

@@ -31,35 +31,37 @@ describe('reporting api', () => {
     const options = {
       key: fs.readFileSync(path.join(certPath, 'server.key')),
       cert: fs.readFileSync(path.join(certPath, 'server.pem')),
-      ca: [
-        fs.readFileSync(path.join(certPath, 'rootCA.pem')),
-        fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))
-      ],
+      ca: [fs.readFileSync(path.join(certPath, 'rootCA.pem')), fs.readFileSync(path.join(certPath, 'intermediateCA.pem'))],
       requestCert: true,
-      rejectUnauthorized: false
+      rejectUnauthorized: false,
     };
 
     const server = https.createServer(options, (req, res) => {
       if (req.url === '/report') {
         let data = '';
-        req.on('data', (d) => { data += d.toString('utf-8'); });
+        req.on('data', (d) => {
+          data += d.toString('utf-8');
+        });
         req.on('end', () => {
           reports.emit('report', JSON.parse(data));
         });
       }
-      res.setHeader('Report-To', JSON.stringify({
-        group: 'default',
-        max_age: 120,
-        endpoints: [{ url: `https://localhost:${(server.address() as any).port}/report` }]
-      }));
+      res.setHeader(
+        'Report-To',
+        JSON.stringify({
+          group: 'default',
+          max_age: 120,
+          endpoints: [{ url: `https://localhost:${(server.address() as any).port}/report` }],
+        }),
+      );
       res.setHeader('Content-Type', 'text/html');
       // using the deprecated `webkitRequestAnimationFrame` will trigger a
       // "deprecation" report.
       res.end('<script>webkitRequestAnimationFrame(() => {})</script>');
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const bw = new BrowserWindow({
-      show: false
+      show: false,
     });
     try {
       const reportGenerated = emittedOnce(reports, 'report');
@@ -98,16 +100,16 @@ describe('window.postMessage', () => {
 });
 
 describe('focus handling', () => {
-  let webviewContents: WebContents = null as unknown as WebContents;
-  let w: BrowserWindow = null as unknown as BrowserWindow;
+  let webviewContents: WebContents = (null as unknown) as WebContents;
+  let w: BrowserWindow = (null as unknown) as BrowserWindow;
 
   beforeEach(async () => {
     w = new BrowserWindow({
       show: true,
       webPreferences: {
         nodeIntegration: true,
-        webviewTag: true
-      }
+        webviewTag: true,
+      },
     });
 
     const webviewReady = emittedOnce(w.webContents, 'did-attach-webview');
@@ -119,9 +121,9 @@ describe('focus handling', () => {
   });
 
   afterEach(() => {
-    webviewContents = null as unknown as WebContents;
+    webviewContents = (null as unknown) as WebContents;
     w.destroy();
-    w = null as unknown as BrowserWindow;
+    w = (null as unknown) as BrowserWindow;
   });
 
   const expectFocusChange = async () => {
@@ -132,7 +134,7 @@ describe('focus handling', () => {
   describe('a TAB press', () => {
     const tabPressEvent: any = {
       type: 'keyDown',
-      keyCode: 'Tab'
+      keyCode: 'Tab',
     };
 
     it('moves focus to the next focusable item', async () => {
@@ -149,12 +151,18 @@ describe('focus handling', () => {
       focusChange = expectFocusChange();
       w.webContents.sendInputEvent(tabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-wv-element-1', `focus should've moved to the webview's element-1, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-wv-element-1',
+        `focus should've moved to the webview's element-1, it's instead in ${focusedElementId}`,
+      );
 
       focusChange = expectFocusChange();
       webviewContents.sendInputEvent(tabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-wv-element-2', `focus should've moved to the webview's element-2, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-wv-element-2',
+        `focus should've moved to the webview's element-2, it's instead in ${focusedElementId}`,
+      );
 
       focusChange = expectFocusChange();
       webviewContents.sendInputEvent(tabPressEvent);
@@ -164,7 +172,10 @@ describe('focus handling', () => {
       focusChange = expectFocusChange();
       w.webContents.sendInputEvent(tabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-element-1', `focus should've looped back to element-1, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-element-1',
+        `focus should've looped back to element-1, it's instead in ${focusedElementId}`,
+      );
     });
   });
 
@@ -172,7 +183,7 @@ describe('focus handling', () => {
     const shiftTabPressEvent: any = {
       type: 'keyDown',
       modifiers: ['Shift'],
-      keyCode: 'Tab'
+      keyCode: 'Tab',
     };
 
     it('moves focus to the previous focusable item', async () => {
@@ -184,12 +195,18 @@ describe('focus handling', () => {
       focusChange = expectFocusChange();
       w.webContents.sendInputEvent(shiftTabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-wv-element-2', `focus should've moved to the webview's element-2, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-wv-element-2',
+        `focus should've moved to the webview's element-2, it's instead in ${focusedElementId}`,
+      );
 
       focusChange = expectFocusChange();
       webviewContents.sendInputEvent(shiftTabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-wv-element-1', `focus should've moved to the webview's element-1, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-wv-element-1',
+        `focus should've moved to the webview's element-1, it's instead in ${focusedElementId}`,
+      );
 
       focusChange = expectFocusChange();
       webviewContents.sendInputEvent(shiftTabPressEvent);
@@ -204,7 +221,10 @@ describe('focus handling', () => {
       focusChange = expectFocusChange();
       w.webContents.sendInputEvent(shiftTabPressEvent);
       focusedElementId = await focusChange;
-      expect(focusedElementId).to.equal('BUTTON-element-3', `focus should've looped back to element-3, it's instead in ${focusedElementId}`);
+      expect(focusedElementId).to.equal(
+        'BUTTON-element-3',
+        `focus should've looped back to element-3, it's instead in ${focusedElementId}`,
+      );
     });
   });
 });
@@ -218,7 +238,7 @@ describe('web security', () => {
       res.setHeader('Content-Type', 'text/html');
       res.end('<body>');
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     serverUrl = `http://localhost:${(server.address() as any).port}`;
   });
   after(() => {
@@ -312,7 +332,9 @@ describe('command line switches', () => {
       appProcess = ChildProcess.spawn(process.execPath, args);
 
       let output = '';
-      appProcess.stdout.on('data', (data) => { output += data; });
+      appProcess.stdout.on('data', (data) => {
+        output += data;
+      });
 
       await emittedOnce(appProcess.stdout, 'end');
       output = output.replace(/(\r\n|\n|\r)/gm, '');
@@ -328,7 +350,9 @@ describe('command line switches', () => {
       expect(lcAll).to.not.equal(app.getLocale());
     });
     ifit(process.platform === 'linux')('should not change LC_ALL', async () => testLocale('fr', lcAll, true));
-    ifit(process.platform === 'linux')('should not change LC_ALL when setting invalid locale', async () => testLocale('asdfkl', lcAll, true));
+    ifit(process.platform === 'linux')('should not change LC_ALL when setting invalid locale', async () =>
+      testLocale('asdfkl', lcAll, true),
+    );
     ifit(process.platform === 'linux')('should not change LC_ALL when --lang is not set', async () => testLocale('', lcAll, true));
   });
 
@@ -336,11 +360,19 @@ describe('command line switches', () => {
     it('should expose CDP via pipe', async () => {
       const electronPath = process.execPath;
       appProcess = ChildProcess.spawn(electronPath, ['--remote-debugging-pipe'], {
-        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe'],
       });
-      const stdio = appProcess.stdio as unknown as [NodeJS.ReadableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.ReadableStream];
+      const stdio = (appProcess.stdio as unknown) as [
+        NodeJS.ReadableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.ReadableStream,
+      ];
       const pipe = new PipeTransport(stdio[3], stdio[4]);
-      const versionPromise = new Promise(resolve => { pipe.onmessage = resolve; });
+      const versionPromise = new Promise((resolve) => {
+        pipe.onmessage = resolve;
+      });
       pipe.send({ id: 1, method: 'Browser.getVersion', params: {} });
       const message = (await versionPromise) as any;
       expect(message.id).to.equal(1);
@@ -350,13 +382,23 @@ describe('command line switches', () => {
     it('should override --remote-debugging-port switch', async () => {
       const electronPath = process.execPath;
       appProcess = ChildProcess.spawn(electronPath, ['--remote-debugging-pipe', '--remote-debugging-port=0'], {
-        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe'],
       });
       let stderr = '';
-      appProcess.stderr.on('data', (data: string) => { stderr += data; });
-      const stdio = appProcess.stdio as unknown as [NodeJS.ReadableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.ReadableStream];
+      appProcess.stderr.on('data', (data: string) => {
+        stderr += data;
+      });
+      const stdio = (appProcess.stdio as unknown) as [
+        NodeJS.ReadableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.ReadableStream,
+      ];
       const pipe = new PipeTransport(stdio[3], stdio[4]);
-      const versionPromise = new Promise(resolve => { pipe.onmessage = resolve; });
+      const versionPromise = new Promise((resolve) => {
+        pipe.onmessage = resolve;
+      });
       pipe.send({ id: 1, method: 'Browser.getVersion', params: {} });
       const message = (await versionPromise) as any;
       expect(message.id).to.equal(1);
@@ -365,12 +407,20 @@ describe('command line switches', () => {
     it('should shut down Electron upon Browser.close CDP command', async () => {
       const electronPath = process.execPath;
       appProcess = ChildProcess.spawn(electronPath, ['--remote-debugging-pipe'], {
-        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe', 'pipe', 'pipe'],
       });
-      const stdio = appProcess.stdio as unknown as [NodeJS.ReadableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.WritableStream, NodeJS.ReadableStream];
+      const stdio = (appProcess.stdio as unknown) as [
+        NodeJS.ReadableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.WritableStream,
+        NodeJS.ReadableStream,
+      ];
       const pipe = new PipeTransport(stdio[3], stdio[4]);
       pipe.send({ id: 1, method: 'Browser.close', params: {} });
-      await new Promise(resolve => { appProcess!.on('exit', resolve); });
+      await new Promise((resolve) => {
+        appProcess!.on('exit', resolve);
+      });
     });
   });
 
@@ -409,7 +459,9 @@ describe('chromium features', () => {
   describe('accessing key names also used as Node.js module names', () => {
     it('does not crash', (done) => {
       const w = new BrowserWindow({ show: false });
-      w.webContents.once('did-finish-load', () => { done(); });
+      w.webContents.once('did-finish-load', () => {
+        done();
+      });
       w.webContents.once('crashed', () => done(new Error('WebContents crashed.')));
       w.loadFile(path.join(fixturesPath, 'pages', 'external-string.html'));
     });
@@ -418,7 +470,9 @@ describe('chromium features', () => {
   describe('loading jquery', () => {
     it('does not crash', (done) => {
       const w = new BrowserWindow({ show: false });
-      w.webContents.once('did-finish-load', () => { done(); });
+      w.webContents.once('did-finish-load', () => {
+        done();
+      });
       w.webContents.once('crashed', () => done(new Error('WebContents crashed.')));
       w.loadFile(path.join(__dirname, 'fixtures', 'pages', 'jquery.html'));
     });
@@ -441,8 +495,8 @@ describe('chromium features', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          partition: 'sw-file-scheme-spec'
-        }
+          partition: 'sw-file-scheme-spec',
+        },
       });
       w.webContents.on('ipc-message', (event, channel, message) => {
         if (channel === 'reload') {
@@ -451,9 +505,12 @@ describe('chromium features', () => {
           done(message);
         } else if (channel === 'response') {
           expect(message).to.equal('Hello from serviceWorker!');
-          session.fromPartition('sw-file-scheme-spec').clearStorageData({
-            storages: ['serviceworkers']
-          }).then(() => done());
+          session
+            .fromPartition('sw-file-scheme-spec')
+            .clearStorageData({
+              storages: ['serviceworkers'],
+            })
+            .then(() => done());
         }
       });
       w.webContents.on('crashed', () => done(new Error('WebContents crashed.')));
@@ -478,8 +535,8 @@ describe('chromium features', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          session: customSession
-        }
+          session: customSession,
+        },
       });
       w.webContents.on('ipc-message', (event, channel, message) => {
         if (channel === 'reload') {
@@ -488,12 +545,14 @@ describe('chromium features', () => {
           done(`unexpected error : ${message}`);
         } else if (channel === 'response') {
           expect(message).to.equal('Hello from serviceWorker!');
-          customSession.clearStorageData({
-            storages: ['serviceworkers']
-          }).then(() => {
-            customSession.protocol.uninterceptProtocol('file');
-            done();
-          });
+          customSession
+            .clearStorageData({
+              storages: ['serviceworkers'],
+            })
+            .then(() => {
+              customSession.protocol.uninterceptProtocol('file');
+              done();
+            });
         }
       });
       w.webContents.on('crashed', () => done(new Error('WebContents crashed.')));
@@ -506,8 +565,8 @@ describe('chromium features', () => {
         webPreferences: {
           nodeIntegration: true,
           nodeIntegrationInWorker: true,
-          partition: 'sw-file-scheme-worker-spec'
-        }
+          partition: 'sw-file-scheme-worker-spec',
+        },
       });
 
       w.webContents.on('ipc-message', (event, channel, message) => {
@@ -517,9 +576,12 @@ describe('chromium features', () => {
           done(`unexpected error : ${message}`);
         } else if (channel === 'response') {
           expect(message).to.equal('Hello from serviceWorker!');
-          session.fromPartition('sw-file-scheme-worker-spec').clearStorageData({
-            storages: ['serviceworkers']
-          }).then(() => done());
+          session
+            .fromPartition('sw-file-scheme-worker-spec')
+            .clearStorageData({
+              storages: ['serviceworkers'],
+            })
+            .then(() => done());
         }
       });
 
@@ -540,8 +602,8 @@ describe('chromium features', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          partition: 'geolocation-spec'
-        }
+          partition: 'geolocation-spec',
+        },
       });
       const message = emittedOnce(w.webContents, 'ipc-message');
       w.webContents.session.setPermissionRequestHandler((wc, permission, callback) => {
@@ -572,7 +634,7 @@ describe('chromium features', () => {
           res.end(`body:${body}`);
         });
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       serverUrl = `http://localhost:${(server.address() as any).port}`;
     });
     after(async () => {
@@ -586,8 +648,8 @@ describe('chromium features', () => {
           const w = new BrowserWindow({
             show: false,
             webPreferences: {
-              sandbox: isSandboxEnabled
-            }
+              sandbox: isSandboxEnabled,
+            },
           });
 
           await w.loadFile(path.join(fixturesPath, 'pages', 'form-with-data.html'));
@@ -610,8 +672,8 @@ describe('chromium features', () => {
           const w = new BrowserWindow({
             show: false,
             webPreferences: {
-              sandbox: isSandboxEnabled
-            }
+              sandbox: isSandboxEnabled,
+            },
           });
 
           await w.loadFile(path.join(fixturesPath, 'pages', 'form-with-data.html'));
@@ -630,7 +692,7 @@ describe('chromium features', () => {
           const res = await newWin.webContents.executeJavaScript('document.body.innerText');
           expect(res).to.equal('body:greeting=hello');
         });
-      })
+      }),
     );
   });
 
@@ -646,11 +708,13 @@ describe('chromium features', () => {
           w.show();
         }
 
-        defer(() => { w.close(); });
+        defer(() => {
+          w.close();
+        });
 
         const newWindow = emittedOnce(w.webContents, 'new-window');
         w.loadFile(path.join(fixturesPath, 'pages', 'window-open.html'));
-        const [,,,, options] = await newWindow;
+        const [, , , , options] = await newWindow;
         expect(options.show).to.equal(true);
       });
     }
@@ -672,7 +736,7 @@ describe('chromium features', () => {
       const windowUrl = require('url').format({
         pathname: `${fixturesPath}/pages/window-no-javascript.html`,
         protocol: 'file',
-        slashes: true
+        slashes: true,
       });
       w.webContents.executeJavaScript(`
         b = window.open(${JSON.stringify(windowUrl)}, '', 'javascript=no,show=no')
@@ -736,7 +800,7 @@ describe('chromium features', () => {
     it('open a blank page when an empty URL is specified', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('about:blank');
-      w.webContents.executeJavaScript('{ b = window.open(\'\'); null }');
+      w.webContents.executeJavaScript("{ b = window.open(''); null }");
       const [, { webContents }] = await emittedOnce(app, 'browser-window-created');
       await emittedOnce(webContents, 'did-finish-load');
       expect(await w.webContents.executeJavaScript('b.location.href')).to.equal('about:blank');
@@ -745,7 +809,7 @@ describe('chromium features', () => {
     it('sets the window title to the specified frameName', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('about:blank');
-      w.webContents.executeJavaScript('{ b = window.open(\'\', \'hello\'); null }');
+      w.webContents.executeJavaScript("{ b = window.open('', 'hello'); null }");
       const [, window] = await emittedOnce(app, 'browser-window-created');
       expect(window.getTitle()).to.equal('hello');
     });
@@ -753,7 +817,7 @@ describe('chromium features', () => {
     it('does not throw an exception when the frameName is a built-in object property', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('about:blank');
-      w.webContents.executeJavaScript('{ b = window.open(\'\', \'__proto__\'); null }');
+      w.webContents.executeJavaScript("{ b = window.open('', '__proto__'); null }");
       const [, window] = await emittedOnce(app, 'browser-window-created');
       expect(window.getTitle()).to.equal('__proto__');
     });
@@ -764,25 +828,29 @@ describe('chromium features', () => {
         webPreferences: {
           contextIsolation: false,
           nodeIntegration: true,
-          nativeWindowOpen: true
-        }
+          nativeWindowOpen: true,
+        },
       });
       w.loadURL('about:blank');
 
       const previousListeners = process.listeners('uncaughtException');
       process.removeAllListeners('uncaughtException');
       try {
-        const uncaughtException = new Promise<Error>(resolve => {
+        const uncaughtException = new Promise<Error>((resolve) => {
           process.once('uncaughtException', resolve);
         });
-        expect(await w.webContents.executeJavaScript(`(${function () {
-          const { ipc } = process._linkedBinding('electron_renderer_ipc');
-          return ipc.sendSync(true, 'GUEST_WINDOW_MANAGER_WINDOW_OPEN', ['', '', '']);
-        }})()`)).to.be.null();
+        expect(
+          await w.webContents.executeJavaScript(
+            `(${function () {
+              const { ipc } = process._linkedBinding('electron_renderer_ipc');
+              return ipc.sendSync(true, 'GUEST_WINDOW_MANAGER_WINDOW_OPEN', ['', '', '']);
+            }})()`,
+          ),
+        ).to.be.null();
         const exception = await uncaughtException;
         expect(exception.message).to.match(/denied: expected native window\.open/);
       } finally {
-        previousListeners.forEach(l => process.on('uncaughtException', l));
+        previousListeners.forEach((l) => process.on('uncaughtException', l));
       }
     });
   });
@@ -792,8 +860,8 @@ describe('chromium features', () => {
       const w = new BrowserWindow({
         show: false,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       w.loadFile(path.join(fixturesPath, 'pages', 'window-opener.html'));
       const [, channel, opener] = await emittedOnce(w.webContents, 'ipc-message');
@@ -829,8 +897,8 @@ describe('chromium features', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          session: ses
-        }
+          session: ses,
+        },
       });
       w.loadFile(path.join(fixturesPath, 'pages', 'media-id-reset.html'));
       const [, firstDeviceIds] = await emittedOnce(ipcMain, 'deviceIds');
@@ -844,8 +912,8 @@ describe('chromium features', () => {
         show: false,
         webPreferences: {
           nodeIntegration: true,
-          session: ses
-        }
+          session: ses,
+        },
       });
       w.loadFile(path.join(fixturesPath, 'pages', 'media-id-reset.html'));
       const [, firstDeviceIds] = await emittedOnce(ipcMain, 'deviceIds');
@@ -889,9 +957,9 @@ describe('chromium features', () => {
       { parent: httpBlank, child: httpUrl2, nodeIntegration: false, nativeWindowOpen: false, openerAccessible: false },
       { parent: httpBlank, child: httpUrl2, nodeIntegration: false, nativeWindowOpen: true, openerAccessible: false },
       { parent: httpBlank, child: httpUrl2, nodeIntegration: true, nativeWindowOpen: false, openerAccessible: true },
-      { parent: httpBlank, child: httpUrl2, nodeIntegration: true, nativeWindowOpen: true, openerAccessible: false }
+      { parent: httpBlank, child: httpUrl2, nodeIntegration: true, nativeWindowOpen: true, openerAccessible: false },
     ];
-    const s = (url: string) => url.startsWith('file') ? 'file://...' : url;
+    const s = (url: string) => (url.startsWith('file') ? 'file://...' : url);
 
     before(() => {
       protocol.registerFileProtocol(scheme, (request, callback) => {
@@ -910,16 +978,20 @@ describe('chromium features', () => {
     describe('when opened from main window', () => {
       for (const { parent, child, nodeIntegration, nativeWindowOpen, openerAccessible } of table) {
         for (const sandboxPopup of [false, true]) {
-          const description = `when parent=${s(parent)} opens child=${s(child)} with nodeIntegration=${nodeIntegration} nativeWindowOpen=${nativeWindowOpen} sandboxPopup=${sandboxPopup}, child should ${openerAccessible ? '' : 'not '}be able to access opener`;
+          const description = `when parent=${s(parent)} opens child=${s(
+            child,
+          )} with nodeIntegration=${nodeIntegration} nativeWindowOpen=${nativeWindowOpen} sandboxPopup=${sandboxPopup}, child should ${
+            openerAccessible ? '' : 'not '
+          }be able to access opener`;
           it(description, async () => {
             const w = new BrowserWindow({ show: true, webPreferences: { nodeIntegration: true, nativeWindowOpen } });
             w.webContents.setWindowOpenHandler(() => ({
               action: 'allow',
               overrideBrowserWindowOptions: {
                 webPreferences: {
-                  sandbox: sandboxPopup
-                }
-              }
+                  sandbox: sandboxPopup,
+                },
+              },
             }));
             await w.loadURL(parent);
             const childOpenerLocation = await w.webContents.executeJavaScript(`new Promise(resolve => {
@@ -940,7 +1012,11 @@ describe('chromium features', () => {
 
     describe('when opened from <webview>', () => {
       for (const { parent, child, nodeIntegration, nativeWindowOpen, openerAccessible } of table) {
-        const description = `when parent=${s(parent)} opens child=${s(child)} with nodeIntegration=${nodeIntegration} nativeWindowOpen=${nativeWindowOpen}, child should ${openerAccessible ? '' : 'not '}be able to access opener`;
+        const description = `when parent=${s(parent)} opens child=${s(
+          child,
+        )} with nodeIntegration=${nodeIntegration} nativeWindowOpen=${nativeWindowOpen}, child should ${
+          openerAccessible ? '' : 'not '
+        }be able to access opener`;
         // WebView erroneously allows access to the parent window when nativeWindowOpen is false.
         const skip = !nativeWindowOpen && !openerAccessible;
         ifit(!skip)(description, async () => {
@@ -992,12 +1068,23 @@ describe('chromium features', () => {
           const parsedUrl = url.parse(request.url);
           let filename;
           switch (parsedUrl.pathname) {
-            case '/localStorage' : filename = 'local_storage.html'; break;
-            case '/sessionStorage' : filename = 'session_storage.html'; break;
-            case '/WebSQL' : filename = 'web_sql.html'; break;
-            case '/indexedDB' : filename = 'indexed_db.html'; break;
-            case '/cookie' : filename = 'cookie.html'; break;
-            default : filename = '';
+            case '/localStorage':
+              filename = 'local_storage.html';
+              break;
+            case '/sessionStorage':
+              filename = 'session_storage.html';
+              break;
+            case '/WebSQL':
+              filename = 'web_sql.html';
+              break;
+            case '/indexedDB':
+              filename = 'indexed_db.html';
+              break;
+            case '/cookie':
+              filename = 'cookie.html';
+              break;
+            default:
+              filename = '';
           }
           callback({ path: `${fixturesPath}/pages/storage/${filename}` });
         });
@@ -1009,7 +1096,7 @@ describe('chromium features', () => {
 
       beforeEach(() => {
         contents = (webContents as any).create({
-          nodeIntegration: true
+          nodeIntegration: true,
         });
       });
 
@@ -1022,35 +1109,35 @@ describe('chromium features', () => {
         const response = emittedOnce(ipcMain, 'local-storage-response');
         contents.loadURL(protocolName + '://host/localStorage');
         const [, error] = await response;
-        expect(error).to.equal('Failed to read the \'localStorage\' property from \'Window\': Access is denied for this document.');
+        expect(error).to.equal("Failed to read the 'localStorage' property from 'Window': Access is denied for this document.");
       });
 
       it('cannot access sessionStorage', async () => {
         const response = emittedOnce(ipcMain, 'session-storage-response');
         contents.loadURL(`${protocolName}://host/sessionStorage`);
         const [, error] = await response;
-        expect(error).to.equal('Failed to read the \'sessionStorage\' property from \'Window\': Access is denied for this document.');
+        expect(error).to.equal("Failed to read the 'sessionStorage' property from 'Window': Access is denied for this document.");
       });
 
       it('cannot access WebSQL database', async () => {
         const response = emittedOnce(ipcMain, 'web-sql-response');
         contents.loadURL(`${protocolName}://host/WebSQL`);
         const [, error] = await response;
-        expect(error).to.equal('Failed to execute \'openDatabase\' on \'Window\': Access to the WebDatabase API is denied in this context.');
+        expect(error).to.equal("Failed to execute 'openDatabase' on 'Window': Access to the WebDatabase API is denied in this context.");
       });
 
       it('cannot access indexedDB', async () => {
         const response = emittedOnce(ipcMain, 'indexed-db-response');
         contents.loadURL(`${protocolName}://host/indexedDB`);
         const [, error] = await response;
-        expect(error).to.equal('Failed to execute \'open\' on \'IDBFactory\': access to the Indexed Database API is denied in this context.');
+        expect(error).to.equal("Failed to execute 'open' on 'IDBFactory': access to the Indexed Database API is denied in this context.");
       });
 
       it('cannot access cookie', async () => {
         const response = emittedOnce(ipcMain, 'cookie-response');
         contents.loadURL(`${protocolName}://host/cookie`);
         const [, error] = await response;
-        expect(error).to.equal('Failed to set the \'cookie\' property on \'Document\': Access is denied for this document.');
+        expect(error).to.equal("Failed to set the 'cookie' property on 'Document': Access is denied for this document.");
       });
     });
 
@@ -1091,7 +1178,7 @@ describe('chromium features', () => {
         it(testTitle, async () => {
           const w = new BrowserWindow({
             show: false,
-            ...extraPreferences
+            ...extraPreferences,
           });
           let redirected = false;
           w.webContents.on('crashed', () => {
@@ -1141,7 +1228,7 @@ describe('chromium features', () => {
       it('default value allows websql', async () => {
         contents = (webContents as any).create({
           session: sqlSession,
-          nodeIntegration: true
+          nodeIntegration: true,
         });
         contents.loadURL(origin);
         const [, error] = await emittedOnce(ipcMain, 'web-sql-response');
@@ -1152,7 +1239,7 @@ describe('chromium features', () => {
         contents = (webContents as any).create({
           session: sqlSession,
           nodeIntegration: true,
-          enableWebSQL: false
+          enableWebSQL: false,
         });
         contents.loadURL(origin);
         const [, error] = await emittedOnce(ipcMain, 'web-sql-response');
@@ -1163,7 +1250,7 @@ describe('chromium features', () => {
         contents = (webContents as any).create({
           session: sqlSession,
           nodeIntegration: true,
-          enableWebSQL: false
+          enableWebSQL: false,
         });
         contents.loadURL(origin);
         const [, error] = await emittedOnce(ipcMain, 'web-sql-response');
@@ -1192,8 +1279,8 @@ describe('chromium features', () => {
           webPreferences: {
             nodeIntegration: true,
             webviewTag: true,
-            session: sqlSession
-          }
+            session: sqlSession,
+          },
         });
         w.webContents.loadURL(origin);
         const [, error] = await emittedOnce(ipcMain, 'web-sql-response');
@@ -1221,8 +1308,8 @@ describe('chromium features', () => {
             nodeIntegration: true,
             enableWebSQL: false,
             webviewTag: true,
-            session: sqlSession
-          }
+            session: sqlSession,
+          },
         });
         w.webContents.loadURL('data:text/html,<html></html>');
         const webviewResult = emittedOnce(ipcMain, 'web-sql-response');
@@ -1247,8 +1334,8 @@ describe('chromium features', () => {
           webPreferences: {
             nodeIntegration: true,
             webviewTag: true,
-            session: sqlSession
-          }
+            session: sqlSession,
+          },
         });
         w.webContents.loadURL(origin);
         const [, error] = await emittedOnce(ipcMain, 'web-sql-response');
@@ -1275,7 +1362,7 @@ describe('chromium features', () => {
     const pdfSource = url.format({
       pathname: path.join(__dirname, 'fixtures', 'cat.pdf').replace(/\\/g, '/'),
       protocol: 'file',
-      slashes: true
+      slashes: true,
     });
 
     it('opens when loading a pdf resource as top level navigation', async () => {
@@ -1314,9 +1401,7 @@ describe('chromium features', () => {
     it('loads the page successfully', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('chrome://media-internals');
-      const pageExists = await w.webContents.executeJavaScript(
-        "window.hasOwnProperty('chrome') && window.chrome.hasOwnProperty('send')"
-      );
+      const pageExists = await w.webContents.executeJavaScript("window.hasOwnProperty('chrome') && window.chrome.hasOwnProperty('send')");
       expect(pageExists).to.be.true();
     });
   });
@@ -1325,16 +1410,14 @@ describe('chromium features', () => {
     it('loads the page successfully', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL('chrome://webrtc-internals');
-      const pageExists = await w.webContents.executeJavaScript(
-        "window.hasOwnProperty('chrome') && window.chrome.hasOwnProperty('send')"
-      );
+      const pageExists = await w.webContents.executeJavaScript("window.hasOwnProperty('chrome') && window.chrome.hasOwnProperty('send')");
       expect(pageExists).to.be.true();
     });
   });
 });
 
 describe('font fallback', () => {
-  async function getRenderedFonts (html: string) {
+  async function getRenderedFonts(html: string) {
     const w = new BrowserWindow({ show: false });
     try {
       await w.loadURL(`data:text/html,${html}`);
@@ -1354,7 +1437,13 @@ describe('font fallback', () => {
     const fonts = await getRenderedFonts(html);
     expect(fonts).to.be.an('array');
     expect(fonts).to.have.length(1);
-    if (process.platform === 'win32') { expect(fonts[0].familyName).to.equal('Arial'); } else if (process.platform === 'darwin') { expect(fonts[0].familyName).to.equal('Helvetica'); } else if (process.platform === 'linux') { expect(fonts[0].familyName).to.equal('DejaVu Sans'); } // I think this depends on the distro? We don't specify a default.
+    if (process.platform === 'win32') {
+      expect(fonts[0].familyName).to.equal('Arial');
+    } else if (process.platform === 'darwin') {
+      expect(fonts[0].familyName).to.equal('Helvetica');
+    } else if (process.platform === 'linux') {
+      expect(fonts[0].familyName).to.equal('DejaVu Sans');
+    } // I think this depends on the distro? We don't specify a default.
   });
 
   ifit(process.platform !== 'linux')('should fall back to Japanese font for sans-serif Japanese script', async function () {
@@ -1369,14 +1458,16 @@ describe('font fallback', () => {
     const fonts = await getRenderedFonts(html);
     expect(fonts).to.be.an('array');
     expect(fonts).to.have.length(1);
-    if (process.platform === 'win32') { expect(fonts[0].familyName).to.be.oneOf(['Meiryo', 'Yu Gothic']); } else if (process.platform === 'darwin') { expect(fonts[0].familyName).to.equal('Hiragino Kaku Gothic ProN'); }
+    if (process.platform === 'win32') {
+      expect(fonts[0].familyName).to.be.oneOf(['Meiryo', 'Yu Gothic']);
+    } else if (process.platform === 'darwin') {
+      expect(fonts[0].familyName).to.equal('Hiragino Kaku Gothic ProN');
+    }
   });
 });
 
 describe('iframe using HTML fullscreen API while window is OS-fullscreened', () => {
-  const fullscreenChildHtml = promisify(fs.readFile)(
-    path.join(fixturesPath, 'pages', 'fullscreen-oopif.html')
-  );
+  const fullscreenChildHtml = promisify(fs.readFile)(path.join(fixturesPath, 'pages', 'fullscreen-oopif.html'));
   let w: BrowserWindow, server: http.Server;
 
   before(() => {
@@ -1395,38 +1486,31 @@ describe('iframe using HTML fullscreen API while window is OS-fullscreened', () 
       fullscreen: true,
       webPreferences: {
         nodeIntegration: true,
-        nodeIntegrationInSubFrames: true
-      }
+        nodeIntegrationInSubFrames: true,
+      },
     });
   });
 
   afterEach(async () => {
-    await closeAllWindows()
-    ;(w as any) = null;
+    await closeAllWindows();
+    (w as any) = null;
     server.close();
   });
 
   it('can fullscreen from out-of-process iframes (OOPIFs)', async () => {
     const fullscreenChange = emittedOnce(ipcMain, 'fullscreenChange');
-    const html =
-      '<iframe style="width: 0" frameborder=0 src="http://localhost:8989" allowfullscreen></iframe>';
+    const html = '<iframe style="width: 0" frameborder=0 src="http://localhost:8989" allowfullscreen></iframe>';
     w.loadURL(`data:text/html,${html}`);
     await fullscreenChange;
 
-    const fullscreenWidth = await w.webContents.executeJavaScript(
-      "document.querySelector('iframe').offsetWidth"
-    );
+    const fullscreenWidth = await w.webContents.executeJavaScript("document.querySelector('iframe').offsetWidth");
     expect(fullscreenWidth > 0).to.be.true();
 
-    await w.webContents.executeJavaScript(
-      "document.querySelector('iframe').contentWindow.postMessage('exitFullscreen', '*')"
-    );
+    await w.webContents.executeJavaScript("document.querySelector('iframe').contentWindow.postMessage('exitFullscreen', '*')");
 
     await delay(500);
 
-    const width = await w.webContents.executeJavaScript(
-      "document.querySelector('iframe').offsetWidth"
-    );
+    const width = await w.webContents.executeJavaScript("document.querySelector('iframe').offsetWidth");
     expect(width).to.equal(0);
   });
 
@@ -1435,15 +1519,11 @@ describe('iframe using HTML fullscreen API while window is OS-fullscreened', () 
     w.loadFile(path.join(fixturesPath, 'pages', 'fullscreen-ipif.html'));
     await fullscreenChange;
 
-    const fullscreenWidth = await w.webContents.executeJavaScript(
-      "document.querySelector('iframe').offsetWidth"
-    );
+    const fullscreenWidth = await w.webContents.executeJavaScript("document.querySelector('iframe').offsetWidth");
     expect(fullscreenWidth > 0).to.true();
 
     await w.webContents.executeJavaScript('document.exitFullscreen()');
-    const width = await w.webContents.executeJavaScript(
-      "document.querySelector('iframe').offsetWidth"
-    );
+    const width = await w.webContents.executeJavaScript("document.querySelector('iframe').offsetWidth");
     expect(width).to.equal(0);
   });
 });
@@ -1454,16 +1534,19 @@ describe('navigator.serial', () => {
     w = new BrowserWindow({
       show: false,
       webPreferences: {
-        enableBlinkFeatures: 'Serial'
-      }
+        enableBlinkFeatures: 'Serial',
+      },
     });
     await w.loadFile(path.join(fixturesPath, 'pages', 'blank.html'));
   });
 
   const getPorts: any = () => {
-    return w.webContents.executeJavaScript(`
+    return w.webContents.executeJavaScript(
+      `
       navigator.serial.requestPort().then(port => port.toString()).catch(err => err.toString());
-    `, true);
+    `,
+      true,
+    );
   };
 
   after(closeAllWindows);
@@ -1502,16 +1585,19 @@ describe('navigator.clipboard', () => {
     w = new BrowserWindow({
       show: false,
       webPreferences: {
-        enableBlinkFeatures: 'Serial'
-      }
+        enableBlinkFeatures: 'Serial',
+      },
     });
     await w.loadFile(path.join(fixturesPath, 'pages', 'blank.html'));
   });
 
   const readClipboard: any = () => {
-    return w.webContents.executeJavaScript(`
+    return w.webContents.executeJavaScript(
+      `
       navigator.clipboard.read().then(clipboard => clipboard.toString()).catch(err => err.message);
-    `, true);
+    `,
+      true,
+    );
   };
 
   after(closeAllWindows);

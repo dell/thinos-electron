@@ -48,7 +48,7 @@ const removeProxy = (guestId: number) => {
   windowProxies.delete(guestId);
 };
 
-type LocationProperties = 'hash' | 'href' | 'host' | 'hostname' | 'origin' | 'pathname' | 'port' | 'protocol' | 'search'
+type LocationProperties = 'hash' | 'href' | 'host' | 'hostname' | 'origin' | 'pathname' | 'port' | 'protocol' | 'search';
 
 class LocationProxy {
   @LocationProxy.ProxyProperty public hash!: string;
@@ -67,7 +67,7 @@ class LocationProxy {
    * Beware: This decorator will have the _prototype_ as the `target`. It defines properties
    * commonly found in URL on the LocationProxy.
    */
-  private static ProxyProperty<T> (target: LocationProxy, propertyKey: LocationProperties) {
+  private static ProxyProperty<T>(target: LocationProxy, propertyKey: LocationProperties) {
     Object.defineProperty(target, propertyKey, {
       enumerable: true,
       configurable: true,
@@ -85,35 +85,71 @@ class LocationProxy {
 
           return this._invokeWebContentsMethod('loadURL', guestURL.toString());
         }
-      }
+      },
     });
   }
 
   public getSafe = () => {
     const that = this;
     return {
-      get href () { return that.href; },
-      set href (newValue) { that.href = newValue; },
-      get hash () { return that.hash; },
-      set hash (newValue) { that.hash = newValue; },
-      get host () { return that.host; },
-      set host (newValue) { that.host = newValue; },
-      get hostname () { return that.hostname; },
-      set hostname (newValue) { that.hostname = newValue; },
-      get origin () { return that.origin; },
-      set origin (newValue) { that.origin = newValue; },
-      get pathname () { return that.pathname; },
-      set pathname (newValue) { that.pathname = newValue; },
-      get port () { return that.port; },
-      set port (newValue) { that.port = newValue; },
-      get protocol () { return that.protocol; },
-      set protocol (newValue) { that.protocol = newValue; },
-      get search () { return that.search; },
-      set search (newValue) { that.search = newValue; }
+      get href() {
+        return that.href;
+      },
+      set href(newValue) {
+        that.href = newValue;
+      },
+      get hash() {
+        return that.hash;
+      },
+      set hash(newValue) {
+        that.hash = newValue;
+      },
+      get host() {
+        return that.host;
+      },
+      set host(newValue) {
+        that.host = newValue;
+      },
+      get hostname() {
+        return that.hostname;
+      },
+      set hostname(newValue) {
+        that.hostname = newValue;
+      },
+      get origin() {
+        return that.origin;
+      },
+      set origin(newValue) {
+        that.origin = newValue;
+      },
+      get pathname() {
+        return that.pathname;
+      },
+      set pathname(newValue) {
+        that.pathname = newValue;
+      },
+      get port() {
+        return that.port;
+      },
+      set port(newValue) {
+        that.port = newValue;
+      },
+      get protocol() {
+        return that.protocol;
+      },
+      set protocol(newValue) {
+        that.protocol = newValue;
+      },
+      get search() {
+        return that.search;
+      },
+      set search(newValue) {
+        that.search = newValue;
+      },
     };
-  }
+  };
 
-  constructor (guestId: number) {
+  constructor(guestId: number) {
     // eslint will consider the constructor "useless"
     // unless we assign them in the body. It's fine, that's what
     // TS would do anyway.
@@ -121,11 +157,11 @@ class LocationProxy {
     this.getGuestURL = this.getGuestURL.bind(this);
   }
 
-  public toString (): string {
+  public toString(): string {
     return this.href;
   }
 
-  private getGuestURL (): URL | null {
+  private getGuestURL(): URL | null {
     const maybeURL = this._invokeWebContentsMethodSync('getURL') as string;
 
     // When there's no previous frame the url will be blank, so account for that here
@@ -140,11 +176,11 @@ class LocationProxy {
     return null;
   }
 
-  private _invokeWebContentsMethod (method: string, ...args: any[]) {
+  private _invokeWebContentsMethod(method: string, ...args: any[]) {
     return ipcRendererInternal.invoke(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD, this.guestId, method, ...args);
   }
 
-  private _invokeWebContentsMethodSync (method: string, ...args: any[]) {
+  private _invokeWebContentsMethodSync(method: string, ...args: any[]) {
     return ipcRendererUtils.invokeSync(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD, this.guestId, method, ...args);
   }
 }
@@ -161,24 +197,24 @@ interface SafelyBoundBrowserWindowProxy {
 }
 
 class BrowserWindowProxy {
-  public closed: boolean = false
+  public closed: boolean = false;
 
-  private _location: LocationProxy
-  private guestId: number
+  private _location: LocationProxy;
+  private guestId: number;
 
   // TypeScript doesn't allow getters/accessors with different types,
   // so for now, we'll have to make do with an "any" in the mix.
   // https://github.com/Microsoft/TypeScript/issues/2521
-  public get location (): LocationProxy | any {
+  public get location(): LocationProxy | any {
     return this._location.getSafe();
   }
 
-  public set location (url: string | any) {
+  public set location(url: string | any) {
     url = resolveURL(url, this.location.href);
     this._invokeWebContentsMethod('loadURL', url);
   }
 
-  constructor (guestId: number) {
+  constructor(guestId: number) {
     this.guestId = guestId;
     this._location = new LocationProxy(guestId);
 
@@ -197,53 +233,63 @@ class BrowserWindowProxy {
       focus: this.focus,
       print: this.print,
       eval: this.eval,
-      get location () {
+      get location() {
         return that.location;
       },
-      set location (url: string | any) {
+      set location(url: string | any) {
         that.location = url;
       },
-      get closed () {
+      get closed() {
         return that.closed;
-      }
+      },
     };
-  }
+  };
 
   public close = () => {
     this._invokeWindowMethod('destroy');
-  }
+  };
 
   public focus = () => {
     this._invokeWindowMethod('focus');
-  }
+  };
 
   public blur = () => {
     this._invokeWindowMethod('blur');
-  }
+  };
 
   public print = () => {
     this._invokeWebContentsMethod('print');
-  }
+  };
 
   public postMessage = (message: any, targetOrigin: string) => {
-    ipcRendererInternal.invoke(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_POSTMESSAGE, this.guestId, message, toString(targetOrigin), window.location.origin);
-  }
+    ipcRendererInternal.invoke(
+      IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_POSTMESSAGE,
+      this.guestId,
+      message,
+      toString(targetOrigin),
+      window.location.origin,
+    );
+  };
 
   public eval = (code: string) => {
     this._invokeWebContentsMethod('executeJavaScript', code);
-  }
+  };
 
-  private _invokeWindowMethod (method: string, ...args: any[]) {
+  private _invokeWindowMethod(method: string, ...args: any[]) {
     return ipcRendererInternal.invoke(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_METHOD, this.guestId, method, ...args);
   }
 
-  private _invokeWebContentsMethod (method: string, ...args: any[]) {
+  private _invokeWebContentsMethod(method: string, ...args: any[]) {
     return ipcRendererInternal.invoke(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WEB_CONTENTS_METHOD, this.guestId, method, ...args);
   }
 }
 
 export const windowSetup = (
-  guestInstanceId: number, openerId: number, isHiddenPage: boolean, usesNativeWindowOpen: boolean, rendererProcessReuseEnabled: boolean
+  guestInstanceId: number,
+  openerId: number,
+  isHiddenPage: boolean,
+  usesNativeWindowOpen: boolean,
+  rendererProcessReuseEnabled: boolean,
 ) => {
   if (!process.sandboxed && guestInstanceId == null) {
     // Override default window.close.
@@ -260,9 +306,14 @@ export const windowSetup = (
       if (url != null && url !== '') {
         url = resolveURL(url, location.href);
       }
-      const guestId = ipcRendererInternal.sendSync(IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_OPEN, url, toString(frameName), toString(features));
+      const guestId = ipcRendererInternal.sendSync(
+        IPC_MESSAGES.GUEST_WINDOW_MANAGER_WINDOW_OPEN,
+        url,
+        toString(frameName),
+        toString(features),
+      );
       if (guestId != null) {
-        return getOrCreateProxy(guestId) as any as WindowProxy;
+        return (getOrCreateProxy(guestId) as any) as WindowProxy;
       } else {
         return null;
       }
@@ -282,24 +333,25 @@ export const windowSetup = (
   if (contextIsolationEnabled) internalContextBridge.overrideGlobalValueFromIsolatedWorld(['prompt'], window.prompt);
 
   if (!usesNativeWindowOpen || openerId != null) {
-    ipcRendererInternal.onMessageFromMain(IPC_MESSAGES.GUEST_WINDOW_POSTMESSAGE, function (
-      _event, sourceId: number, message: any, sourceOrigin: string
-    ) {
-      // Manually dispatch event instead of using postMessage because we also need to
-      // set event.source.
-      //
-      // Why any? We can't construct a MessageEvent and we can't
-      // use `as MessageEvent` because you're not supposed to override
-      // data, origin, and source
-      const event: any = document.createEvent('Event');
-      event.initEvent('message', false, false);
+    ipcRendererInternal.onMessageFromMain(
+      IPC_MESSAGES.GUEST_WINDOW_POSTMESSAGE,
+      function (_event, sourceId: number, message: any, sourceOrigin: string) {
+        // Manually dispatch event instead of using postMessage because we also need to
+        // set event.source.
+        //
+        // Why any? We can't construct a MessageEvent and we can't
+        // use `as MessageEvent` because you're not supposed to override
+        // data, origin, and source
+        const event: any = document.createEvent('Event');
+        event.initEvent('message', false, false);
 
-      event.data = message;
-      event.origin = sourceOrigin;
-      event.source = getOrCreateProxy(sourceId);
+        event.data = message;
+        event.origin = sourceOrigin;
+        event.source = getOrCreateProxy(sourceId);
 
-      window.dispatchEvent(event as MessageEvent);
-    });
+        window.dispatchEvent(event as MessageEvent);
+      },
+    );
   }
 
   if (!process.sandboxed && !rendererProcessReuseEnabled) {
@@ -321,7 +373,7 @@ export const windowSetup = (
     const getHistoryLength = () => ipcRendererInternal.sendSync(IPC_MESSAGES.NAVIGATION_CONTROLLER_LENGTH);
     Object.defineProperty(window.history, 'length', {
       get: getHistoryLength,
-      set () {}
+      set() {},
     });
     if (contextIsolationEnabled) internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['history', 'length'], getHistoryLength);
   }
@@ -337,24 +389,29 @@ export const windowSetup = (
     let cachedVisibilityState = isHiddenPage ? 'hidden' : 'visible';
 
     // Subscribe to visibilityState changes.
-    ipcRendererInternal.onMessageFromMain(IPC_MESSAGES.GUEST_INSTANCE_VISIBILITY_CHANGE, function (_event, visibilityState: VisibilityState) {
-      if (cachedVisibilityState !== visibilityState) {
-        cachedVisibilityState = visibilityState;
-        document.dispatchEvent(new Event('visibilitychange'));
-      }
-    });
+    ipcRendererInternal.onMessageFromMain(
+      IPC_MESSAGES.GUEST_INSTANCE_VISIBILITY_CHANGE,
+      function (_event, visibilityState: VisibilityState) {
+        if (cachedVisibilityState !== visibilityState) {
+          cachedVisibilityState = visibilityState;
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+      },
+    );
 
     // Make document.hidden and document.visibilityState return the correct value.
     const getDocumentHidden = () => cachedVisibilityState !== 'visible';
     Object.defineProperty(document, 'hidden', {
-      get: getDocumentHidden
+      get: getDocumentHidden,
     });
     if (contextIsolationEnabled) internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['document', 'hidden'], getDocumentHidden);
 
     const getDocumentVisibilityState = () => cachedVisibilityState;
     Object.defineProperty(document, 'visibilityState', {
-      get: getDocumentVisibilityState
+      get: getDocumentVisibilityState,
     });
-    if (contextIsolationEnabled) internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['document', 'visibilityState'], getDocumentVisibilityState);
+    if (contextIsolationEnabled) {
+      internalContextBridge.overrideGlobalPropertyFromIsolatedWorld(['document', 'visibilityState'], getDocumentVisibilityState);
+    }
   }
 };

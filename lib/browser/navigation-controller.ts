@@ -31,7 +31,7 @@ export class NavigationController extends EventEmitter {
   pendingIndex: number = -1;
   history: string[] = [];
 
-  constructor (private webContents: WebContents) {
+  constructor(private webContents: WebContents) {
     super();
     this.clearHistory();
 
@@ -40,32 +40,35 @@ export class NavigationController extends EventEmitter {
       this.currentIndex++;
       this.history.push(this.webContents._getURL());
     }
-    this.webContents.on('navigation-entry-committed' as any, (event: Electron.Event, url: string, inPage: boolean, replaceEntry: boolean) => {
-      if (this.inPageIndex > -1 && !inPage) {
-        // Navigated to a new page, clear in-page mark.
-        this.inPageIndex = -1;
-      } else if (this.inPageIndex === -1 && inPage && !replaceEntry) {
-        // Started in-page navigations.
-        this.inPageIndex = this.currentIndex;
-      }
-      if (this.pendingIndex >= 0) {
-        // Go to index.
-        this.currentIndex = this.pendingIndex;
-        this.pendingIndex = -1;
-        this.history[this.currentIndex] = url;
-      } else if (replaceEntry) {
-        // Non-user initialized navigation.
-        this.history[this.currentIndex] = url;
-      } else {
-        // Normal navigation. Clear history.
-        this.history = this.history.slice(0, this.currentIndex + 1);
-        this.currentIndex++;
-        this.history.push(url);
-      }
-    });
+    this.webContents.on(
+      'navigation-entry-committed' as any,
+      (event: Electron.Event, url: string, inPage: boolean, replaceEntry: boolean) => {
+        if (this.inPageIndex > -1 && !inPage) {
+          // Navigated to a new page, clear in-page mark.
+          this.inPageIndex = -1;
+        } else if (this.inPageIndex === -1 && inPage && !replaceEntry) {
+          // Started in-page navigations.
+          this.inPageIndex = this.currentIndex;
+        }
+        if (this.pendingIndex >= 0) {
+          // Go to index.
+          this.currentIndex = this.pendingIndex;
+          this.pendingIndex = -1;
+          this.history[this.currentIndex] = url;
+        } else if (replaceEntry) {
+          // Non-user initialized navigation.
+          this.history[this.currentIndex] = url;
+        } else {
+          // Normal navigation. Clear history.
+          this.history = this.history.slice(0, this.currentIndex + 1);
+          this.currentIndex++;
+          this.history.push(url);
+        }
+      },
+    );
   }
 
-  loadURL (url: string, options?: LoadURLOptions): Promise<void> {
+  loadURL(url: string, options?: LoadURLOptions): Promise<void> {
     if (options == null) {
       options = {};
     }
@@ -83,7 +86,13 @@ export class NavigationController extends EventEmitter {
       const finishListener = () => {
         resolveAndCleanup();
       };
-      const failListener = (event: Electron.Event, errorCode: number, errorDescription: string, validatedURL: string, isMainFrame: boolean) => {
+      const failListener = (
+        event: Electron.Event,
+        errorCode: number,
+        errorDescription: string,
+        validatedURL: string,
+        isMainFrame: boolean,
+      ) => {
         if (isMainFrame) {
           rejectAndCleanup(errorCode, errorDescription, validatedURL);
         }
@@ -139,7 +148,7 @@ export class NavigationController extends EventEmitter {
     return p;
   }
 
-  getURL () {
+  getURL() {
     if (this.currentIndex === -1) {
       return '';
     } else {
@@ -147,48 +156,48 @@ export class NavigationController extends EventEmitter {
     }
   }
 
-  stop () {
+  stop() {
     this.pendingIndex = -1;
     return this.webContents._stop();
   }
 
-  reload () {
+  reload() {
     this.pendingIndex = this.currentIndex;
     return this.webContents._loadURL(this.getURL(), {});
   }
 
-  reloadIgnoringCache () {
+  reloadIgnoringCache() {
     this.pendingIndex = this.currentIndex;
     return this.webContents._loadURL(this.getURL(), {
       extraHeaders: 'pragma: no-cache\n',
-      reloadIgnoringCache: true
+      reloadIgnoringCache: true,
     });
   }
 
-  canGoBack () {
+  canGoBack() {
     return this.getActiveIndex() > 0;
   }
 
-  canGoForward () {
+  canGoForward() {
     return this.getActiveIndex() < this.history.length - 1;
   }
 
-  canGoToIndex (index: number) {
+  canGoToIndex(index: number) {
     return index >= 0 && index < this.history.length;
   }
 
-  canGoToOffset (offset: number) {
+  canGoToOffset(offset: number) {
     return this.canGoToIndex(this.currentIndex + offset);
   }
 
-  clearHistory () {
+  clearHistory() {
     this.history = [];
     this.currentIndex = -1;
     this.pendingIndex = -1;
     this.inPageIndex = -1;
   }
 
-  goBack () {
+  goBack() {
     if (!this.canGoBack()) {
       return;
     }
@@ -200,7 +209,7 @@ export class NavigationController extends EventEmitter {
     }
   }
 
-  goForward () {
+  goForward() {
     if (!this.canGoForward()) {
       return;
     }
@@ -212,7 +221,7 @@ export class NavigationController extends EventEmitter {
     }
   }
 
-  goToIndex (index: number) {
+  goToIndex(index: number) {
     if (!this.canGoToIndex(index)) {
       return;
     }
@@ -220,7 +229,7 @@ export class NavigationController extends EventEmitter {
     return this.webContents._loadURL(this.history[this.pendingIndex], {});
   }
 
-  goToOffset (offset: number) {
+  goToOffset(offset: number) {
     if (!this.canGoToOffset(offset)) {
       return;
     }
@@ -233,7 +242,7 @@ export class NavigationController extends EventEmitter {
     }
   }
 
-  getActiveIndex () {
+  getActiveIndex() {
     if (this.pendingIndex === -1) {
       return this.currentIndex;
     } else {
@@ -241,7 +250,7 @@ export class NavigationController extends EventEmitter {
     }
   }
 
-  length () {
+  length() {
     return this.history.length;
   }
 }

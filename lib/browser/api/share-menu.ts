@@ -3,15 +3,15 @@ import { BrowserWindow, Menu, SharingItem, PopupOptions } from 'electron/main';
 class ShareMenu {
   private menu: Menu;
 
-  constructor (sharingItem: SharingItem) {
+  constructor(sharingItem: SharingItem) {
     this.menu = new (Menu as any)({ sharingItem });
   }
 
-  popup (options?: PopupOptions) {
+  popup(options?: PopupOptions) {
     this.menu.popup(options);
   }
 
-  closePopup (browserWindow?: BrowserWindow) {
+  closePopup(browserWindow?: BrowserWindow) {
     this.menu.closePopup(browserWindow);
   }
 }

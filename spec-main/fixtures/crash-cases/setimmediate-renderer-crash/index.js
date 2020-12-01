@@ -6,8 +6,8 @@ app.whenReady().then(() => {
     show: false,
     webPreferences: {
       nodeIntegration: true,
-      preload: path.resolve(__dirname, 'preload.js')
-    }
+      preload: path.resolve(__dirname, 'preload.js'),
+    },
   });
 
   win.loadURL('about:blank');

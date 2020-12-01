@@ -68,9 +68,7 @@ describe('nativeTheme module', () => {
     });
 
     const getPrefersColorSchemeIsDark = async (w: Electron.BrowserWindow) => {
-      const isDark: boolean = await w.webContents.executeJavaScript(
-        'matchMedia("(prefers-color-scheme: dark)").matches'
-      );
+      const isDark: boolean = await w.webContents.executeJavaScript('matchMedia("(prefers-color-scheme: dark)").matches');
       return isDark;
     };
 

@@ -40,14 +40,7 @@ ifdescribe(process.platform !== 'win32')('globalShortcut module', () => {
   });
 
   it('does not crash when registering media keys as global shortcuts', () => {
-    const accelerators = [
-      'VolumeUp',
-      'VolumeDown',
-      'VolumeMute',
-      'MediaNextTrack',
-      'MediaPreviousTrack',
-      'MediaStop', 'MediaPlayPause'
-    ];
+    const accelerators = ['VolumeUp', 'VolumeDown', 'VolumeMute', 'MediaNextTrack', 'MediaPreviousTrack', 'MediaStop', 'MediaPlayPause'];
 
     expect(() => {
       globalShortcut.registerAll(accelerators, () => {});

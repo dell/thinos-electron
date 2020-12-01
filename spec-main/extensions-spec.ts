@@ -22,10 +22,12 @@ describe('chrome extensions', () => {
       }
       res.end(emptyPage);
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', () => {
-      url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-      resolve();
-    }));
+    await new Promise((resolve) =>
+      server.listen(0, '127.0.0.1', () => {
+        url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+        resolve();
+      }),
+    );
   });
   after(() => {
     server.close();
@@ -45,7 +47,8 @@ describe('chrome extensions', () => {
     await customSession.loadExtension(path.join(fixtures, 'extensions', 'persistent-background-page'));
     const args: any = await emittedOnce(app, 'web-contents-created');
     const wc: Electron.WebContents = args[1];
-    await expect(wc.executeJavaScript(`
+    await expect(
+      wc.executeJavaScript(`
       (() => {
         return new Promise((resolve) => {
           chrome.management.getSelf((info) => {
@@ -53,7 +56,8 @@ describe('chrome extensions', () => {
           });
         })
       })();
-    `)).to.eventually.have.property('id');
+    `),
+    ).to.eventually.have.property('id');
   });
 
   it('can open WebSQLDatabase in a background page', async () => {
@@ -64,10 +68,12 @@ describe('chrome extensions', () => {
     await customSession.loadExtension(path.join(fixtures, 'extensions', 'persistent-background-page'));
     const args: any = await emittedOnce(app, 'web-contents-created');
     const wc: Electron.WebContents = args[1];
-    await expect(wc.executeJavaScript('(()=>{try{openDatabase("t", "1.0", "test", 2e5);return true;}catch(e){throw e}})()')).to.not.be.rejected();
+    await expect(
+      wc.executeJavaScript('(()=>{try{openDatabase("t", "1.0", "test", 2e5);return true;}catch(e){throw e}})()'),
+    ).to.not.be.rejected();
   });
 
-  function fetch (contents: WebContents, url: string) {
+  function fetch(contents: WebContents, url: string) {
     return contents.executeJavaScript(`fetch(${JSON.stringify(url)})`);
   }
 
@@ -165,7 +171,9 @@ describe('chrome extensions', () => {
 
   it('loading an extension in a temporary session throws an error', async () => {
     const customSession = session.fromPartition(require('uuid').v4());
-    await expect(customSession.loadExtension(path.join(fixtures, 'extensions', 'red-bg'))).to.eventually.be.rejectedWith('Extensions cannot be loaded in a temporary session');
+    await expect(customSession.loadExtension(path.join(fixtures, 'extensions', 'red-bg'))).to.eventually.be.rejectedWith(
+      'Extensions cannot be loaded in a temporary session',
+    );
   });
 
   describe('chrome.i18n', () => {
@@ -218,7 +226,9 @@ describe('chrome extensions', () => {
     });
     it('getURL()', async () => {
       const result = await exec('getURL');
-      expect(result).to.be.a('string').and.match(/^chrome-extension:\/\/.*main.js$/);
+      expect(result)
+        .to.be.a('string')
+        .and.match(/^chrome-extension:\/\/.*main.js$/);
     });
     it('getPlatformInfo()', async () => {
       const result = await exec('getPlatformInfo');
@@ -255,7 +265,7 @@ describe('chrome extensions', () => {
       const message = { method: 'executeScript', args: ['1 + 2'] };
       w.webContents.executeJavaScript(`window.postMessage('${JSON.stringify(message)}', '*')`);
 
-      const [,, responseString] = await emittedOnce(w.webContents, 'console-message');
+      const [, , responseString] = await emittedOnce(w.webContents, 'console-message');
       const response = JSON.parse(responseString);
 
       expect(response).to.equal(3);
@@ -271,7 +281,7 @@ describe('chrome extensions', () => {
       const message = { method: 'connectTab', args: [portName] };
       w.webContents.executeJavaScript(`window.postMessage('${JSON.stringify(message)}', '*')`);
 
-      const [,, responseString] = await emittedOnce(w.webContents, 'console-message');
+      const [, , responseString] = await emittedOnce(w.webContents, 'console-message');
       const response = responseString.split(',');
       expect(response[0]).to.equal(portName);
       expect(response[1]).to.equal('howdy');
@@ -286,7 +296,7 @@ describe('chrome extensions', () => {
       const message = { method: 'sendMessage', args: ['Hello World!'] };
       w.webContents.executeJavaScript(`window.postMessage('${JSON.stringify(message)}', '*')`);
 
-      const [,, responseString] = await emittedOnce(w.webContents, 'console-message');
+      const [, , responseString] = await emittedOnce(w.webContents, 'console-message');
       const response = JSON.parse(responseString);
 
       expect(response.message).to.equal('Hello World!');
@@ -370,14 +380,14 @@ describe('chrome extensions', () => {
       w.webContents.once('devtools-opened', () => {
         const show = () => {
           if (w == null || w.isDestroyed()) return;
-          const { devToolsWebContents } = w as unknown as { devToolsWebContents: WebContents | undefined };
+          const { devToolsWebContents } = (w as unknown) as { devToolsWebContents: WebContents | undefined };
           if (devToolsWebContents == null || devToolsWebContents.isDestroyed()) {
             return;
           }
 
           const showLastPanel = () => {
             // this is executed in the devtools context, where UI is a global
-            const { UI } = (window as any);
+            const { UI } = window as any;
             const lastPanelId = UI.inspectorView._tabbedPane._tabs.peekLast().id;
             UI.inspectorView.showPanel(lastPanelId);
           };
@@ -407,14 +417,14 @@ describe('chrome extensions', () => {
 
     const addExtension = (name: string) => session.defaultSession.loadExtension(path.resolve(extensionPath, name));
     const removeAllExtensions = () => {
-      Object.keys(session.defaultSession.getAllExtensions()).map(extName => {
+      Object.keys(session.defaultSession.getAllExtensions()).map((extName) => {
         session.defaultSession.removeExtension(extName);
       });
     };
 
     let responseIdCounter = 0;
     const executeJavaScriptInFrame = (webContents: WebContents, frameRoutingId: number, code: string) => {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         const responseId = responseIdCounter++;
         ipcMain.once(`executeJavaScriptInFrame_${responseId}`, (event, result) => {
           resolve(result);
@@ -424,7 +434,9 @@ describe('chrome extensions', () => {
     };
 
     const generateTests = (sandboxEnabled: boolean, contextIsolationEnabled: boolean) => {
-      describe(`with sandbox ${sandboxEnabled ? 'enabled' : 'disabled'} and context isolation ${contextIsolationEnabled ? 'enabled' : 'disabled'}`, () => {
+      describe(`with sandbox ${sandboxEnabled ? 'enabled' : 'disabled'} and context isolation ${
+        contextIsolationEnabled ? 'enabled' : 'disabled'
+      }`, () => {
         let w: BrowserWindow;
 
         describe('supports "run_at" option', () => {
@@ -436,14 +448,16 @@ describe('chrome extensions', () => {
               height: 400,
               webPreferences: {
                 contextIsolation: contextIsolationEnabled,
-                sandbox: sandboxEnabled
-              }
+                sandbox: sandboxEnabled,
+              },
             });
           });
 
           afterEach(() => {
             removeAllExtensions();
-            return closeWindow(w).then(() => { w = null as unknown as BrowserWindow; });
+            return closeWindow(w).then(() => {
+              w = (null as unknown) as BrowserWindow;
+            });
           });
 
           it('should run content script at document_start', async () => {
@@ -496,15 +510,15 @@ describe('chrome extensions', () => {
               webPreferences: {
                 // enable content script injection in subframes
                 nodeIntegrationInSubFrames: true,
-                preload: path.join(contentScript, 'all_frames-preload.js')
-              }
+                preload: path.join(contentScript, 'all_frames-preload.js'),
+              },
             });
           });
 
           afterEach(() =>
             closeWindow(w).then(() => {
-              w = null as unknown as BrowserWindow;
-            })
+              w = (null as unknown) as BrowserWindow;
+            }),
           );
 
           it('applies matching rules in subframes', async () => {
@@ -512,7 +526,7 @@ describe('chrome extensions', () => {
             w.loadFile(path.join(contentScript, 'frame-with-frame.html'));
             const frameEvents = await detailsPromise;
             await Promise.all(
-              frameEvents.map(async frameEvent => {
+              frameEvents.map(async (frameEvent) => {
                 const [, isMainFrame, , frameRoutingId] = frameEvent;
                 const result: any = await executeJavaScriptInFrame(
                   w.webContents,
@@ -524,7 +538,7 @@ describe('chrome extensions', () => {
                       enabledColor: getComputedStyle(a).backgroundColor,
                       disabledColor: getComputedStyle(b).backgroundColor
                     }
-                  })()`
+                  })()`,
                 );
                 expect(result.enabledColor).to.equal(COLOR_RED);
                 if (isMainFrame) {
@@ -532,7 +546,7 @@ describe('chrome extensions', () => {
                 } else {
                   expect(result.disabledColor).to.equal(COLOR_TRANSPARENT); // null color
                 }
-              })
+              }),
             );
           });
         });
@@ -547,7 +561,7 @@ describe('chrome extensions', () => {
 
   describe('extension ui pages', () => {
     afterEach(() => {
-      session.defaultSession.getAllExtensions().forEach(e => {
+      session.defaultSession.getAllExtensions().forEach((e) => {
         session.defaultSession.removeExtension(e.id);
       });
     });

@@ -43,97 +43,93 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'no-fetch', privileges: { corsEnabled: true } },
   { scheme: 'stream', privileges: { standard: true, stream: true } },
   { scheme: 'foo', privileges: { standard: true } },
-  { scheme: 'bar', privileges: { standard: true } }
+  { scheme: 'bar', privileges: { standard: true } },
 ]);
 
-app.whenReady().then(async () => {
-  require('ts-node/register');
+app
+  .whenReady()
+  .then(async () => {
+    require('ts-node/register');
 
-  const argv = require('yargs')
-    .boolean('ci')
-    .array('files')
-    .string('g').alias('g', 'grep')
-    .boolean('i').alias('i', 'invert')
-    .argv;
+    const argv = require('yargs').boolean('ci').array('files').string('g').alias('g', 'grep').boolean('i').alias('i', 'invert').argv;
 
-  const Mocha = require('mocha');
-  const mochaOptions = {};
-  if (process.env.MOCHA_REPORTER) {
-    mochaOptions.reporter = process.env.MOCHA_REPORTER;
-  }
-  if (process.env.MOCHA_MULTI_REPORTERS) {
-    mochaOptions.reporterOptions = {
-      reporterEnabled: process.env.MOCHA_MULTI_REPORTERS
-    };
-  }
-  const mocha = new Mocha(mochaOptions);
-
-  // The cleanup method is registered this way rather than through an
-  // `afterEach` at the top level so that it can run before other `afterEach`
-  // methods.
-  //
-  // The order of events is:
-  // 1. test completes,
-  // 2. `defer()`-ed methods run, in reverse order,
-  // 3. regular `afterEach` hooks run.
-  const { runCleanupFunctions } = require('./spec-helpers');
-  mocha.suite.on('suite', function attach (suite) {
-    suite.afterEach('cleanup', runCleanupFunctions);
-    suite.on('suite', attach);
-  });
-
-  if (!process.env.MOCHA_REPORTER) {
-    mocha.ui('bdd').reporter('tap');
-  }
-  const mochaTimeout = process.env.MOCHA_TIMEOUT || 30000;
-  mocha.timeout(mochaTimeout);
-
-  if (argv.grep) mocha.grep(argv.grep);
-  if (argv.invert) mocha.invert();
-
-  const filter = (file) => {
-    if (!/-spec\.[tj]s$/.test(file)) {
-      return false;
+    const Mocha = require('mocha');
+    const mochaOptions = {};
+    if (process.env.MOCHA_REPORTER) {
+      mochaOptions.reporter = process.env.MOCHA_REPORTER;
     }
-
-    // This allows you to run specific modules only:
-    // npm run test -match=menu
-    const moduleMatch = process.env.npm_config_match
-      ? new RegExp(process.env.npm_config_match, 'g')
-      : null;
-    if (moduleMatch && !moduleMatch.test(file)) {
-      return false;
+    if (process.env.MOCHA_MULTI_REPORTERS) {
+      mochaOptions.reporterOptions = {
+        reporterEnabled: process.env.MOCHA_MULTI_REPORTERS,
+      };
     }
+    const mocha = new Mocha(mochaOptions);
 
-    const baseElectronDir = path.resolve(__dirname, '..');
-    if (argv.files && !argv.files.includes(path.relative(baseElectronDir, file))) {
-      return false;
-    }
-
-    return true;
-  };
-
-  const getFiles = require('../spec/static/get-files');
-  const testFiles = await getFiles(__dirname, { filter });
-  testFiles.sort().forEach((file) => {
-    mocha.addFile(file);
-  });
-
-  const cb = () => {
-    // Ensure the callback is called after runner is defined
-    process.nextTick(() => {
-      process.exit(runner.failures);
+    // The cleanup method is registered this way rather than through an
+    // `afterEach` at the top level so that it can run before other `afterEach`
+    // methods.
+    //
+    // The order of events is:
+    // 1. test completes,
+    // 2. `defer()`-ed methods run, in reverse order,
+    // 3. regular `afterEach` hooks run.
+    const { runCleanupFunctions } = require('./spec-helpers');
+    mocha.suite.on('suite', function attach(suite) {
+      suite.afterEach('cleanup', runCleanupFunctions);
+      suite.on('suite', attach);
     });
-  };
 
-  // Set up chai in the correct order
-  const chai = require('chai');
-  chai.use(require('chai-as-promised'));
-  chai.use(require('dirty-chai'));
+    if (!process.env.MOCHA_REPORTER) {
+      mocha.ui('bdd').reporter('tap');
+    }
+    const mochaTimeout = process.env.MOCHA_TIMEOUT || 30000;
+    mocha.timeout(mochaTimeout);
 
-  const runner = mocha.run(cb);
-}).catch((err) => {
-  console.error('An error occurred while running the spec-main spec runner');
-  console.error(err);
-  process.exit(1);
-});
+    if (argv.grep) mocha.grep(argv.grep);
+    if (argv.invert) mocha.invert();
+
+    const filter = (file) => {
+      if (!/-spec\.[tj]s$/.test(file)) {
+        return false;
+      }
+
+      // This allows you to run specific modules only:
+      // npm run test -match=menu
+      const moduleMatch = process.env.npm_config_match ? new RegExp(process.env.npm_config_match, 'g') : null;
+      if (moduleMatch && !moduleMatch.test(file)) {
+        return false;
+      }
+
+      const baseElectronDir = path.resolve(__dirname, '..');
+      if (argv.files && !argv.files.includes(path.relative(baseElectronDir, file))) {
+        return false;
+      }
+
+      return true;
+    };
+
+    const getFiles = require('../spec/static/get-files');
+    const testFiles = await getFiles(__dirname, { filter });
+    testFiles.sort().forEach((file) => {
+      mocha.addFile(file);
+    });
+
+    const cb = () => {
+      // Ensure the callback is called after runner is defined
+      process.nextTick(() => {
+        process.exit(runner.failures);
+      });
+    };
+
+    // Set up chai in the correct order
+    const chai = require('chai');
+    chai.use(require('chai-as-promised'));
+    chai.use(require('dirty-chai'));
+
+    const runner = mocha.run(cb);
+  })
+  .catch((err) => {
+    console.error('An error occurred while running the spec-main spec runner');
+    console.error(err);
+    process.exit(1);
+  });

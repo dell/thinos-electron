@@ -31,13 +31,13 @@ const text = 'valar morghulis';
 const protocolName = 'sp';
 const postData = {
   name: 'post test',
-  type: 'string'
+  type: 'string',
 };
 
-function getStream (chunkSize = text.length, data: Buffer | string = text) {
+function getStream(chunkSize = text.length, data: Buffer | string = text) {
   const body = new stream.PassThrough();
 
-  async function sendChunks () {
+  async function sendChunks() {
     await delay(0); // the stream protocol API breaks if you send data immediately.
     let buf = Buffer.from(data as any); // nodejs typings are wrong, Buffer.from can take a Buffer
     for (;;) {
@@ -57,9 +57,9 @@ function getStream (chunkSize = text.length, data: Buffer | string = text) {
 }
 
 // A promise that can be resolved externally.
-function defer (): Promise<any> & {resolve: Function, reject: Function} {
-  let promiseResolve: Function = null as unknown as Function;
-  let promiseReject: Function = null as unknown as Function;
+function defer(): Promise<any> & { resolve: Function; reject: Function } {
+  let promiseResolve: Function = (null as unknown) as Function;
+  let promiseReject: Function = (null as unknown) as Function;
   const promise: any = new Promise((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
@@ -70,12 +70,14 @@ function defer (): Promise<any> & {resolve: Function, reject: Function} {
 }
 
 describe('protocol module', () => {
-  let contents: WebContents = null as unknown as WebContents;
+  let contents: WebContents = (null as unknown) as WebContents;
   // NB. sandbox: true is used because it makes navigations much (~8x) faster.
-  before(() => { contents = (webContents as any).create({ sandbox: true }); });
+  before(() => {
+    contents = (webContents as any).create({ sandbox: true });
+  });
   after(() => (contents as any).destroy());
 
-  async function ajax (url: string, options = {}) {
+  async function ajax(url: string, options = {}) {
     // Note that we need to do navigation every time after a protocol is
     // registered or unregistered, otherwise the new protocol won't be
     // recognized by current page when NetworkService is used.
@@ -145,7 +147,7 @@ describe('protocol module', () => {
       registerStringProtocol(protocolName, (request, callback) => {
         callback({
           data: text,
-          mimeType: 'text/html'
+          mimeType: 'text/html',
         });
       });
       const r = await ajax(protocolName + '://fake-host');
@@ -178,7 +180,7 @@ describe('protocol module', () => {
       registerBufferProtocol(protocolName, (request, callback) => {
         callback({
           data: buffer,
-          mimeType: 'text/html'
+          mimeType: 'text/html',
         });
       });
       const r = await ajax(protocolName + '://fake-host');
@@ -211,10 +213,12 @@ describe('protocol module', () => {
     });
 
     it('sets custom headers', async () => {
-      registerFileProtocol(protocolName, (request, callback) => callback({
-        path: filePath,
-        headers: { 'X-Great-Header': 'sogreat' }
-      }));
+      registerFileProtocol(protocolName, (request, callback) =>
+        callback({
+          path: filePath,
+          headers: { 'X-Great-Header': 'sogreat' },
+        }),
+      );
       const r = await ajax(protocolName + '://fake-host');
       expect(r.data).to.equal(String(fileContent));
       expect(r.headers).to.include('x-great-header: sogreat');
@@ -222,10 +226,12 @@ describe('protocol module', () => {
 
     it.skip('throws an error when custom headers are invalid', (done) => {
       registerFileProtocol(protocolName, (request, callback) => {
-        expect(() => callback({
-          path: filePath,
-          headers: { 'X-Great-Header': (42 as any) }
-        })).to.throw(Error, 'Value of \'X-Great-Header\' header has to be a string');
+        expect(() =>
+          callback({
+            path: filePath,
+            headers: { 'X-Great-Header': 42 as any },
+          }),
+        ).to.throw(Error, "Value of 'X-Great-Header' header has to be a string");
         done();
       });
       ajax(protocolName + '://fake-host');
@@ -262,7 +268,7 @@ describe('protocol module', () => {
         res.end(text);
         server.close();
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 
       const port = (server.address() as AddressInfo).port;
       const url = 'http://127.0.0.1:' + port;
@@ -292,7 +298,7 @@ describe('protocol module', () => {
         }
       });
       after(() => server.close());
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 
       const port = (server.address() as AddressInfo).port;
       const url = `${protocolName}://fake-host`;
@@ -331,12 +337,14 @@ describe('protocol module', () => {
     });
 
     it('sends custom response headers', async () => {
-      registerStreamProtocol(protocolName, (request, callback) => callback({
-        data: getStream(3),
-        headers: {
-          'x-electron': ['a', 'b']
-        }
-      }));
+      registerStreamProtocol(protocolName, (request, callback) =>
+        callback({
+          data: getStream(3),
+          headers: {
+            'x-electron': ['a', 'b'],
+          },
+        }),
+      );
       const r = await ajax(protocolName + '://fake-host');
       expect(r.data).to.equal(text);
       expect(r.status).to.equal(200);
@@ -344,10 +352,12 @@ describe('protocol module', () => {
     });
 
     it('sends custom status code', async () => {
-      registerStreamProtocol(protocolName, (request, callback) => callback({
-        statusCode: 204,
-        data: null as any
-      }));
+      registerStreamProtocol(protocolName, (request, callback) =>
+        callback({
+          statusCode: 204,
+          data: null as any,
+        }),
+      );
       const r = await ajax(protocolName + '://fake-host');
       expect(r.data).to.be.undefined('data');
       expect(r.status).to.equal(204);
@@ -357,9 +367,9 @@ describe('protocol module', () => {
       registerStreamProtocol(protocolName, (request, callback) => {
         callback({
           headers: {
-            'content-type': 'application/json'
+            'content-type': 'application/json',
           },
-          data: getStream(5, JSON.stringify(Object.assign({}, request.headers)))
+          data: getStream(5, JSON.stringify(Object.assign({}, request.headers))),
         });
       });
       const r = await ajax(protocolName + '://fake-host', { headers: { 'x-return-headers': 'yes' } });
@@ -371,9 +381,9 @@ describe('protocol module', () => {
         callback({
           headers: {
             header1: ['value1', 'value2'],
-            header2: 'value3'
+            header2: 'value3',
           },
-          data: getStream()
+          data: getStream(),
         });
       });
       const r = await ajax(protocolName + '://fake-host');
@@ -393,18 +403,18 @@ describe('protocol module', () => {
     });
 
     it('can handle a stream completing while writing', async () => {
-      function dumbPassthrough () {
+      function dumbPassthrough() {
         return new stream.Transform({
-          async transform (chunk, encoding, cb) {
+          async transform(chunk, encoding, cb) {
             cb(null, chunk);
-          }
+          },
         });
       }
       registerStreamProtocol(protocolName, (request, callback) => {
         callback({
           statusCode: 200,
           headers: { 'Content-Type': 'text/plain' },
-          data: getStream(1024 * 1024, Buffer.alloc(1024 * 1024 * 2)).pipe(dumbPassthrough())
+          data: getStream(1024 * 1024, Buffer.alloc(1024 * 1024 * 2)).pipe(dumbPassthrough()),
         });
       });
       const r = await ajax(protocolName + '://fake-host');
@@ -413,12 +423,8 @@ describe('protocol module', () => {
 
     it('can handle next-tick scheduling during read calls', async () => {
       const events = new EventEmitter();
-      function createStream () {
-        const buffers = [
-          Buffer.alloc(65536),
-          Buffer.alloc(65537),
-          Buffer.alloc(39156)
-        ];
+      function createStream() {
+        const buffers = [Buffer.alloc(65536), Buffer.alloc(65537), Buffer.alloc(39156)];
         const e = new stream.Readable({ highWaterMark: 0 });
         e.push(buffers.shift());
         e._read = function () {
@@ -433,7 +439,7 @@ describe('protocol module', () => {
         callback({
           statusCode: 200,
           headers: { 'Content-Type': 'text/plain' },
-          data: createStream()
+          data: createStream(),
         });
       });
       const hasEndedPromise = emittedOnce(events, 'end');
@@ -452,7 +458,7 @@ describe('protocol module', () => {
         callback({
           statusCode: 200,
           headers: { 'Content-Type': 'text/plain' },
-          data: responseStream
+          data: responseStream,
         });
         events.emit('respond');
       });
@@ -523,7 +529,7 @@ describe('protocol module', () => {
       interceptStringProtocol('http', (request, callback) => {
         callback({
           mimeType: 'application/json',
-          data: '{"value": 1}'
+          data: '{"value": 1}',
         });
       });
       const r = await ajax('http://fake-host');
@@ -535,7 +541,7 @@ describe('protocol module', () => {
       interceptStringProtocol('http', (request, callback) => {
         callback({
           mimeType: 'application/json; charset=UTF-8',
-          data: '{"value": 1}'
+          data: '{"value": 1}',
         });
       });
       const r = await ajax('http://fake-host');
@@ -596,9 +602,9 @@ describe('protocol module', () => {
           method: 'POST',
           uploadData: {
             contentType: 'application/x-www-form-urlencoded',
-            data: request.uploadData![0].bytes
+            data: request.uploadData![0].bytes,
           },
-          session: undefined
+          session: undefined,
         };
         callback(data);
       });
@@ -617,7 +623,7 @@ describe('protocol module', () => {
       interceptHttpProtocol('http', (request, callback) => {
         callback({
           url: request.url,
-          session: customSession
+          session: customSession,
         });
       });
       await expect(ajax('http://fake-host')).to.be.eventually.rejectedWith(Error);
@@ -659,8 +665,8 @@ describe('protocol module', () => {
               data: '',
               statusCode: 302,
               headers: {
-                Location: 'http://fake-redirect'
-              }
+                Location: 'http://fake-redirect',
+              },
             });
           }, 300);
         } else {
@@ -689,8 +695,12 @@ describe('protocol module', () => {
       const appProcess = ChildProcess.spawn(process.execPath, ['--enable-logging', appPath]);
       let stdout = '';
       let stderr = '';
-      appProcess.stdout.on('data', data => { stdout += data; });
-      appProcess.stderr.on('data', data => { stderr += data; });
+      appProcess.stdout.on('data', (data) => {
+        stdout += data;
+      });
+      appProcess.stderr.on('data', (data) => {
+        stderr += data;
+      });
       const [code] = await emittedOnce(appProcess, 'exit');
       if (code !== 0) {
         console.log('Exit code : ', code);
@@ -709,21 +719,21 @@ describe('protocol module', () => {
     const imageURL = `${origin}/test.png`;
     const filePath = path.join(fixturesPath, 'pages', 'b.html');
     const fileContent = '<img src="/test.png" />';
-    let w: BrowserWindow = null as unknown as BrowserWindow;
+    let w: BrowserWindow = (null as unknown) as BrowserWindow;
 
     beforeEach(() => {
       w = new BrowserWindow({
         show: false,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
     });
 
     afterEach(async () => {
       await closeWindow(w);
       unregisterProtocol(standardScheme);
-      w = null as unknown as BrowserWindow;
+      w = (null as unknown) as BrowserWindow;
     });
 
     it('resolves relative resources', async () => {
@@ -744,7 +754,7 @@ describe('protocol module', () => {
         } else {
           callback({
             data: fileContent,
-            mimeType: 'text/html'
+            mimeType: 'text/html',
           });
         }
       });
@@ -758,7 +768,7 @@ describe('protocol module', () => {
         server.close();
         requestReceived.resolve();
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
       const port = (server.address() as AddressInfo).port;
       const content = `<script>fetch("http://127.0.0.1:${port}")</script>`;
       registerStringProtocol(standardScheme, (request, callback) => callback({ data: content, mimeType: 'text/html' }));
@@ -785,14 +795,14 @@ describe('protocol module', () => {
 
   describe.skip('protocol.registerSchemesAsPrivileged cors-fetch', function () {
     const standardScheme = (global as any).standardScheme;
-    let w: BrowserWindow = null as unknown as BrowserWindow;
+    let w: BrowserWindow = (null as unknown) as BrowserWindow;
     beforeEach(async () => {
       w = new BrowserWindow({ show: false });
     });
 
     afterEach(async () => {
       await closeWindow(w);
-      w = null as unknown as BrowserWindow;
+      w = (null as unknown) as BrowserWindow;
       for (const scheme of [standardScheme, 'cors', 'no-cors', 'no-fetch']) {
         protocol.unregisterProtocol(scheme);
       }
@@ -808,11 +818,13 @@ describe('protocol module', () => {
     it('allows CORS requests by default', async () => {
       await allowsCORSRequests('cors', 200, new RegExp(''), () => {
         const { ipcRenderer } = require('electron');
-        fetch('cors://myhost').then(function (response) {
-          ipcRenderer.send('response', response.status);
-        }).catch(function () {
-          ipcRenderer.send('response', 'failed');
-        });
+        fetch('cors://myhost')
+          .then(function (response) {
+            ipcRenderer.send('response', response.status);
+          })
+          .catch(function () {
+            ipcRenderer.send('response', 'failed');
+          });
       });
     });
 
@@ -820,7 +832,7 @@ describe('protocol module', () => {
       await allowsCORSRequests('no-cors', ['failed xhr', 'failed fetch'], /has been blocked by CORS policy/, () => {
         const { ipcRenderer } = require('electron');
         Promise.all([
-          new Promise(resolve => {
+          new Promise((resolve) => {
             const req = new XMLHttpRequest();
             req.onload = () => resolve('loaded xhr');
             req.onerror = () => resolve('failed xhr');
@@ -829,7 +841,7 @@ describe('protocol module', () => {
           }),
           fetch('no-cors://myhost')
             .then(() => 'loaded fetch')
-            .catch(() => 'failed fetch')
+            .catch(() => 'failed fetch'),
         ]).then(([xhr, fetch]) => {
           ipcRenderer.send('response', [xhr, fetch]);
         });
@@ -840,7 +852,7 @@ describe('protocol module', () => {
       await allowsCORSRequests('no-fetch', ['loaded xhr', 'failed fetch'], /Fetch API cannot load/, () => {
         const { ipcRenderer } = require('electron');
         Promise.all([
-          new Promise(resolve => {
+          new Promise((resolve) => {
             const req = new XMLHttpRequest();
             req.onload = () => resolve('loaded xhr');
             req.onerror = () => resolve('failed xhr');
@@ -849,14 +861,14 @@ describe('protocol module', () => {
           }),
           fetch('no-fetch://myhost')
             .then(() => 'loaded fetch')
-            .catch(() => 'failed fetch')
+            .catch(() => 'failed fetch'),
         ]).then(([xhr, fetch]) => {
           ipcRenderer.send('response', [xhr, fetch]);
         });
       });
     });
 
-    async function allowsCORSRequests (corsScheme: string, expected: any, expectedConsole: RegExp, content: Function) {
+    async function allowsCORSRequests(corsScheme: string, expected: any, expectedConsole: RegExp, content: Function) {
       registerStringProtocol(standardScheme, (request, callback) => {
         callback({ data: `<script>(${content})()</script>`, mimeType: 'text/html' });
       });
@@ -887,7 +899,7 @@ describe('protocol module', () => {
     const videoSourceImagePath = path.join(fixturesPath, 'video-source-image.webp');
     const videoPath = path.join(fixturesPath, 'video.webm');
     const standardScheme = (global as any).standardScheme;
-    let w: BrowserWindow = null as unknown as BrowserWindow;
+    let w: BrowserWindow = (null as unknown) as BrowserWindow;
 
     before(async () => {
       // generate test video
@@ -898,7 +910,7 @@ describe('protocol module', () => {
         encoder.add(imageDataUrl);
       }
       await new Promise((resolve, reject) => {
-        encoder.compile((output:Uint8Array) => {
+        encoder.compile((output: Uint8Array) => {
           fs.promises.writeFile(videoPath, output).then(resolve, reject);
         });
       });
@@ -914,7 +926,7 @@ describe('protocol module', () => {
 
     afterEach(async () => {
       await closeWindow(w);
-      w = null as unknown as BrowserWindow;
+      w = (null as unknown) as BrowserWindow;
       await protocol.unregisterProtocol(standardScheme);
       await protocol.unregisterProtocol('stream');
     });
@@ -927,7 +939,7 @@ describe('protocol module', () => {
       await streamsResponses('stream', 'play');
     });
 
-    async function streamsResponses (testingScheme: string, expected: any) {
+    async function streamsResponses(testingScheme: string, expected: any) {
       const protocolHandler = (request: any, callback: Function) => {
         if (request.url.includes('/video.webm')) {
           const stat = fs.statSync(videoPath);
@@ -937,12 +949,12 @@ describe('protocol module', () => {
             const parts = range.replace(/bytes=/, '').split('-');
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-            const chunksize = (end - start) + 1;
+            const chunksize = end - start + 1;
             const headers = {
               'Content-Range': `bytes ${start}-${end}/${fileSize}`,
               'Accept-Ranges': 'bytes',
               'Content-Length': String(chunksize),
-              'Content-Type': 'video/webm'
+              'Content-Type': 'video/webm',
             };
             callback({ statusCode: 206, headers, data: fs.createReadStream(videoPath, { start, end }) });
           } else {
@@ -950,9 +962,9 @@ describe('protocol module', () => {
               statusCode: 200,
               headers: {
                 'Content-Length': String(fileSize),
-                'Content-Type': 'video/webm'
+                'Content-Type': 'video/webm',
               },
-              data: fs.createReadStream(videoPath)
+              data: fs.createReadStream(videoPath),
             });
           }
         } else {

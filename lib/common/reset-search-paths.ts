@@ -40,7 +40,7 @@ const makeElectronModule = (name: string) => {
   electronModule.loaded = true;
   electronModule.filename = name;
   Object.defineProperty(electronModule, 'exports', {
-    get: () => require('electron')
+    get: () => require('electron'),
   });
   Module._cache[name] = electronModule;
 };
@@ -55,7 +55,7 @@ if (process.type === 'renderer') {
 }
 
 const originalResolveFilename = Module._resolveFilename;
-Module._resolveFilename = function (request: string, parent: NodeModule, isMain: boolean, options?: { paths: Array<string>}) {
+Module._resolveFilename = function (request: string, parent: NodeModule, isMain: boolean, options?: { paths: Array<string> }) {
   if (request === 'electron' || request.startsWith('electron/')) {
     return 'electron';
   } else {

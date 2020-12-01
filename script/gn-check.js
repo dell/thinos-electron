@@ -18,19 +18,17 @@ if (!OUT_DIR) {
   throw new Error('No viable out dir: one of Debug, Testing, or Release must exist.');
 }
 
-const env = Object.assign({
-  CHROMIUM_BUILDTOOLS_PATH: path.resolve(SOURCE_ROOT, '..', 'buildtools'),
-  DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
-}, process.env);
+const env = Object.assign(
+  {
+    CHROMIUM_BUILDTOOLS_PATH: path.resolve(SOURCE_ROOT, '..', 'buildtools'),
+    DEPOT_TOOLS_WIN_TOOLCHAIN: '0',
+  },
+  process.env,
+);
 // Users may not have depot_tools in PATH.
 env.PATH = `${env.PATH}${path.delimiter}${DEPOT_TOOLS}`;
 
-const gnCheckDirs = [
-  '//electron:electron_lib',
-  '//electron:electron_app',
-  '//electron:manifests',
-  '//electron/shell/common/api:mojo'
-];
+const gnCheckDirs = ['//electron:electron_lib', '//electron:electron_app', '//electron:manifests', '//electron/shell/common/api:mojo'];
 
 for (const dir of gnCheckDirs) {
   const args = ['check', `../out/${OUT_DIR}`, dir];

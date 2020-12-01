@@ -15,8 +15,8 @@ const feedUrl = process.argv[1];
 autoUpdater.setFeedURL({
   url: feedUrl,
   headers: {
-    'X-test': 'this-is-a-test'
-  }
+    'X-test': 'this-is-a-test',
+  },
 });
 
 autoUpdater.checkForUpdates();

@@ -47,7 +47,7 @@ describe('node feature', () => {
 
       it('works in forked process when options.env is specifed', async () => {
         const child = ChildProcess.fork(path.join(fixtures, 'module', 'fork_ping.js'), [], {
-          path: process.env.PATH
+          path: process.env.PATH,
         });
         const message = emittedOnce(child, 'message');
         child.send('message');
@@ -112,19 +112,19 @@ describe('node feature', () => {
       it('supports spawning Electron as a node process via the ELECTRON_RUN_AS_NODE env var', async () => {
         child = ChildProcess.spawn(process.execPath, [path.join(__dirname, 'fixtures', 'module', 'run-as-node.js')], {
           env: {
-            ELECTRON_RUN_AS_NODE: true
-          }
+            ELECTRON_RUN_AS_NODE: true,
+          },
         });
 
         let output = '';
-        child.stdout.on('data', data => {
+        child.stdout.on('data', (data) => {
           output += data;
         });
         await emittedOnce(child.stdout, 'close');
         expect(JSON.parse(output)).to.deep.equal({
           stdoutType: 'pipe',
           processType: 'undefined',
-          window: 'undefined'
+          window: 'undefined',
         });
       });
     });

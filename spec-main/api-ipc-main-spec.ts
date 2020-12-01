@@ -11,14 +11,16 @@ describe('ipc main module', () => {
   afterEach(closeAllWindows);
 
   describe('ipc.sendSync', () => {
-    afterEach(() => { ipcMain.removeAllListeners('send-sync-message'); });
+    afterEach(() => {
+      ipcMain.removeAllListeners('send-sync-message');
+    });
 
     it('does not crash when reply is not sent and browser is destroyed', (done) => {
       const w = new BrowserWindow({
         show: false,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       ipcMain.once('send-sync-message', (event) => {
         event.returnValue = null;
@@ -31,8 +33,8 @@ describe('ipc main module', () => {
       const w = new BrowserWindow({
         show: false,
         webPreferences: {
-          nodeIntegration: true
-        }
+          nodeIntegration: true,
+        },
       });
       ipcMain.on('send-sync-message', (event) => {
         event.returnValue = null;
@@ -52,7 +54,9 @@ describe('ipc main module', () => {
       const appProcess = cp.spawn(electronPath, [appPath]);
 
       let output = '';
-      appProcess.stdout.on('data', (data) => { output += data; });
+      appProcess.stdout.on('data', (data) => {
+        output += data;
+      });
 
       await emittedOnce(appProcess.stdout, 'end');
 

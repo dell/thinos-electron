@@ -14,21 +14,21 @@ if (!process.mainModule) {
 }
 
 const args = require('minimist')(process.argv.slice(2), {
-  string: ['only']
+  string: ['only'],
 });
 
-async function main () {
+async function main() {
   const nodeDir = path.resolve(BASE, `out/${utils.getOutDir({ shouldLog: true })}/gen/node_headers`);
   const env = Object.assign({}, process.env, {
     npm_config_nodedir: nodeDir,
     npm_config_msvs_version: '2019',
     npm_config_arch: process.env.NPM_CONFIG_ARCH,
-    npm_config_yes: 'true'
+    npm_config_yes: 'true',
   });
   const { status: buildStatus } = cp.spawnSync(NPX_CMD, ['node-gyp', 'rebuild', '--directory', 'test', '-j', 'max'], {
     env,
     cwd: NAN_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   if (buildStatus !== 0) {
     console.error('Failed to build nan test modules');
@@ -38,7 +38,7 @@ async function main () {
   const { status: installStatus } = cp.spawnSync(NPX_CMD, [`yarn@${YARN_VERSION}`, 'install'], {
     env,
     cwd: NAN_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   if (installStatus !== 0) {
     console.error('Failed to install nan node_modules');
@@ -48,20 +48,26 @@ async function main () {
   const onlyTests = args.only && args.only.split(',');
 
   const DISABLED_TESTS = ['nannew-test.js'];
-  const testsToRun = fs.readdirSync(path.resolve(NAN_DIR, 'test', 'js'))
-    .filter(test => !DISABLED_TESTS.includes(test))
-    .filter(test => {
-      return !onlyTests || onlyTests.includes(test) || onlyTests.includes(test.replace('.js', '')) || onlyTests.includes(test.replace('-test.js', ''));
+  const testsToRun = fs
+    .readdirSync(path.resolve(NAN_DIR, 'test', 'js'))
+    .filter((test) => !DISABLED_TESTS.includes(test))
+    .filter((test) => {
+      return (
+        !onlyTests ||
+        onlyTests.includes(test) ||
+        onlyTests.includes(test.replace('.js', '')) ||
+        onlyTests.includes(test.replace('-test.js', ''))
+      );
     })
-    .map(test => `test/js/${test}`);
+    .map((test) => `test/js/${test}`);
 
   const testChild = cp.spawn(utils.getAbsoluteElectronExec(), ['node_modules/.bin/tap', ...testsToRun], {
     env: {
       ...process.env,
-      ELECTRON_RUN_AS_NODE: 'true'
+      ELECTRON_RUN_AS_NODE: 'true',
     },
     cwd: NAN_DIR,
-    stdio: 'inherit'
+    stdio: 'inherit',
   });
   testChild.on('exit', (testCode) => {
     process.exit(testCode);

@@ -59,7 +59,7 @@ Menu.prototype._executeCommand = function (event, id) {
 Menu.prototype._menuWillShow = function () {
   // Ensure radio groups have at least one menu item selected
   for (const id of Object.keys(this.groupsMap)) {
-    const found = this.groupsMap[id].find(item => item.checked) || null;
+    const found = this.groupsMap[id].find((item) => item.checked) || null;
     if (!found) v8Util.setHiddenValue(this.groupsMap[id][0], 'checked', true);
   }
 };
@@ -90,7 +90,7 @@ Menu.prototype.popup = function (options = {}) {
     }
   }
 
-  this.popupAt(window as unknown as BaseWindow, x, y, positioningItem, callback);
+  this.popupAt((window as unknown) as BaseWindow, x, y, positioningItem, callback);
   return { browserWindow: window, x, y, position: positioningItem };
 };
 
@@ -107,7 +107,7 @@ Menu.prototype.closePopup = function (window) {
 Menu.prototype.getMenuItemById = function (id) {
   const items = this.items;
 
-  let found = items.find(item => item.id === id) || null;
+  let found = items.find((item) => item.id === id) || null;
   for (let i = 0; !found && i < items.length; i++) {
     const { submenu } = items[i];
     if (submenu) {
@@ -151,7 +151,7 @@ Menu.prototype.insert = function (pos, item) {
 
 Menu.prototype._callMenuWillShow = function () {
   if (this.delegate) this.delegate.menuWillShow(this);
-  this.items.forEach(item => {
+  this.items.forEach((item) => {
     if (item.submenu) item.submenu._callMenuWillShow();
   });
 };
@@ -177,7 +177,7 @@ Menu.setApplicationMenu = function (menu: MenuType) {
     bindings.setApplicationMenu(menu);
   } else {
     const windows = BaseWindow.getAllWindows();
-    return windows.map(w => w.setMenu(menu));
+    return windows.map((w) => w.setMenu(menu));
   }
 };
 
@@ -194,7 +194,7 @@ Menu.buildFromTemplate = function (template) {
   const filtered = removeExtraSeparators(sorted);
 
   const menu = new Menu();
-  filtered.forEach(item => {
+  filtered.forEach((item) => {
     if (item instanceof MenuItem) {
       menu.append(item);
     } else {
@@ -208,16 +208,18 @@ Menu.buildFromTemplate = function (template) {
 /* Helper Functions */
 
 // validate the template against having the wrong attribute
-function areValidTemplateItems (template: (MenuItemConstructorOptions | MenuItem)[]) {
-  return template.every(item =>
-    item != null &&
-    typeof item === 'object' &&
-    (Object.prototype.hasOwnProperty.call(item, 'label') ||
-     Object.prototype.hasOwnProperty.call(item, 'role') ||
-     item.type === 'separator'));
+function areValidTemplateItems(template: (MenuItemConstructorOptions | MenuItem)[]) {
+  return template.every(
+    (item) =>
+      item != null &&
+      typeof item === 'object' &&
+      (Object.prototype.hasOwnProperty.call(item, 'label') ||
+        Object.prototype.hasOwnProperty.call(item, 'role') ||
+        item.type === 'separator'),
+  );
 }
 
-function sortTemplate (template: (MenuItemConstructorOptions | MenuItem)[]) {
+function sortTemplate(template: (MenuItemConstructorOptions | MenuItem)[]) {
   const sorted = sortMenuItems(template);
   for (const item of sorted) {
     if (Array.isArray(item.submenu)) {
@@ -228,7 +230,7 @@ function sortTemplate (template: (MenuItemConstructorOptions | MenuItem)[]) {
 }
 
 // Search between separators to find a radio menu item and return its group id
-function generateGroupId (items: (MenuItemConstructorOptions | MenuItem)[], pos: number) {
+function generateGroupId(items: (MenuItemConstructorOptions | MenuItem)[], pos: number) {
   if (pos > 0) {
     for (let idx = pos - 1; idx >= 0; idx--) {
       if (items[idx].type === 'radio') return (items[idx] as any).groupId;
@@ -244,7 +246,7 @@ function generateGroupId (items: (MenuItemConstructorOptions | MenuItem)[], pos:
   return groupIdIndex;
 }
 
-function removeExtraSeparators (items: (MenuItemConstructorOptions | MenuItem)[]) {
+function removeExtraSeparators(items: (MenuItemConstructorOptions | MenuItem)[]) {
   // fold adjacent separators together
   let ret = items.filter((e, idx, arr) => {
     if (e.visible === false) return true;
@@ -260,7 +262,7 @@ function removeExtraSeparators (items: (MenuItemConstructorOptions | MenuItem)[]
   return ret;
 }
 
-function insertItemByType (this: MenuType, item: MenuItem, pos: number) {
+function insertItemByType(this: MenuType, item: MenuItem, pos: number) {
   const types = {
     normal: () => this.insertItem(pos, item.commandId, item.label),
     checkbox: () => this.insertCheckItem(pos, item.commandId, item.label),
@@ -280,14 +282,14 @@ function insertItemByType (this: MenuType, item: MenuItem, pos: number) {
         enumerable: true,
         get: () => v8Util.getHiddenValue(item, 'checked'),
         set: () => {
-          this.groupsMap[item.groupId].forEach(other => {
+          this.groupsMap[item.groupId].forEach((other) => {
             if (other !== item) v8Util.setHiddenValue(other, 'checked', false);
           });
           v8Util.setHiddenValue(item, 'checked', true);
-        }
+        },
       });
       this.insertRadioItem(pos, item.commandId, item.label, item.groupId);
-    }
+    },
   };
   types[item.type]();
 }

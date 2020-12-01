@@ -1089,7 +1089,10 @@ step-maybe-install-deps: &step-maybe-install-deps
           libnss3-dev \
           libstdc++6:armhf \
           libxtst-dev \
-          libxtst6
+          libxtst6 \
+          python-dev \
+          python-gobject \
+          libgirepository1.0-dev
       fi
 
 step-maybe-install-dbusmock: &step-maybe-install-dbusmock
@@ -1098,6 +1101,7 @@ step-maybe-install-dbusmock: &step-maybe-install-dbusmock
     command: |
       if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
         pip install python-dbusmock
+        pip install PyGObject
       fi
 
 # Lists of steps.

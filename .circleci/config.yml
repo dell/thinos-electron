@@ -1100,6 +1100,7 @@ step-maybe-install-dbusmock: &step-maybe-install-dbusmock
     name: Install dbusmock
     command: |
       if [ "$TARGET_ARCH" == "arm" ] || [ "$TARGET_ARCH" == "arm64" ]; then
+        pip install dbus-python
         pip install python-dbusmock
         pip install PyGObject
       fi

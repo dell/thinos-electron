@@ -1,7 +1,7 @@
-From 1162c460dee4218abd798b51b88926aef5c8bd61 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jakob Kummerow <jkummerow@chromium.org>
 Date: Wed, 25 Nov 2020 23:09:27 +0100
-Subject: [PATCH] [bigint] Fix possibly-uninitialized leading digit on right shift
+Subject: Fix possibly-uninitialized leading digit on right shift
 
 (cherry picked from commit e82a3b4d47a93ab64f07d8c03e3cd17b6b961c3f)
 
@@ -17,13 +17,12 @@ Reviewed-by: Jakob Kummerow <jkummerow@chromium.org>
 Cr-Commit-Position: refs/branch-heads/8.7@{#57}
 Cr-Branched-From: 0d81cd72688512abcbe1601015baee390c484a6a-refs/heads/8.7.220@{#1}
 Cr-Branched-From: 942c2ef85caef00fcf02517d049f05e9a3d4b440-refs/heads/master@{#70196}
----
 
 diff --git a/src/objects/bigint.cc b/src/objects/bigint.cc
-index fbbfbeb..1e4f2d2 100644
+index 2f8337db979d767dd421b5cf02ded59061ac64f4..d62e4cc00c8459adecaada32599ca25c7d1ad9e4 100644
 --- a/src/objects/bigint.cc
 +++ b/src/objects/bigint.cc
-@@ -1872,6 +1872,8 @@
+@@ -1862,6 +1862,8 @@ Handle<BigInt> MutableBigInt::RightShiftByAbsolute(Isolate* isolate,
    DCHECK_LE(result_length, length);
    Handle<MutableBigInt> result = New(isolate, result_length).ToHandleChecked();
    if (bits_shift == 0) {
@@ -34,7 +33,7 @@ index fbbfbeb..1e4f2d2 100644
      }
 diff --git a/test/mjsunit/regress/regress-crbug-1151890.js b/test/mjsunit/regress/regress-crbug-1151890.js
 new file mode 100644
-index 0000000..70a3d6b
+index 0000000000000000000000000000000000000000..70a3d6bbf065002af2dc1313b2912f3813cedacc
 --- /dev/null
 +++ b/test/mjsunit/regress/regress-crbug-1151890.js
 @@ -0,0 +1,11 @@

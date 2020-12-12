@@ -242,9 +242,8 @@ int NodeMain(int argc, char* argv[]) {
     // TODO(codebytere): we should try to handle this upstream.
     {
       v8::HandleScope scope(isolate);
-      node::InternalCallbackScope callback_scope(
-          env, v8::Object::New(isolate), {1, 0},
-          node::InternalCallbackScope::kSkipAsyncHooks);
+      node::CallbackScope callback_scope(env->isolate(),
+                                         v8::Object::New(isolate), {1, 0});
       node::LoadEnvironment(env);
     }
 

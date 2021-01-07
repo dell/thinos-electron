@@ -7,6 +7,9 @@
 #include "base/win/windows_version.h"
 #include "electron/buildflags/buildflags.h"
 #include "shell/browser/ui/views/win_frame_view.h"
+#include "third_party/blink/renderer/core/dom/document.h"  //FIXME(@mlaurencin): Test
+#include "third_party/blink/renderer/core/dom/element.h"  //FIXME(@mlaurencin): Test
+
 #include "ui/base/win/hwnd_metrics.h"
 #include "ui/base/win/shell.h"
 
@@ -97,6 +100,29 @@ bool ElectronDesktopWindowTreeHostWin::GetClientAreaInsets(
     return true;
   }
   return false;
+}
+
+int ElectronDesktopWindowTreeHostWin::GetNonClientComponent(
+    const gfx::Point& point) const {
+  if (point.y() < 61) {
+    // NOCOMMIT(ckerr) This is just a test for proof-of-concept
+    LOG(INFO) << "ElectronDesktopWindowTreeHostWin::GetNonClientComponent - "
+                 "HTMAXBUTTON returned - LINE: "
+              << __LINE__;
+    // blink::Document* doc = blink::Document::CreateForTest();
+    // //FIXME(@mlaurencin): Crashes here, this is just a place holder though
+    // until I can find actual document blink::Element* result =
+    // doc->ElementFromPoint(point.x(), point.y()); LOG(INFO) <<
+    // "ElectronDesktopWindowTreeHostWin::GetNonClientComponent - RESULT: " <<
+    // result << " LINE: " << __LINE__;
+    // return HTMAXBUTTON;
+    // return HTMINBUTTON;
+    // return HTCLOSE;
+    return HTHELP;
+    // return HTZOOM;
+  }
+
+  return HTCLIENT;
 }
 
 }  // namespace electron

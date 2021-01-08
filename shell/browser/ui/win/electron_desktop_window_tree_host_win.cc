@@ -109,17 +109,24 @@ int ElectronDesktopWindowTreeHostWin::GetNonClientComponent(
     LOG(INFO) << "ElectronDesktopWindowTreeHostWin::GetNonClientComponent - "
                  "HTMAXBUTTON returned - LINE: "
               << __LINE__;
-    // blink::Document* doc = blink::Document::CreateForTest();
-    // //FIXME(@mlaurencin): Crashes here, this is just a place holder though
-    // until I can find actual document blink::Element* result =
-    // doc->ElementFromPoint(point.x(), point.y()); LOG(INFO) <<
-    // "ElectronDesktopWindowTreeHostWin::GetNonClientComponent - RESULT: " <<
-    // result << " LINE: " << __LINE__;
+    /*
+    blink::Document* doc = blink::Document::CreateForTest();
+    //FIXME(@mlaurencin): Crashes here, this is just a place holder though until
+    I can find actual document
+    */
+    /*
+    blink::Element* result = doc->ElementFromPoint(point.x(), point.y());
+    LOG(INFO) << "ElectronDesktopWindowTreeHostWin::GetNonClientComponent -
+    RESULT: " << result << " LINE: " << __LINE__;
+    */
     // return HTMAXBUTTON;
     // return HTMINBUTTON;
     // return HTCLOSE;
-    return HTHELP;
-    // return HTZOOM;
+    // return HTHELP;
+    /*
+    return HTZOOM; //The provided test outputs "HTMAXBUTTON" (they are the same
+    numerical value - 9)
+    */
   }
 
   return HTCLIENT;

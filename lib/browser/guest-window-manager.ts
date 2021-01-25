@@ -46,7 +46,6 @@ export function openGuestWindow ({ event, embedder, guest, referrer, disposition
   const { options: browserWindowOptions, additionalFeatures } = makeBrowserWindowOptions({
     embedder,
     features,
-    frameName,
     overrideOptions: overrideBrowserWindowOptions
   });
 
@@ -199,10 +198,9 @@ const securityWebPreferences: { [key: string]: boolean } = {
   enableWebSQL: false
 };
 
-function makeBrowserWindowOptions ({ embedder, features, frameName, overrideOptions, useDeprecatedBehaviorForBareValues = true, useDeprecatedBehaviorForOptionInheritance = true }: {
+function makeBrowserWindowOptions ({ embedder, features, overrideOptions, useDeprecatedBehaviorForBareValues = true, useDeprecatedBehaviorForOptionInheritance = true }: {
   embedder: WebContents,
   features: string,
-  frameName: string,
   overrideOptions?: BrowserWindowConstructorOptions,
   useDeprecatedBehaviorForBareValues?: boolean
   useDeprecatedBehaviorForOptionInheritance?: boolean
@@ -210,20 +208,6 @@ function makeBrowserWindowOptions ({ embedder, features, frameName, overrideOpti
   const { options: parsedOptions, webPreferences: parsedWebPreferences, additionalFeatures } = parseFeatures(features, useDeprecatedBehaviorForBareValues);
 
   const deprecatedInheritedOptions = getDeprecatedInheritedOptions(embedder);
-
-  console.log(frameName);
-  console.log({
-    additionalFeatures,
-    options: {
-      ...(useDeprecatedBehaviorForOptionInheritance && deprecatedInheritedOptions),
-      show: true,
-      width: 800,
-      height: 600,
-      ...parsedOptions,
-      ...overrideOptions,
-      webPreferences: makeWebPreferences({ embedder, insecureParsedWebPreferences: parsedWebPreferences, secureOverrideWebPreferences: overrideOptions && overrideOptions.webPreferences, useDeprecatedBehaviorForOptionInheritance: true })
-    }
-  });
 
   return {
     additionalFeatures,

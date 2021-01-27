@@ -5,11 +5,10 @@
       "sender": "[WebContents]"
     },
     "about:blank",
-    "frame name",
+    "frameName",
     "new-window",
     {
       "width": 800,
-      "title": "frame name",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {
@@ -43,11 +42,10 @@
       "sender": "[WebContents]"
     },
     "about:blank",
-    "frame name",
+    "frameName",
     "new-window",
     {
       "width": 800,
-      "title": "frame name",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {
@@ -80,11 +78,10 @@
       "sender": "[WebContents]"
     },
     "about:blank",
-    "frame name",
+    "frameName",
     "new-window",
     {
       "width": 800,
-      "title": "frame name",
       "backgroundColor": "gray",
       "focusable": false,
       "webPreferences": {
@@ -115,7 +112,7 @@
       "sender": "[WebContents]"
     },
     "about:blank",
-    "frame name",
+    "frameName",
     "new-window",
     {
       "width": 800,
@@ -150,11 +147,10 @@
       "sender": "[WebContents]"
     },
     "about:blank",
-    "frame name",
+    "frameName",
     "new-window",
     {
       "width": 800,
-      "title": "frame name",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {

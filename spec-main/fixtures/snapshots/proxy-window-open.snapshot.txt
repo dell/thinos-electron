@@ -7,11 +7,10 @@
       "processId": "placeholder-process-id"
     },
     "about:blank",
-    "frame name",
+    "frame-name",
     "new-window",
     {
       "show": true,
-      "title": "frame name",
       "width": 800,
       "height": 600,
       "top": 5,
@@ -42,11 +41,10 @@
       "processId": "placeholder-process-id"
     },
     "about:blank",
-    "frame name",
+    "frame-name",
     "new-window",
     {
       "show": true,
-      "title": "frame name",
       "width": 800,
       "height": 600,
       "resizable": false,
@@ -76,11 +74,10 @@
       "processId": "placeholder-process-id"
     },
     "about:blank",
-    "frame name",
+    "frame-name",
     "new-window",
     {
       "show": true,
-      "title": "frame name",
       "width": 800,
       "height": 600,
       "backgroundColor": "gray",
@@ -110,15 +107,15 @@
       "processId": "placeholder-process-id"
     },
     "about:blank",
-    "frame name",
+    "frame-name",
     "new-window",
     {
       "show": true,
-      "title": "sup",
       "width": 800,
       "height": 600,
       "x": 50,
       "y": 20,
+      "title": "sup",
       "webPreferences": {
         "nodeIntegration": false,
         "webviewTag": false,
@@ -142,11 +139,10 @@
       "processId": "placeholder-process-id"
     },
     "about:blank",
-    "frame name",
+    "frame-name",
     "new-window",
     {
       "show": false,
-      "title": "frame name",
       "width": 800,
       "height": 600,
       "top": 1,

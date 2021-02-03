@@ -59,7 +59,7 @@ describe('reporting api', () => {
       // "deprecation" report.
       res.end('<script>webkitRequestAnimationFrame(() => {})</script>');
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     const bw = new BrowserWindow({
       show: false
     });
@@ -220,7 +220,7 @@ describe('web security', () => {
       res.setHeader('Content-Type', 'text/html');
       res.end('<body>');
     });
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
     serverUrl = `http://localhost:${(server.address() as any).port}`;
   });
   after(() => {
@@ -574,7 +574,7 @@ describe('chromium features', () => {
           res.end(`body:${body}`);
         });
       });
-      await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+      await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
       serverUrl = `http://localhost:${(server.address() as any).port}`;
     });
     after(async () => {
@@ -1273,6 +1273,13 @@ describe('chromium features', () => {
       slashes: true
     });
 
+    it('successfully loads a PDF file', async () => {
+      const w = new BrowserWindow({ show: false });
+
+      w.loadURL(pdfSource);
+      await emittedOnce(w.webContents, 'did-finish-load');
+    });
+
     it('opens when loading a pdf resource as top level navigation', async () => {
       const w = new BrowserWindow({ show: false });
       w.loadURL(pdfSource);
@@ -1541,5 +1548,59 @@ describe('navigator.clipboard', () => {
     });
     const clipboard = await readClipboard();
     expect(clipboard).to.not.equal('Read permission denied.');
+  });
+});
+
+ifdescribe((process.platform !== 'linux' || app.isUnityRunning()))('navigator.setAppBadge/clearAppBadge', () => {
+  let w: BrowserWindow;
+  before(async () => {
+    w = new BrowserWindow({
+      show: false
+    });
+    await w.loadFile(path.join(fixturesPath, 'pages', 'blank.html'));
+  });
+
+  const expectedBadgeCount = 42;
+
+  const fireAppBadgeAction: any = (action: string, value: any) => {
+    return w.webContents.executeJavaScript(`
+      navigator.${action}AppBadge(${value}).then(() => 'success').catch(err => err.message)`);
+  };
+
+  // For some reason on macOS changing the badge count doesn't happen right away, so wait
+  // until it changes.
+  async function waitForBadgeCount (value: number) {
+    let badgeCount = app.getBadgeCount();
+    while (badgeCount !== value) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      badgeCount = app.getBadgeCount();
+    }
+    return badgeCount;
+  }
+
+  after(() => {
+    app.badgeCount = 0;
+    closeAllWindows();
+  });
+
+  it('setAppBadge can set a numerical value', async () => {
+    const result = await fireAppBadgeAction('set', expectedBadgeCount);
+    expect(result).to.equal('success');
+    expect(waitForBadgeCount(expectedBadgeCount)).to.eventually.equal(expectedBadgeCount);
+  });
+
+  it('setAppBadge can set an empty(dot) value', async () => {
+    const result = await fireAppBadgeAction('set');
+    expect(result).to.equal('success');
+    expect(waitForBadgeCount(0)).to.eventually.equal(0);
+  });
+
+  it('clearAppBadge can clear a value', async () => {
+    let result = await fireAppBadgeAction('set', expectedBadgeCount);
+    expect(result).to.equal('success');
+    expect(waitForBadgeCount(expectedBadgeCount)).to.eventually.equal(expectedBadgeCount);
+    result = await fireAppBadgeAction('clear');
+    expect(result).to.equal('success');
+    expect(waitForBadgeCount(0)).to.eventually.equal(0);
   });
 });

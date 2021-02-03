@@ -28,6 +28,7 @@
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ssl/security_state_tab_helper.h"
+#include "chrome/browser/ui/views/eye_dropper/eye_dropper.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -616,9 +617,12 @@ WebContents::WebContents(v8::Isolate* isolate,
       id_(GetAllWebContents().Add(this)),
       devtools_file_system_indexer_(new DevToolsFileSystemIndexer),
       file_task_runner_(
-          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
-      print_task_runner_(CreatePrinterHandlerTaskRunner()),
-      weak_factory_(this) {
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}))
+#if BUILDFLAG(ENABLE_PRINTING)
+      ,
+      print_task_runner_(CreatePrinterHandlerTaskRunner())
+#endif
+{
 #if BUILDFLAG(ENABLE_ELECTRON_EXTENSIONS)
   // WebContents created by extension host will have valid ViewType set.
   extensions::ViewType view_type = extensions::GetViewType(web_contents);
@@ -650,9 +654,12 @@ WebContents::WebContents(v8::Isolate* isolate,
       id_(GetAllWebContents().Add(this)),
       devtools_file_system_indexer_(new DevToolsFileSystemIndexer),
       file_task_runner_(
-          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
-      print_task_runner_(CreatePrinterHandlerTaskRunner()),
-      weak_factory_(this) {
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}))
+#if BUILDFLAG(ENABLE_PRINTING)
+      ,
+      print_task_runner_(CreatePrinterHandlerTaskRunner())
+#endif
+{
   DCHECK(type != Type::kRemote)
       << "Can't take ownership of a remote WebContents";
   auto session = Session::CreateFrom(isolate, GetBrowserContext());
@@ -666,9 +673,12 @@ WebContents::WebContents(v8::Isolate* isolate,
     : id_(GetAllWebContents().Add(this)),
       devtools_file_system_indexer_(new DevToolsFileSystemIndexer),
       file_task_runner_(
-          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()})),
-      print_task_runner_(CreatePrinterHandlerTaskRunner()),
-      weak_factory_(this) {
+          base::ThreadPool::CreateSequencedTaskRunner({base::MayBlock()}))
+#if BUILDFLAG(ENABLE_PRINTING)
+      ,
+      print_task_runner_(CreatePrinterHandlerTaskRunner())
+#endif
+{
   // Read options.
   options.Get("backgroundThrottling", &background_throttling_);
 
@@ -1546,39 +1556,6 @@ void WebContents::ReceivePostMessage(
   EmitWithSender("-ipc-ports", render_frame_host,
                  electron::mojom::ElectronBrowser::InvokeCallback(), false,
                  channel, message_value, std::move(wrapped_ports));
-}
-
-void WebContents::PostMessage(const std::string& channel,
-                              v8::Local<v8::Value> message_value,
-                              base::Optional<v8::Local<v8::Value>> transfer) {
-  v8::Isolate* isolate = JavascriptEnvironment::GetIsolate();
-  blink::TransferableMessage transferable_message;
-  if (!electron::SerializeV8Value(isolate, message_value,
-                                  &transferable_message)) {
-    // SerializeV8Value sets an exception.
-    return;
-  }
-
-  std::vector<gin::Handle<MessagePort>> wrapped_ports;
-  if (transfer) {
-    if (!gin::ConvertFromV8(isolate, *transfer, &wrapped_ports)) {
-      isolate->ThrowException(v8::Exception::Error(
-          gin::StringToV8(isolate, "Invalid value for transfer")));
-      return;
-    }
-  }
-
-  bool threw_exception = false;
-  transferable_message.ports =
-      MessagePort::DisentanglePorts(isolate, wrapped_ports, &threw_exception);
-  if (threw_exception)
-    return;
-
-  content::RenderFrameHost* frame_host = web_contents()->GetMainFrame();
-  mojo::AssociatedRemote<mojom::ElectronRenderer> electron_renderer;
-  frame_host->GetRemoteAssociatedInterfaces()->GetInterface(&electron_renderer);
-  electron_renderer->ReceivePostMessage(channel,
-                                        std::move(transferable_message));
 }
 
 void WebContents::MessageSync(
@@ -2720,46 +2697,6 @@ bool WebContents::SendIPCMessageWithSender(bool internal,
   return true;
 }
 
-bool WebContents::SendIPCMessageToFrame(bool internal,
-                                        v8::Local<v8::Value> frame,
-                                        const std::string& channel,
-                                        v8::Local<v8::Value> args) {
-  v8::Isolate* isolate = JavascriptEnvironment::GetIsolate();
-  blink::CloneableMessage message;
-  if (!gin::ConvertFromV8(isolate, args, &message)) {
-    isolate->ThrowException(v8::Exception::Error(
-        gin::StringToV8(isolate, "Failed to serialize arguments")));
-    return false;
-  }
-  int32_t frame_id;
-  int32_t process_id;
-  if (gin::ConvertFromV8(isolate, frame, &frame_id)) {
-    process_id = web_contents()->GetMainFrame()->GetProcess()->GetID();
-  } else {
-    std::vector<int32_t> id_pair;
-    if (gin::ConvertFromV8(isolate, frame, &id_pair) && id_pair.size() == 2) {
-      process_id = id_pair[0];
-      frame_id = id_pair[1];
-    } else {
-      isolate->ThrowException(v8::Exception::Error(gin::StringToV8(
-          isolate,
-          "frameId must be a number or a pair of [processId, frameId]")));
-      return false;
-    }
-  }
-
-  auto* rfh = content::RenderFrameHost::FromID(process_id, frame_id);
-  if (!rfh || !rfh->IsRenderFrameLive() ||
-      content::WebContents::FromRenderFrameHost(rfh) != web_contents())
-    return false;
-
-  mojo::AssociatedRemote<mojom::ElectronRenderer> electron_renderer;
-  rfh->GetRemoteAssociatedInterfaces()->GetInterface(&electron_renderer);
-  electron_renderer->Message(internal, channel, std::move(message),
-                             0 /* sender_id */);
-  return true;
-}
-
 void WebContents::SendInputEvent(v8::Isolate* isolate,
                                  v8::Local<v8::Value> input_event) {
   content::RenderWidgetHostView* view =
@@ -3244,6 +3181,12 @@ content::ColorChooser* WebContents::OpenColorChooser(
 #endif
 }
 
+std::unique_ptr<content::EyeDropper> WebContents::OpenEyeDropper(
+    content::RenderFrameHost* frame,
+    content::EyeDropperListener* listener) {
+  return ShowEyeDropper(frame, listener);
+}
+
 void WebContents::RunFileChooser(
     content::RenderFrameHost* render_frame_host,
     scoped_refptr<content::FileSelectListener> listener,
@@ -3663,8 +3606,6 @@ v8::Local<v8::ObjectTemplate> WebContents::FillObjectTemplate(
       .SetMethod("focus", &WebContents::Focus)
       .SetMethod("isFocused", &WebContents::IsFocused)
       .SetMethod("_send", &WebContents::SendIPCMessage)
-      .SetMethod("_postMessage", &WebContents::PostMessage)
-      .SetMethod("_sendToFrame", &WebContents::SendIPCMessageToFrame)
       .SetMethod("sendInputEvent", &WebContents::SendInputEvent)
       .SetMethod("beginFrameSubscription", &WebContents::BeginFrameSubscription)
       .SetMethod("endFrameSubscription", &WebContents::EndFrameSubscription)

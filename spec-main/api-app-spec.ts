@@ -551,46 +551,42 @@ describe('app module', () => {
     const platformIsNotSupported =
         (process.platform === 'win32') ||
         (process.platform === 'linux' && !app.isUnityRunning());
-    const platformIsSupported = !platformIsNotSupported;
 
     const expectedBadgeCount = 42;
 
     after(() => { app.badgeCount = 0; });
 
-    describe('on supported platform', () => {
-      it('with properties', () => {
+    ifdescribe(!platformIsNotSupported)('on supported platform', () => {
+      describe('with properties', () => {
         it('sets a badge count', function () {
-          if (platformIsNotSupported) return this.skip();
-
           app.badgeCount = expectedBadgeCount;
           expect(app.badgeCount).to.equal(expectedBadgeCount);
         });
       });
 
-      it('with functions', () => {
-        it('sets a badge count', function () {
-          if (platformIsNotSupported) return this.skip();
-
+      describe('with functions', () => {
+        it('sets a numerical badge count', function () {
           app.setBadgeCount(expectedBadgeCount);
           expect(app.getBadgeCount()).to.equal(expectedBadgeCount);
+        });
+        it('sets an non numeric (dot) badge count', function () {
+          app.setBadgeCount();
+          // Badge count should be zero when non numeric (dot) is requested
+          expect(app.getBadgeCount()).to.equal(0);
         });
       });
     });
 
-    describe('on unsupported platform', () => {
-      it('with properties', () => {
+    ifdescribe(process.platform !== 'win32' && platformIsNotSupported)('on unsupported platform', () => {
+      describe('with properties', () => {
         it('does not set a badge count', function () {
-          if (platformIsSupported) return this.skip();
-
           app.badgeCount = 9999;
           expect(app.badgeCount).to.equal(0);
         });
       });
 
-      it('with functions', () => {
+      describe('with functions', () => {
         it('does not set a badge count)', function () {
-          if (platformIsSupported) return this.skip();
-
           app.setBadgeCount(9999);
           expect(app.getBadgeCount()).to.equal(0);
         });
@@ -598,7 +594,7 @@ describe('app module', () => {
     });
   });
 
-  describe('app.get/setLoginItemSettings API', function () {
+  ifdescribe(process.platform !== 'linux' && !process.mas)('app.get/setLoginItemSettings API', function () {
     const updateExe = path.resolve(path.dirname(process.execPath), '..', 'Update.exe');
     const processStartArgs = [
       '--processStart', `"${path.basename(process.execPath)}"`,
@@ -614,10 +610,6 @@ describe('app module', () => {
       '/f',
       '/d'
     ];
-
-    before(function () {
-      if (process.platform === 'linux' || process.mas) this.skip();
-    });
 
     beforeEach(() => {
       app.setLoginItemSettings({ openAtLogin: false });

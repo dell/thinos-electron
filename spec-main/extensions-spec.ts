@@ -36,7 +36,7 @@ describe('chrome extensions', () => {
       });
     });
 
-    await new Promise(resolve => server.listen(0, '127.0.0.1', () => {
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => {
       port = String((server.address() as AddressInfo).port);
       url = `http://127.0.0.1:${port}`;
       resolve();
@@ -105,6 +105,12 @@ describe('chrome extensions', () => {
     await w.loadURL(url);
     const bg = await w.webContents.executeJavaScript('document.documentElement.style.backgroundColor');
     expect(bg).to.equal('red');
+  });
+
+  it('does not crash when failing to load an extension', async () => {
+    const customSession = session.fromPartition(`persist:${uuid.v4()}`);
+    const promise = customSession.loadExtension(path.join(fixtures, 'extensions', 'load-error'));
+    await expect(promise).to.eventually.be.rejected();
   });
 
   it('serializes a loaded extension', async () => {
@@ -277,17 +283,17 @@ describe('chrome extensions', () => {
       it('can cancel http requests', async () => {
         await w.loadURL(url);
         await customSession.loadExtension(path.join(fixtures, 'extensions', 'chrome-webRequest'));
-        await expect(fetch(w.webContents, url)).to.eventually.be.rejectedWith(TypeError);
+        await expect(fetch(w.webContents, url)).to.eventually.be.rejectedWith('Failed to fetch');
       });
 
       it('does not cancel http requests when no extension loaded', async () => {
         await w.loadURL(url);
-        await expect(fetch(w.webContents, url)).to.not.be.rejectedWith(TypeError);
+        await expect(fetch(w.webContents, url)).to.not.be.rejectedWith('Failed to fetch');
       });
     });
 
     it('does not take precedence over Electron webRequest - http', async () => {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         (async () => {
           customSession.webRequest.onBeforeRequest((details, callback) => {
             resolve();
@@ -302,7 +308,7 @@ describe('chrome extensions', () => {
     });
 
     it('does not take precedence over Electron webRequest - WebSocket', () => {
-      return new Promise((resolve) => {
+      return new Promise<void>((resolve) => {
         (async () => {
           customSession.webRequest.onBeforeSendHeaders(() => {
             resolve();
@@ -459,7 +465,8 @@ describe('chrome extensions', () => {
           const showLastPanel = () => {
             // this is executed in the devtools context, where UI is a global
             const { UI } = (window as any);
-            const lastPanelId = UI.inspectorView._tabbedPane._tabs.peekLast().id;
+            const tabs = UI.inspectorView._tabbedPane._tabs;
+            const lastPanelId = tabs[tabs.length - 1].id;
             UI.inspectorView.showPanel(lastPanelId);
           };
           devToolsWebContents.executeJavaScript(`(${showLastPanel})()`, false).then(() => {

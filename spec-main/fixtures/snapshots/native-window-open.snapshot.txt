@@ -9,7 +9,7 @@
     "new-window",
     {
       "width": 800,
-      "title":"cool",
+      "title": "cool",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {
@@ -47,7 +47,7 @@
     "new-window",
     {
       "width": 800,
-      "title":"cool",
+      "title": "cool",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {
@@ -84,7 +84,7 @@
     "new-window",
     {
       "width": 800,
-      "title":"cool",
+      "title": "cool",
       "backgroundColor": "gray",
       "focusable": false,
       "webPreferences": {
@@ -154,7 +154,7 @@
     "new-window",
     {
       "width": 800,
-      "title":"cool",
+      "title": "cool",
       "backgroundColor": "blue",
       "focusable": false,
       "webPreferences": {

@@ -62,6 +62,15 @@ describe('BrowserWindow module', () => {
       const appProcess = childProcess.spawn(process.execPath, [appPath]);
       await new Promise((resolve) => { appProcess.once('exit', resolve); });
     });
+
+    it('does not crash or throw when passed an invalid icon', async () => {
+      expect(() => {
+        const w = new BrowserWindow({
+          icon: undefined
+        } as any);
+        w.destroy();
+      }).not.to.throw();
+    });
   });
 
   describe('garbage collection', () => {
@@ -72,7 +81,7 @@ describe('BrowserWindow module', () => {
       const w = new BrowserWindow({ show: false });
       // Keep a weak reference to the window.
       // eslint-disable-next-line no-undef
-      const wr = new (globalThis as any).WeakRef(w);
+      const wr = new WeakRef(w);
       await delay();
       // Do garbage collection, since |w| is not referenced in this closure
       // it would be gone after next call if there is no other reference.
@@ -108,6 +117,14 @@ describe('BrowserWindow module', () => {
       await w.loadFile(path.join(__dirname, 'fixtures', 'api', 'beforeunload-false.html'));
       w.close();
       await emittedOnce(w.webContents, 'before-unload-fired');
+    });
+
+    it('should not crash when keyboard event is sent before closing', async () => {
+      await w.loadURL('data:text/html,pls no crash');
+      const closed = emittedOnce(w, 'closed');
+      w.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+      w.close();
+      await closed;
     });
 
     describe('when invoked synchronously inside navigation observer', () => {
@@ -1437,7 +1454,7 @@ describe('BrowserWindow module', () => {
       });
       server.on('connection', () => { connections++; });
 
-      await new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve()));
+      await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));
       url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     });
     afterEach(async () => {
@@ -1509,15 +1526,40 @@ describe('BrowserWindow module', () => {
       }).to.not.throw();
     });
 
-    it('throws with custom title bar buttons', () => {
-      expect(() => {
-        const w = new BrowserWindow({
-          show: false,
-          titleBarStyle: 'customButtonsOnHover',
-          frame: false
-        });
-        w.setWindowButtonVisibility(true);
-      }).to.throw('Not supported for this window');
+    it('changes window button visibility for normal window', () => {
+      const w = new BrowserWindow({ show: false });
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+      w.setWindowButtonVisibility(false);
+      expect(w._getWindowButtonVisibility()).to.equal(false);
+      w.setWindowButtonVisibility(true);
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+    });
+
+    it('changes window button visibility for frameless window', () => {
+      const w = new BrowserWindow({ show: false, frame: false });
+      expect(w._getWindowButtonVisibility()).to.equal(false);
+      w.setWindowButtonVisibility(true);
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+      w.setWindowButtonVisibility(false);
+      expect(w._getWindowButtonVisibility()).to.equal(false);
+    });
+
+    it('changes window button visibility for hiddenInset window', () => {
+      const w = new BrowserWindow({ show: false, frame: false, titleBarStyle: 'hiddenInset' });
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+      w.setWindowButtonVisibility(false);
+      expect(w._getWindowButtonVisibility()).to.equal(false);
+      w.setWindowButtonVisibility(true);
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+    });
+
+    it('changes window button visibility for customButtonsOnHover window', () => {
+      const w = new BrowserWindow({ show: false, frame: false, titleBarStyle: 'customButtonsOnHover' });
+      expect(w._getWindowButtonVisibility()).to.equal(true);
+      w.setWindowButtonVisibility(false);
+      expect(w._getWindowButtonVisibility()).to.equal(false);
+      w.setWindowButtonVisibility(true);
+      expect(w._getWindowButtonVisibility()).to.equal(true);
     });
   });
 

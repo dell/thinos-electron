@@ -4,6 +4,7 @@
 
 #include "shell/browser/ui/cocoa/electron_inspectable_web_contents_view.h"
 
+#include "content/browser/web_contents/web_contents_impl.h"  // nogncheck
 #include "content/public/browser/render_widget_host_view.h"
 #include "shell/browser/ui/cocoa/event_dispatching_window.h"
 #include "shell/browser/ui/inspectable_web_contents.h"
@@ -256,6 +257,9 @@
   if (!inspectable_web_contents || inspectable_web_contents->IsGuest())
     return;
   auto* webContents = inspectable_web_contents->GetWebContents();
+  // The WebContents might have no view, and GetNativeView will crash if so.
+  if (!static_cast<content::WebContentsImpl*>(webContents)->GetView())
+    return;
   auto* webContentsView = webContents->GetNativeView().GetNativeNSView();
 
   NSView* view = [notification object];

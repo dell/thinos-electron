@@ -1,0 +1,59 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: VerteDinde <keeleymhammond@gmail.com>
+Date: Tue, 2 Mar 2021 15:50:44 -0800
+Subject: fix: accelerator formatting
+
+Ref: https://chromium-review.googlesource.com/c/chromium/src/+/2546471
+This upstream change fully strips the CJK style of accelerators
+"(&x)". However, this style needs to be retained for
+internationalization for Electron apps. This patch changes areas where
+the CJK style is removed fully back to simply stripping out the
+accelerator character.
+
+diff --git a/chrome/browser/ui/views/toolbar/app_menu.cc b/chrome/browser/ui/views/toolbar/app_menu.cc
+index 12b0e4297b4333675a3511e4437e91a9e4f94308..e5582f665153c5e704604dfc1f0238e919038ab9 100644
+--- a/chrome/browser/ui/views/toolbar/app_menu.cc
++++ b/chrome/browser/ui/views/toolbar/app_menu.cc
+@@ -325,7 +325,7 @@ class AppMenuView : public views::View {
+     DCHECK(menu_);
+     InMenuButton* button = new InMenuButton(
+         std::move(callback),
+-        gfx::RemoveAccelerator(l10n_util::GetStringUTF16(string_id)));
++        gfx::LocateAndRemoveAcceleratorChar(l10n_util::GetStringUTF16(string_id), nullptr, nullptr));
+     button->Init(type);
+     button->SetAccessibleName(GetAccessibleNameForAppMenuItem(
+         menu_model_, index, acc_string_id, add_accelerator_text));
+diff --git a/ui/gfx/canvas_skia.cc b/ui/gfx/canvas_skia.cc
+index 4ef6a0660d02e9cb929660394d6abd5e9e0a8eec..5a80b6e90c1885e9715ac0294f497f77e1e1457a 100644
+--- a/ui/gfx/canvas_skia.cc
++++ b/ui/gfx/canvas_skia.cc
+@@ -25,14 +25,12 @@ namespace {
+ // Returns a range in |text| to underline or Range::InvalidRange() if
+ // underlining is not needed.
+ Range StripAcceleratorChars(int flags, base::string16* text) {
+-  if (flags & Canvas::SHOW_PREFIX) {
++  if (flags & (Canvas::SHOW_PREFIX | Canvas::HIDE_PREFIX)) {
+     int char_pos = -1;
+     int char_span = 0;
+     *text = LocateAndRemoveAcceleratorChar(*text, &char_pos, &char_span);
+-    if (char_pos != -1)
++    if ((flags & Canvas::SHOW_PREFIX) && char_pos != -1)
+       return Range(char_pos, char_pos + char_span);
+-  } else if (flags & Canvas::HIDE_PREFIX) {
+-    *text = RemoveAccelerator(*text);
+   }
+ 
+   return Range::InvalidRange();
+diff --git a/ui/views/touchui/touch_selection_menu_views.cc b/ui/views/touchui/touch_selection_menu_views.cc
+index f8e35ededbd6ceadaf4f87119e98563eae0ee106..129753739f371d648cef3798ca0267a61dcd8847 100644
+--- a/ui/views/touchui/touch_selection_menu_views.cc
++++ b/ui/views/touchui/touch_selection_menu_views.cc
+@@ -147,7 +147,7 @@ void TouchSelectionMenuViews::CreateButtons() {
+ LabelButton* TouchSelectionMenuViews::CreateButton(
+     const base::string16& title,
+     Button::PressedCallback callback) {
+-  base::string16 label = gfx::RemoveAccelerator(title);
++  base::string16 label = gfx::LocateAndRemoveAcceleratorChar(title, nullptr, nullptr);
+   auto* button = AddChildView(std::make_unique<LabelButton>(
+       std::move(callback), label, style::CONTEXT_TOUCH_MENU));
+   constexpr gfx::Size kMenuButtonMinSize = gfx::Size(63, 38);

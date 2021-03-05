@@ -1370,6 +1370,22 @@ void WebContents::RenderViewCreated(content::RenderViewHost* render_view_host) {
   }
 }
 
+void WebContents::RenderViewHostChanged(content::RenderViewHost* old_host,
+                                        content::RenderViewHost* new_host) {
+  // set the background color of RenderWidgetHostView.
+  auto* const view = web_contents()->GetRenderWidgetHostView();
+  if (view) {
+    auto* web_preferences = WebContentsPreferences::From(web_contents());
+    std::string color_name;
+    if (web_preferences->GetPreference(options::kBackgroundColor,
+                                       &color_name)) {
+      view->SetBackgroundColor(ParseHexColor(color_name));
+    } else {
+      view->SetBackgroundColor(SK_ColorTRANSPARENT);
+    }
+  }
+}
+
 void WebContents::RenderFrameCreated(
     content::RenderFrameHost* render_frame_host) {
   auto* rwhv = render_frame_host->GetView();
@@ -2002,21 +2018,6 @@ void WebContents::LoadURL(const GURL& url,
 
   // Required to make beforeunload handler work.
   NotifyUserActivation();
-
-  // For transparent windows, set the background color of RenderWidgetHostView.
-  // We need to set this color after LoadURL, because the RenderViewHost is only
-  // created after loading a page; a default white color is rendered otherwise.
-  auto* const view = this->web_contents()->GetRenderWidgetHostView();
-  if (view) {
-    auto* web_preferences = WebContentsPreferences::From(web_contents());
-    std::string color_name;
-    if (web_preferences->GetPreference(options::kBackgroundColor,
-                                       &color_name)) {
-      view->SetBackgroundColor(ParseHexColor(color_name));
-    } else {
-      view->SetBackgroundColor(SK_ColorTRANSPARENT);
-    }
-  }
 }
 
 void WebContents::DownloadURL(const GURL& url) {

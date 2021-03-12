@@ -5,8 +5,8 @@ import { closeAllWindows } from './window-helpers';
 import { emittedOnce, emittedUntil } from './events-helpers';
 import { expect } from 'chai';
 
-async function loadWebView (w: WebContents, attributes: Record<string, string>, openDevTools: boolean = false): Promise<void> {
-  await w.executeJavaScript(`
+async function loadWebView (w: WebContents, attributes: Record<string, string>, openDevTools: boolean = false): Promise<number> {
+  return w.executeJavaScript(`
     new Promise((resolve, reject) => {
       const webview = new WebView()
       for (const [k, v] of Object.entries(${JSON.stringify(attributes)})) {
@@ -19,7 +19,7 @@ async function loadWebView (w: WebContents, attributes: Record<string, string>, 
         }
       })
       webview.addEventListener('did-finish-load', () => {
-        resolve()
+        resolve(webview.getWebContentsId())
       })
     })
   `);
@@ -194,14 +194,16 @@ describe('<webview> tag', function () {
         protocol: 'file',
         slashes: true
       });
-      const message = await w.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+      const waitMessage = w.webContents.executeJavaScript(`new Promise((resolve, reject) => {
         const webview = new WebView()
-        webview.setAttribute('src', '${src}')
+        webview.setAttribute('src', 'about:blank')
         webview.addEventListener('did-change-theme-color', (e) => {
           resolve('ok')
         })
         document.body.appendChild(webview)
       })`);
+      await w.webContents.executeJavaScript(`document.getElementsByTagName('webview')[0].src = '${src}'`);
+      const message = await waitMessage;
       expect(message).to.equal('ok');
     });
   });
@@ -215,21 +217,18 @@ describe('<webview> tag', function () {
         contextIsolation: false
       }
     });
-    w.webContents.session.removeExtension('foo');
+    await w.webContents.session.removeExtension('foo');
 
     const extensionPath = path.join(__dirname, 'fixtures', 'devtools-extensions', 'foo');
     await w.webContents.session.loadExtension(extensionPath);
+    await w.loadURL('about:blank');
 
-    w.loadFile(path.join(__dirname, 'fixtures', 'pages', 'webview-devtools.html'));
-    loadWebView(w.webContents, {
-      nodeintegration: 'on',
-      webpreferences: 'contextIsolation=no',
-      src: `file://${path.join(__dirname, 'fixtures', 'blank.html')}`
-    }, true);
-    let childWebContentsId = 0;
+    const waitAnswer = emittedOnce(ipcMain, 'answer');
+
+    let childWebContentsId = -1;
     app.once('web-contents-created', (e, webContents) => {
       childWebContentsId = webContents.id;
-      webContents.on('devtools-opened', function () {
+      webContents.once('devtools-opened', function () {
         const showPanelIntervalId = setInterval(function () {
           if (!webContents.isDestroyed() && webContents.devToolsWebContents) {
             webContents.devToolsWebContents.executeJavaScript('(' + function () {
@@ -245,7 +244,14 @@ describe('<webview> tag', function () {
       });
     });
 
-    const [, { runtimeId, tabId }] = await emittedOnce(ipcMain, 'answer');
+    const webViewWebContentsId = await loadWebView(w.webContents, {
+      nodeintegration: 'on',
+      webpreferences: 'contextIsolation=no',
+      src: `file://${path.join(__dirname, 'fixtures', 'blank.html')}`
+    }, true);
+    expect(webViewWebContentsId).to.equal(childWebContentsId);
+
+    const [, { runtimeId, tabId }] = await waitAnswer;
     expect(runtimeId).to.match(/^[a-z]{32}$/);
     expect(tabId).to.equal(childWebContentsId);
   });

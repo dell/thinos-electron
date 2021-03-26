@@ -542,6 +542,7 @@ void ElectronBrowserMainParts::PreMainMessageLoopStartCommon() {
 #endif
   media::SetLocalizedStringProvider(MediaStringProvider);
 
+#if defined(OS_WIN)
   if (electron::fuses::IsCookieEncryptionEnabled()) {
     auto* local_state = g_browser_process->local_state();
     DCHECK(local_state);
@@ -549,6 +550,7 @@ void ElectronBrowserMainParts::PreMainMessageLoopStartCommon() {
     bool os_crypt_init = OSCrypt::Init(local_state);
     DCHECK(os_crypt_init);
   }
+#endif
 }
 
 device::mojom::GeolocationControl*

@@ -940,7 +940,8 @@ describe('chromium features', () => {
     });
   });
 
-  describe('window.opener access', () => {
+  // This test often timeouts on ASan.
+  ifdescribe(!process.env.IS_ASAN)('window.opener access', () => {
     const scheme = 'app';
 
     const fileUrl = `file://${fixturesPath}/pages/window-opener-location.html`;

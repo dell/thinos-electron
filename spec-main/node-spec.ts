@@ -323,7 +323,8 @@ describe('node feature', () => {
     expect(result.status).to.equal(0);
   });
 
-  ifit(features.isRunAsNodeEnabled())('handles Promise timeouts correctly', async () => {
+  // This test often timeouts on ASan.
+  ifit(features.isRunAsNodeEnabled() && !process.env.IS_ASAN)('handles Promise timeouts correctly', async () => {
     const scriptPath = path.join(fixtures, 'module', 'node-promise-timer.js');
     const child = childProcess.spawn(process.execPath, [scriptPath], {
       env: { ELECTRON_RUN_AS_NODE: 'true' }

@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as semver from 'semver';
 
-import { delay, ifdescribe } from './spec-helpers';
+import { delay, ifdescribe, ifit } from './spec-helpers';
 import { emittedOnce } from './events-helpers';
 import { closeAllWindows } from './window-helpers';
 
@@ -74,7 +74,8 @@ describe('nativeTheme module', () => {
       return isDark;
     };
 
-    it('should override the result of prefers-color-scheme CSS media query', async () => {
+    // This test often timeouts on ASan.
+    ifit(!process.env.IS_ASAN)('should override the result of prefers-color-scheme CSS media query', async () => {
       const w = new BrowserWindow({ show: false });
       await w.loadFile(path.resolve(__dirname, 'fixtures', 'blank.html'));
       const originalSystemIsDark = await getPrefersColorSchemeIsDark(w);

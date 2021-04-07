@@ -9,7 +9,7 @@ import * as send from 'send';
 import * as auth from 'basic-auth';
 import { closeAllWindows } from './window-helpers';
 import { emittedOnce } from './events-helpers';
-import { defer, delay } from './spec-helpers';
+import { defer, delay, ifit } from './spec-helpers';
 import { AddressInfo } from 'net';
 
 /* The whole session API doesn't use standard callbacks */
@@ -591,7 +591,8 @@ describe('session module', () => {
       expect(w.webContents.getTitle()).to.equal(url);
     });
 
-    it('saves cached results', async () => {
+    // This test often timeouts on ASan.
+    ifit(!process.env.IS_ASAN)('saves cached results', async () => {
       const ses = session.fromPartition(`${Math.random()}`);
       let numVerificationRequests = 0;
       ses.setCertificateVerifyProc((e, callback) => {

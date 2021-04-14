@@ -1666,6 +1666,7 @@ bool WebContents::Equal(const WebContents* web_contents) const {
 
 void WebContents::LoadURL(const GURL& url,
                           const gin_helper::Dictionary& options) {
+  LOG(INFO) << "*** INSIDE LOADURL (Electron) ***";
   if (!url.is_valid() || url.spec().size() > url::kMaxURLChars) {
     Emit("did-fail-load", static_cast<int>(net::ERR_INVALID_URL),
          net::ErrorToShortString(net::ERR_INVALID_URL),

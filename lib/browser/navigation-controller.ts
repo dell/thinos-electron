@@ -68,6 +68,7 @@ export class NavigationController extends EventEmitter {
     if (options == null) {
       options = {};
     }
+    console.log('** NAVIGATIONG LOAD URL: ', url);
     const p = new Promise<void>((resolve, reject) => {
       const resolveAndCleanup = () => {
         removeListeners();

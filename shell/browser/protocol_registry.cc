@@ -68,8 +68,10 @@ void ProtocolRegistry::RegisterURLLoaderFactories(
   if (file_factory != factories->end()) {
     // If Chromium already allows file access then replace the url factory to
     // also loading asar files.
+    LOG(INFO) << "*** NO FILE ACCESS ***";
     file_factory->second = AsarURLLoaderFactory::Create();
   } else if (allow_file_access) {
+    LOG(INFO) << "*** ALLOW FILE ACCESS ***";
     // Otherwise only allow file access when it is explicitly allowed.
     //
     // Note that Chromium may call |emplace| to create the default file factory

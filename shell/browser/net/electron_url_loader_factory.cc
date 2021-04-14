@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/guid.h"
+#include "base/logging.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
 #include "mojo/public/cpp/bindings/binding.h"
@@ -217,6 +218,7 @@ void ElectronURLLoaderFactory::StartLoading(
   //
   // Note that we should not throw JS error in the callback no matter what is
   // passed, to keep compatibility with old code.
+  LOG(INFO) << "INSIDE START LOADING...";
   v8::Local<v8::Value> response;
   if (!args->GetNext(&response)) {
     mojo::Remote<network::mojom::URLLoaderClient> client_remote(
@@ -248,6 +250,7 @@ void ElectronURLLoaderFactory::StartLoading(
   // API in WebRequestProxyingURLLoaderFactory.
   std::string location;
   if (head->headers->IsRedirect(&location)) {
+    LOG(INFO) << "*** Yo, is this a REDIRECT? ***";
     GURL new_location = GURL(location);
     net::SiteForCookies new_site_for_cookies =
         net::SiteForCookies::FromUrl(new_location);
@@ -281,6 +284,7 @@ void ElectronURLLoaderFactory::StartLoading(
     //
     // I'm not sure whether this is an intended behavior in Chromium.
     if (proxy_factory) {
+      LOG(INFO) << "INSIDE PROXY FACTORY IF BLOCK";
       proxy_factory->CreateLoaderAndStart(
           std::move(loader), routing_id, request_id, options, new_request,
           std::move(client), traffic_annotation);
@@ -303,25 +307,31 @@ void ElectronURLLoaderFactory::StartLoading(
 
   switch (type) {
     case ProtocolType::kBuffer:
+      LOG(INFO) << "BUFFER";
       StartLoadingBuffer(std::move(client), std::move(head), dict);
       break;
     case ProtocolType::kString:
+      LOG(INFO) << "STRING";
       StartLoadingString(std::move(client), std::move(head), dict,
                          args->isolate(), response);
       break;
     case ProtocolType::kFile:
+      LOG(INFO) << "FILE";
       StartLoadingFile(std::move(loader), request, std::move(client),
                        std::move(head), dict, args->isolate(), response);
       break;
     case ProtocolType::kHttp:
+      LOG(INFO) << "HTTP";
       StartLoadingHttp(std::move(loader), request, std::move(client),
                        traffic_annotation, dict);
       break;
     case ProtocolType::kStream:
+      LOG(INFO) << "STREAM";
       StartLoadingStream(std::move(loader), std::move(client), std::move(head),
                          dict);
       break;
     case ProtocolType::kFree:
+      LOG(INFO) << "FREE";
       ProtocolType type;
       if (!gin::ConvertFromV8(args->isolate(), response, &type)) {
         mojo::Remote<network::mojom::URLLoaderClient> client_remote(

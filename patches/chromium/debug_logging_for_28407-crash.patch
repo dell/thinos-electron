@@ -1,0 +1,139 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: VerteDinde <khammond@slack-corp.com>
+Date: Tue, 13 Apr 2021 21:00:32 -0700
+Subject: debug: logging for 28407-crash
+
+
+diff --git a/content/browser/child_process_security_policy_impl.cc b/content/browser/child_process_security_policy_impl.cc
+index dfa87d00c03bccdbd5b3a230bb68c557deafb11d..48aa710c69600584facce3364d591a9fd8827814 100644
+--- a/content/browser/child_process_security_policy_impl.cc
++++ b/content/browser/child_process_security_policy_impl.cc
+@@ -337,6 +337,7 @@ bool ChildProcessSecurityPolicyImpl::Handle::CanReadFileSystemFile(
+ 
+ bool ChildProcessSecurityPolicyImpl::Handle::CanAccessDataForOrigin(
+     const GURL& url) {
++  LOG(INFO) << "L340 in a Handle";
+   if (child_id_ == ChildProcessHost::kInvalidUniqueID) {
+     LogCanAccessDataForOriginCrashKeys(
+         "(unknown)", "(unknown)", url.GetOrigin().spec(), "handle_not_valid");
+@@ -349,6 +350,7 @@ bool ChildProcessSecurityPolicyImpl::Handle::CanAccessDataForOrigin(
+ 
+ bool ChildProcessSecurityPolicyImpl::Handle::CanAccessDataForOrigin(
+     const url::Origin& origin) {
++  LOG(INFO) << "L353 in a Handle";
+   if (child_id_ == ChildProcessHost::kInvalidUniqueID) {
+     LogCanAccessDataForOriginCrashKeys(
+         "(unknown)", "(unknown)", origin.GetDebugString(), "handle_not_valid");
+@@ -1557,9 +1559,11 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+     int child_id,
+     const url::Origin& origin) {
+   GURL url_to_check;
++  LOG(INFO) << "Christ, how many of these things are there? L1560";
+   if (origin.opaque()) {
+     auto precursor_tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
+     if (!precursor_tuple.IsValid()) {
++      LOG(INFO) << "precursor tuple is not valid";
+       // Allow opaque origins w/o precursors (if the security state exists).
+       // TODO(acolwell): Investigate all cases that trigger this path (e.g.,
+       // browser-initiated navigations to data: URLs) and fix them so we have
+@@ -1591,6 +1595,7 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(int child_id,
+                                                             const GURL& url) {
+   constexpr bool kUrlIsPrecursorOfOpaqueOrigin = false;
++  LOG(INFO) << "Inside first level CanAccessDataforOrigin";
+   return CanAccessDataForOrigin(child_id, url, kUrlIsPrecursorOfOpaqueOrigin);
+ }
+ 
+@@ -1598,8 +1603,10 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+     int child_id,
+     const GURL& url,
+     bool url_is_precursor_of_opaque_origin) {
++  LOG(INFO) << "Can access data for origin...!!!!!";
+   DCHECK(IsRunningOnExpectedThread());
+   base::AutoLock lock(lock_);
++  LOG(INFO) << "Can access data for origin...";
+ 
+   // TODO(wjmaclean): The following call to GetSecurityState can retrieve the
+   // wrong one if there are multiple browsing instances in one renderer process.
+@@ -1661,25 +1668,36 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+           actual_process_lock.is_coop_coep_cross_origin_isolated(),
+           actual_process_lock.coop_coep_cross_origin_isolated_origin());
+ 
++      LOG(INFO) << "expected_process_lock.lock_url(): " << expected_process_lock.lock_url();
++      LOG(INFO) << "actual_process_lock.lock_url(): " << actual_process_lock.lock_url();
++      LOG(INFO) << "actual_process_lock.is_locked_to_site(): " << actual_process_lock.is_locked_to_site();
+       if (actual_process_lock.is_locked_to_site()) {
++        LOG(INFO) << "*** INSIDE IF BLOCK ***";
+         // Jail-style enforcement - a process with a lock can only access data
+         // from origins that require exactly the same lock.
+-        if (actual_process_lock == expected_process_lock)
++        if (actual_process_lock == expected_process_lock) {
++          LOG(INFO) << "locks match";
+           return true;
++        }
+ 
+         // TODO(acolwell, nasko): https://crbug.com/1029092: Ensure the
+         // precursor of opaque origins matches the renderer's origin lock.
++        LOG(INFO) << "url_is_precursor_of_opaque_origin: " << url_is_precursor_of_opaque_origin;
+         if (url_is_precursor_of_opaque_origin) {
+           const GURL& lock_url = actual_process_lock.lock_url();
++          LOG(INFO) << "locks have opaque origin";
+           // SitePerProcessBrowserTest.TwoBlobURLsWithNullOriginDontShareProcess.
+           if (lock_url.SchemeIsBlob() &&
+               base::StartsWith(lock_url.path_piece(), "null/")) {
++            LOG(INFO) << "two blobs with null origin don't share process";
+             return true;
+           }
+ 
+           // DeclarativeApiTest.PersistRules.
+-          if (actual_process_lock.matches_scheme(url::kDataScheme))
++          if (actual_process_lock.matches_scheme(url::kDataScheme)) {
++            LOG(INFO) << "matches data scheme";
+             return true;
++          }
+         }
+ 
+         // TODO(wjmaclean): We should update the ProcessLock comparison API to
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+index 66a4bc9ac8198ea91b3705db01d85cfe172c8634..e1f20920faef3a29938c33608484d3f70e66c8d5 100644
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -4327,6 +4327,7 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactory() {
+   // https://crbug.com/1041376) of the origin that will be committed because of
+   // |this| NavigationRequest.
+   url::Origin result = GetOriginForURLLoaderFactoryUnchecked(this);
++  LOG(INFO) << "INSIDE GET ORIGIN FOR URL LOADER FACTORY (CHROMIUM)";
+ 
+   // Note that GetRenderFrameHost() only allows to retrieve the RenderFrameHost
+   // once it has been set for this navigation.  This will happens either at
+@@ -4337,11 +4338,16 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactory() {
+ 
+   // Check that |result| origin is allowed to be accessed from the process that
+   // is the target of this navigation.
+-  if (target_frame->ShouldBypassSecurityChecksForErrorPage(this))
++  if (target_frame->ShouldBypassSecurityChecksForErrorPage(this)) {
++    LOG(INFO) << "Should Bypass Security Checks";
+     return result;
++  }
+   int process_id = target_frame->GetProcess()->GetID();
+   auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
+-  CHECK(policy->CanAccessDataForOrigin(process_id, result));
++  bool policy_access = policy->CanAccessDataForOrigin(process_id, result);
++  // CHECK(policy->CanAccessDataForOrigin(process_id, result));
++  LOG(INFO) << "Policy Access: " << policy_access;
++  LOG(INFO) << "Are we making it to the end here?";
+   return result;
+ }
+ 
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index b820655013e58a55698450f703dd7230f1d1d250..b892409f07f5d4d6e54e0f38adae203ea7a1b4cb 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -5997,6 +5997,7 @@ void RenderFrameHostImpl::CommitNavigation(
+ 
+   bool is_same_document =
+       NavigationTypeUtils::IsSameDocument(common_params->navigation_type);
++  LOG(INFO) << "Commit Navigation: Is Same Document: " << is_same_document;
+   bool is_mhtml_iframe = navigation_request->IsForMhtmlSubframe();
+ 
+   // A |response| and a |url_loader_client_endpoints| must always be provided,

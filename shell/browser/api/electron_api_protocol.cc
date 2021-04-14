@@ -198,6 +198,7 @@ ProtocolError Protocol::RegisterProtocol(ProtocolType type,
 bool Protocol::UnregisterProtocol(const std::string& scheme,
                                   gin::Arguments* args) {
   bool removed = protocol_registry_->UnregisterProtocol(scheme);
+  LOG(INFO) << "*** INSIDE UNREGISTER PROTOCOL ***";
   HandleOptionalCallback(
       args, removed ? ProtocolError::OK : ProtocolError::NOT_REGISTERED);
   return removed;
@@ -217,6 +218,7 @@ ProtocolError Protocol::InterceptProtocol(ProtocolType type,
 bool Protocol::UninterceptProtocol(const std::string& scheme,
                                    gin::Arguments* args) {
   bool removed = protocol_registry_->UninterceptProtocol(scheme);
+    LOG(INFO) << "*** INSIDE UNINTERCEPT PROTOCOL ***";
   HandleOptionalCallback(
       args, removed ? ProtocolError::OK : ProtocolError::NOT_INTERCEPTED);
   return removed;

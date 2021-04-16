@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  win: circleci/windows@2.3.0
+
 parameters:
   upload-to-s3:
     type: string
@@ -14,6 +17,10 @@ parameters:
     default: true
 
   run-build-mac:
+    type: boolean
+    default: true
+
+  run-build-windows:
     type: boolean
     default: true
 
@@ -101,6 +108,12 @@ machine-mac-arm64: &machine-mac-arm64
   resource_class: electronjs/macos-arm64
   machine: true
 
+machine-windows-large: &machine-windows-large
+  executor:
+    name: win/default
+    size: large
+    shell: bash.exe
+
 # Build configurations options.
 env-testing-build: &env-testing-build
   GN_CONFIG: //electron/build/args/testing.gn
@@ -163,6 +176,10 @@ env-mas-apple-silicon: &env-mas-apple-silicon
   TARGET_ARCH: arm64
   USE_PREBUILT_V8_CONTEXT_SNAPSHOT: 1
 
+env-windows-ia32: &env-windows-ia32
+  TARGET_ARCH: ia32
+  GN_EXTRA_ARGS: 'target_cpu = "ia32"'
+
 env-send-slack-notifications: &env-send-slack-notifications
   NOTIFY_SLACK: true
   
@@ -193,6 +210,10 @@ env-mac-large-release: &env-mac-large-release
   <<: *env-global
   NUMBER_OF_NINJA_PROCESSES: 8
 
+env-windows-large: &env-windows-large
+  <<: *env-global
+  NUMBER_OF_NINJA_PROCESSES: 8
+
 env-ninja-status: &env-ninja-status
   NINJA_STATUS: "[%r processes, %f/%t @ %o/s : %es] "
 
@@ -204,6 +225,10 @@ env-32bit-release: &env-32bit-release
   GN_BUILDFLAG_ARGS: 'symbol_level = 1'
 
 env-macos-build: &env-macos-build
+  # Disable pre-compiled headers to reduce out size, only useful for rebuilds
+  GN_BUILDFLAG_ARGS: 'enable_precompiled_headers = false'
+
+env-windows-build: &env-windows-build
   # Disable pre-compiled headers to reduce out size, only useful for rebuilds
   GN_BUILDFLAG_ARGS: 'enable_precompiled_headers = false'
 
@@ -1802,6 +1827,29 @@ jobs:
       GCLIENT_EXTRA_ARGS: '--custom-var=checkout_mac=True --custom-var=host_os=mac'
     <<: *steps-checkout-and-save-cache
 
+  windows-checkout-fast:
+    <<: *machine-linux-2xlarge
+    environment:
+      <<: *env-linux-2xlarge
+      <<: *env-testing-build
+      <<: *env-windows-build
+      GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
+    steps:
+      - electron-build:
+          persist: false
+          build: false
+          checkout: true
+          persist-checkout: true
+
+  windows-checkout-and-save-cache:
+    <<: *machine-linux-2xlarge
+    environment:
+      <<: *env-linux-2xlarge
+      <<: *env-testing-build
+      <<: *env-windows-build
+      GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
+    <<: *steps-checkout-and-save-cache
+
   # Layer 2: Builds.
   linux-x64-testing:
     <<: *machine-linux-2xlarge
@@ -2280,6 +2328,37 @@ jobs:
           checkout-and-assume-cache: true
           attach: false
 
+  windows-testing-x64:
+    <<: *machine-windows-large
+    environment:
+      <<: *env-windows-large
+      <<: *env-testing-build
+      <<: *env-ninja-status
+      <<: *env-windows-build
+      GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
+    steps:
+      - electron-build:
+          persist: true
+          checkout: false
+          checkout-and-assume-cache: true
+          attach: false
+
+  windows-testing-ia32:
+    <<: *machine-windows-large
+    environment:
+      <<: *env-windows-large
+      <<: *env-testing-build
+      <<: *env-ninja-status
+      <<: *env-windows-build
+      <<: *env-windows-ia32
+      GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
+    steps:
+      - electron-build:
+          persist: true
+          checkout: false
+          checkout-and-assume-cache: true
+          attach: false
+
   # Layer 3: Tests.
   linux-x64-unittests:
     <<: *machine-linux-2xlarge
@@ -2722,6 +2801,36 @@ workflows:
               ignore: /pull\/[0-9]+/
           requires:
             - mas-testing-arm64
+
+  build-windows:
+    when: << pipeline.parameters.run-build-windows >>
+    jobs:
+      - windows-checkout-fast
+      - windows-checkout-and-save-cache
+
+      - windows-testing-x64:
+          requires:
+            - windows-checkout-and-save-cache
+
+      # - osx-testing-x64-gn-check:
+      #     requires:
+      #       - windows-checkout-fast
+
+      # - osx-testing-x64-tests:
+      #     requires:
+      #       - osx-testing-x64
+
+      - windows-testing-ia32:
+          requires:
+            - windows-checkout-and-save-cache
+
+      # - osx-testing-arm64-tests:
+      #     filters:
+      #       branches:
+      #         # Do not run this on forked pull requests
+      #         ignore: /pull\/[0-9]+/
+      #     requires:
+      #       - osx-testing-arm64
 
   nightly-linux-release-test:
     triggers:

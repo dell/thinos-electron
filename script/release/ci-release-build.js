@@ -75,7 +75,8 @@ async function circleCIcall (targetBranch, job, options) {
     parameters: {
       'run-lint': false,
       'run-build-linux': false,
-      'run-build-mac': false
+      'run-build-mac': false,
+      'run-build-windows': false
     }
   };
   if (options.ghRelease) {

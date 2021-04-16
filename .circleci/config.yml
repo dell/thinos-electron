@@ -801,7 +801,6 @@ step-setup-linux-for-headless-testing: &step-setup-linux-for-headless-testing
 
 step-show-goma-stats: &step-show-goma-stats
   run:
-    shell: /bin/bash
     name: Check goma stats after build
     command: |      
       set +e

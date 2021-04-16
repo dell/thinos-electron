@@ -111,7 +111,7 @@ machine-mac-arm64: &machine-mac-arm64
 machine-windows-large: &machine-windows-large
   executor:
     name: win/default
-    size: large
+    size: xlarge
     shell: bash.exe
 
 # Build configurations options.

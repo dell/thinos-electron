@@ -1462,9 +1462,14 @@ commands:
           name: Fix the src cache restore point on non-linux platforms
           command: |
             if [ -d "/var/portal/src" ]; then
-              echo Relocating Cache
+              echo Relocating Cache From Root
               rm -rf src
               mv /var/portal/src ./
+            fi
+            if [ -d "/c/var/portal/src" ]; then
+              echo Relocating Cache From Windows Drive
+              rm -rf src
+              mv /c/var/portal/src ./
             fi
   checkout-from-cache:
     steps:

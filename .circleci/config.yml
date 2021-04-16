@@ -267,10 +267,6 @@ step-maybe-cleanup-arm64-mac: &step-maybe-cleanup-arm64-mac
       fi
     when: always
 
-step-checkout-electron: &step-checkout-electron
-  checkout:
-    path: src/electron
-
 step-depot-tools-get: &step-depot-tools-get
   run:
     name: Get depot tools
@@ -1129,7 +1125,7 @@ step-ts-compile: &step-ts-compile
 # Lists of steps.
 steps-lint: &steps-lint
   steps:
-    - *step-checkout-electron
+    - checkout-electron
     - run:
         name: Setup third_party Depot Tools
         command: |
@@ -1178,7 +1174,7 @@ steps-lint: &steps-lint
 
 steps-checkout-and-save-cache: &steps-checkout-and-save-cache
   steps:
-    - *step-checkout-electron
+    - checkout-electron
     - *step-check-for-doc-only-change
     - *step-persist-doc-only-change
     - *step-maybe-early-exit-doc-only-change
@@ -1203,7 +1199,7 @@ steps-checkout-and-save-cache: &steps-checkout-and-save-cache
     - run:
         name: Wipe Electron
         command: rm -rf src/electron
-    - *step-checkout-electron
+    - checkout-electron
     - *step-run-electron-only-hooks
     - *step-generate-deps-hash-cleanly
     - *step-mark-sync-done
@@ -1228,7 +1224,7 @@ steps-electron-gn-check: &steps-electron-gn-check
 steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-change
   steps:
     # Checkout - Copied ffrom steps-checkout
-    - *step-checkout-electron
+    - checkout-electron
     - *step-check-for-doc-only-change
     - *step-maybe-early-exit-no-doc-change
     - *step-depot-tools-get
@@ -1247,7 +1243,7 @@ steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-cha
     - run:
         name: Wipe Electron
         command: rm -rf src/electron
-    - *step-checkout-electron
+    - checkout-electron
     - *step-run-electron-only-hooks
     - *step-generate-deps-hash-cleanly
     - *step-mark-sync-done
@@ -1412,6 +1408,22 @@ chromium-upgrade-branches: &chromium-upgrade-branches
 
 # Command Aliases
 commands:
+  checkout-electron:
+    steps:
+      - run:
+          name: Set Global Git Config
+          command: |
+            unameOut="$(uname -s)"
+            case "${unameOut}" in
+              MSYS_NT*) isWindows=1;;
+              *)        isWindows=0
+            esac
+            if [ "${isWindows}" == "1" ]; then
+              git config --global core.autocrlf false
+              git config --global core.filemode false
+            fi
+      - checkout:
+          path: src/electron
   prepare-cross-os-sync-restore:
     steps:
       - run:
@@ -1457,7 +1469,7 @@ commands:
             fi
   checkout-from-cache:
     steps:
-      - *step-checkout-electron
+      - checkout-electron
       - *step-maybe-early-exit-doc-only-change
       - *step-depot-tools-get
       - *step-depot-tools-add-to-path
@@ -1473,7 +1485,7 @@ commands:
       - run:
           name: Wipe Electron
           command: rm -rf src/electron
-      - *step-checkout-electron
+      - checkout-electron
       - *step-run-electron-only-hooks
       - *step-generate-deps-hash-cleanly
   electron-build:
@@ -1522,7 +1534,7 @@ commands:
           condition: << parameters.checkout >>
           steps:
             # Checkout - Copied ffrom steps-checkout
-            - *step-checkout-electron
+            - checkout-electron
             - *step-check-for-doc-only-change
             - *step-persist-doc-only-change
             - *step-maybe-early-exit-doc-only-change
@@ -1545,7 +1557,7 @@ commands:
             - run:
                 name: Wipe Electron
                 command: rm -rf src/electron
-            - *step-checkout-electron
+            - checkout-electron
             - *step-run-electron-only-hooks
             - *step-generate-deps-hash-cleanly
             - *step-mark-sync-done
@@ -1677,7 +1689,7 @@ commands:
       - when:
           condition: << parameters.checkout >>
           steps:
-            - *step-checkout-electron
+            - checkout-electron
             - *step-gclient-sync
             - *step-delete-git-directories
             - *step-minimize-workspace-size-from-checkout

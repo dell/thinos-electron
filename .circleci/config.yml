@@ -1209,12 +1209,7 @@ steps-checkout-and-save-cache: &steps-checkout-and-save-cache
     - *step-mark-sync-done
     - *step-minimize-workspace-size-from-checkout
     - *step-delete-git-directories
-    - run:
-        name: Move src folder to the cross-OS portal
-        command: |
-          sudo mkdir -p /var/portal
-          sudo chown -R $(id -u):$(id -g) /var/portal
-          mv ./src /var/portal
+    - prepare-cross-os-sync-restore
     - *step-save-src-cache
     - *step-make-src-cache-marker
     - *step-save-src-cache-marker
@@ -1417,17 +1412,30 @@ chromium-upgrade-branches: &chromium-upgrade-branches
 
 # Command Aliases
 commands:
+  prepare-cross-os-sync-restore:
+    steps:
+      - run:
+          name: Prepare for cross-OS sync restore
+          command: |
+            unameOut="$(uname -s)"
+            case "${unameOut}" in
+              MSYS_NT*) useSudo=0;;
+              *)        useSudo=1
+            esac
+            if [ "${useSudo}" == "1" ]; then
+              sudo mkdir -p /var/portal
+              sudo chown -R $(id -u):$(id -g) /var/portal
+            else
+              mkdir -p /var/portal
+              chown -R $(id -u):$(id -g) /var/portal
+            fi
   maybe-restore-portaled-src-cache:
     parameters:
       halt-if-successful:
         type: boolean
         default: false
     steps:
-      - run:
-          name: Prepare for cross-OS sync restore
-          command: |
-            sudo mkdir -p /var/portal
-            sudo chown -R $(id -u):$(id -g) /var/portal
+      - prepare-cross-os-sync-restore
       - when:
           condition: << parameters.halt-if-successful >>
           steps:

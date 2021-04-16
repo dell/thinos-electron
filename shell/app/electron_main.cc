@@ -22,11 +22,13 @@
 #include "base/environment.h"
 #include "base/process/launch.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/win/win_util.h"
 #include "base/win/windows_version.h"
 #include "components/browser_watcher/exit_code_watcher_win.h"
 #include "components/crash/core/app/crash_switches.h"
 #include "components/crash/core/app/run_as_crashpad_handler_win.h"
 #include "content/public/app/sandbox_helper_win.h"
+#include "content/public/common/content_switches.h"
 #include "sandbox/win/src/sandbox_types.h"
 #include "shell/app/command_line_args.h"
 #include "shell/app/electron_main_delegate.h"
@@ -200,6 +202,10 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, wchar_t* cmd, int) {
 
   if (!electron::CheckCommandLineArguments(arguments.argc, arguments.argv))
     return -1;
+
+  // Only enable High DPI support for browser and GPU process.
+  if (process_type.empty() || process_type == switches::kGpuProcess)
+    base::win::EnableHighDPISupport();
 
   sandbox::SandboxInterfaceInfo sandbox_info = {0};
   content::InitializeSandboxInfo(&sandbox_info);

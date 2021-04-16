@@ -1116,6 +1116,7 @@ if (is_mac) {
       ":packed_resources",
       "//components/crash/core/app",
       "//content:sandbox_helper_win",
+      "//content/public/common",
       "//electron/buildflags",
       "//ui/strings",
     ]

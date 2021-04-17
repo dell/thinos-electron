@@ -504,7 +504,7 @@ step-fix-cross-sync: &step-fix-cross-sync
         python src/tools/clang/scripts/update.py
         # On windows, fix it all up
         if [ "`uname`" != "Darwin" ]; then
-          python src/build/vs_toolchain.py update --force
+          ./depot_tools/bootstrap-3_8_0_chromium_8_bin/python/bin/python.exe src/build/vs_toolchain.py update --force
         fi
       fi
 

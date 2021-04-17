@@ -350,8 +350,8 @@ step-setup-goma-for-build: &step-setup-goma-for-build
       mkdir third_party
       node -e "require('./src/utils/goma.js').downloadAndPrepare({ gomaOneForAll: true })"
       third_party/goma/goma_ctl.py ensure_start
-      echo 'export GN_GOMA_FILE='`node -e "console.log(require('./src/utils/goma.js').gnFilePath)"` >> $BASH_ENV
-      echo 'export LOCAL_GOMA_DIR='`node -e "console.log(require('./src/utils/goma.js').dir)"` >> $BASH_ENV
+      echo 'export GN_GOMA_FILE='`node -p "JSON.stringify(require('./src/utils/goma.js').gnFilePath)"` >> $BASH_ENV
+      echo 'export LOCAL_GOMA_DIR='`node -p "JSON.stringify(require('./src/utils/goma.js').dir)"` >> $BASH_ENV
       echo 'export GOMA_FALLBACK_ON_AUTH_FAILURE=true' >> $BASH_ENV
       cd ..
 

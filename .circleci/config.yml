@@ -1030,8 +1030,8 @@ step-save-out-cache: &step-save-out-cache
     name: Persisting out cache
 
 step-run-electron-only-hooks: &step-run-electron-only-hooks
-  run:
-    name: Run Electron Only Hooks
+  run-one-liner-maybe-through-cmd:
+    run-name: Run Electron Only Hooks
     command: gclient runhooks --spec="solutions=[{'name':'src/electron','url':None,'deps_file':'DEPS','custom_vars':{'process_deps':False},'managed':False}]"
 
 step-generate-deps-hash-cleanly: &step-generate-deps-hash-cleanly
@@ -1407,6 +1407,26 @@ chromium-upgrade-branches: &chromium-upgrade-branches
 
 # Command Aliases
 commands:
+  run-one-liner-maybe-through-cmd:
+    parameters:
+      run-name:
+        type: string
+      command:
+        type: string
+    steps:
+      - run:
+          name: << parameters.run-name >>
+          command: |
+            unameOut="$(uname -s)"
+            case "${unameOut}" in
+              MSYS_NT*) isWindows=1;;
+              *)        isWindows=0
+            esac
+            if [ "${isWindows}" == "1" ]; then
+              cmd.exe /c << parameters.command >>
+            else
+              << parameters.command >>
+            fi
   checkout-electron:
     steps:
       - run:

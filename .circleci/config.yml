@@ -291,7 +291,7 @@ step-depot-tools-bootstrap: &step-depot-tools-bootstrap
     name: Bootstrap depot_tools
     command: |
       if [ -d "depot_tools" ]; then
-        (cd depot_tools && source ./bootstrap_python3 && bootstrap_python3)
+        (cd depot_tools && source ./bootstrap_python3 && bootstrap_python3 && cd ..)
       fi
 
 step-gclient-sync: &step-gclient-sync

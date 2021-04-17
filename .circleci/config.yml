@@ -465,15 +465,15 @@ step-delete-git-directories: &step-delete-git-directories
         ( find . -type d -name ".git" -not -path "./third_party/angle/*" ) | xargs rm -rf
       fi
 
-# On macOS the yarn install command during gclient sync was run on a linux
+# On macOS/Windows the yarn install command during gclient sync was run on a linux
 # machine and therefore installed a slightly different set of dependencies
 # Notably "fsevents" is a macOS only dependency, we rerun yarn install once
 # we are on a macOS machine to get the correct state
-step-install-npm-deps-on-mac: &step-install-npm-deps-on-mac
+step-install-npm-deps-if-needed: &step-install-npm-deps-if-needed
   run:
-    name: Install node_modules on MacOS
+    name: Install node_modules on non-linux platforms that used cross-sync
     command: |
-      if [ "`uname`" == "Darwin" ]; then
+      if [ "`uname`" != "Linux" ]; then
         cd src/electron
         node script/yarn install
       fi
@@ -1255,7 +1255,7 @@ steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-cha
     - *step-setup-env-for-build
     - *step-setup-goma-for-build
     - *step-get-more-space-on-mac
-    - *step-install-npm-deps-on-mac
+    - *step-install-npm-deps-if-needed
     - *step-fix-sync-on-mac
     - *step-gn-gen-default
 

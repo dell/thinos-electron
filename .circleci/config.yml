@@ -272,7 +272,6 @@ step-depot-tools-get: &step-depot-tools-get
     name: Get depot tools
     command: |
       git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
-      (cd depot_tools && source ./bootstrap_python3 && bootstrap_python3)
 
 step-depot-tools-add-to-path: &step-depot-tools-add-to-path
   run:
@@ -280,6 +279,12 @@ step-depot-tools-add-to-path: &step-depot-tools-add-to-path
     command: |
       echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
       echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python-bin"' >> $BASH_ENV
+
+step-depot-tools-bootstrap: &step-depot-tools-bootstrap
+  run:
+    name: Bootstrap depot_tools
+    command: |
+      (cd depot_tools && source ./bootstrap_python3 && bootstrap_python3)
 
 step-gclient-sync: &step-gclient-sync
   run:
@@ -1183,6 +1188,7 @@ steps-checkout-and-save-cache: &steps-checkout-and-save-cache
     - *step-maybe-early-exit-doc-only-change
     - *step-depot-tools-get
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-restore-brew-cache
     - *step-get-more-space-on-mac
     - *step-install-gnutar-on-mac
@@ -1219,6 +1225,7 @@ steps-electron-gn-check: &steps-electron-gn-check
         at: .
     - *step-maybe-early-exit-doc-only-change
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-setup-env-for-build
     - *step-setup-goma-for-build
     - *step-gn-gen-default
@@ -1232,6 +1239,7 @@ steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-cha
     - *step-maybe-early-exit-no-doc-change
     - *step-depot-tools-get
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-restore-brew-cache
     - *step-install-gnutar-on-mac
     - *step-get-more-space-on-mac
@@ -1253,6 +1261,7 @@ steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-cha
     - *step-minimize-workspace-size-from-checkout
 
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-setup-env-for-build
     - *step-setup-goma-for-build
     - *step-get-more-space-on-mac
@@ -1268,6 +1277,7 @@ steps-native-tests: &steps-native-tests
     - attach_workspace:
         at: .
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-setup-env-for-build
     - *step-setup-goma-for-build
     - *step-gn-gen-default
@@ -1301,6 +1311,7 @@ steps-verify-ffmpeg: &steps-verify-ffmpeg
     - attach_workspace:
         at: .
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-electron-dist-unzip
     - *step-ffmpeg-unzip
     - *step-setup-linux-for-headless-testing
@@ -1314,6 +1325,7 @@ steps-tests: &steps-tests
         at: .
     - *step-maybe-early-exit-doc-only-change
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-electron-dist-unzip
     - *step-mksnapshot-unzip
     - *step-chromedriver-unzip
@@ -1380,6 +1392,7 @@ steps-test-nan: &steps-test-nan
           at: .
     - *step-maybe-early-exit-doc-only-change
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-electron-dist-unzip
     - *step-setup-linux-for-headless-testing
     - *step-fix-known-hosts-linux
@@ -1395,6 +1408,7 @@ steps-test-node: &steps-test-node
           at: .
     - *step-maybe-early-exit-doc-only-change
     - *step-depot-tools-add-to-path
+    - *step-depot-tools-bootstrap
     - *step-electron-dist-unzip
     - *step-setup-linux-for-headless-testing
     - *step-fix-known-hosts-linux
@@ -1501,6 +1515,7 @@ commands:
       - *step-maybe-early-exit-doc-only-change
       - *step-depot-tools-get
       - *step-depot-tools-add-to-path
+      - *step-depot-tools-bootstrap
       - *step-generate-deps-hash
       - maybe-restore-portaled-src-cache
       - run:
@@ -1568,6 +1583,7 @@ commands:
             - *step-maybe-early-exit-doc-only-change
             - *step-depot-tools-get
             - *step-depot-tools-add-to-path
+            - *step-depot-tools-bootstrap
             - *step-get-more-space-on-mac
             - *step-generate-deps-hash
             - *step-touch-sync-done
@@ -1603,6 +1619,7 @@ commands:
           condition: << parameters.build >>
           steps:
             - *step-depot-tools-add-to-path
+            - *step-depot-tools-bootstrap
             - *step-setup-env-for-build
             - *step-setup-goma-for-build
             - *step-get-more-space-on-mac
@@ -1712,6 +1729,7 @@ commands:
           steps:
             - *step-depot-tools-get
       - *step-depot-tools-add-to-path
+      - *step-depot-tools-bootstrap
       - *step-restore-brew-cache
       - *step-get-more-space-on-mac
       - when:

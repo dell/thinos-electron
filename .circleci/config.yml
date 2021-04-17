@@ -272,6 +272,7 @@ step-depot-tools-get: &step-depot-tools-get
     name: Get depot tools
     command: |
       git clone --depth=1 https://chromium.googlesource.com/chromium/tools/depot_tools.git
+      (cd depot_tools && source ./bootstrap_python3 && bootstrap_python3)
 
 step-depot-tools-add-to-path: &step-depot-tools-add-to-path
   run:

@@ -482,9 +482,9 @@ step-install-npm-deps-on-mac: &step-install-npm-deps-on-mac
 # and the expected state on macOS
 step-fix-sync-on-mac: &step-fix-sync-on-mac
   run:
-    name: Fix Sync on macOS
+    name: Fix Sync on non-linux platforms that used cross-sync
     command: |
-      if [ "`uname`" == "Darwin" ]; then
+      if [ "`uname`" != "Linux" ]; then
         # Fix Clang Install (wrong binary)
         rm -rf src/third_party/llvm-build
         python src/tools/clang/scripts/update.py

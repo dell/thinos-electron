@@ -231,6 +231,12 @@ env-macos-build: &env-macos-build
 env-windows-build: &env-windows-build
   # Disable pre-compiled headers to reduce out size, only useful for rebuilds
   GN_BUILDFLAG_ARGS: 'enable_precompiled_headers = false'
+  # These should be dynamically pulled from build-tools instead of hard-coded in two places
+  DEPOT_TOOLS_WIN_TOOLCHAIN: 1
+  DEPOT_TOOLS_WIN_TOOLCHAIN_BASE_URL: https://electron-build-tools.s3-us-west-2.amazonaws.com/win32/toolchains/_
+  GYP_MSVS_HASH_9ff60e43ba91947baca460d0ca3b1b980c3a2c23: 6d205e765a23d3cbe0fcc8d1191ae406d8bf9c04
+  GYP_MSVS_HASH_a687d8e2e4114d9015eb550e1b156af21381faac: b1bdbc45421e4e0ff0584c4dbe583e93b046a411
+  GYP_MSVS_HASH_20d5f2553f: e146e01913
 
 # Individual (shared) steps.
 step-maybe-notify-slack-failure: &step-maybe-notify-slack-failure
@@ -486,7 +492,7 @@ step-install-npm-deps-if-needed: &step-install-npm-deps-if-needed
 
 # This step handles the differences between the linux "gclient sync"
 # and the expected state on macOS
-step-fix-sync-on-mac: &step-fix-sync-on-mac
+step-fix-cross-sync: &step-fix-cross-sync
   run:
     name: Fix Sync on non-linux platforms that used cross-sync
     command: |
@@ -494,6 +500,10 @@ step-fix-sync-on-mac: &step-fix-sync-on-mac
         # Fix Clang Install (wrong binary)
         rm -rf src/third_party/llvm-build
         python src/tools/clang/scripts/update.py
+        # On windows, fix it all up
+        if [ "`uname`" != "Darwin" ]; then
+          python src/build/vs_toolchain.py update --force
+        fi
       fi
 
 step-install-signing-cert-on-mac: &step-install-signing-cert-on-mac
@@ -1266,7 +1276,7 @@ steps-electron-ts-compile-for-doc-change: &steps-electron-ts-compile-for-doc-cha
     - *step-setup-goma-for-build
     - *step-get-more-space-on-mac
     - *step-install-npm-deps-if-needed
-    - *step-fix-sync-on-mac
+    - *step-fix-cross-sync
     - *step-gn-gen-default
 
     #Compile ts/js to verify doc change didn't break anything
@@ -1623,7 +1633,7 @@ commands:
             - *step-setup-env-for-build
             - *step-setup-goma-for-build
             - *step-get-more-space-on-mac
-            - *step-fix-sync-on-mac
+            - *step-fix-cross-sync
             - *step-delete-git-directories
 
             # Electron app
@@ -1739,7 +1749,7 @@ commands:
             - *step-gclient-sync
             - *step-delete-git-directories
             - *step-minimize-workspace-size-from-checkout
-      - *step-fix-sync-on-mac
+      - *step-fix-cross-sync
       - *step-setup-env-for-build
       - *step-setup-goma-for-build
       - *step-gn-gen-default

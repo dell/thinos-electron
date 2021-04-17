@@ -276,7 +276,9 @@ step-depot-tools-get: &step-depot-tools-get
 step-depot-tools-add-to-path: &step-depot-tools-add-to-path
   run:
     name: Add depot tools to PATH
-    command: echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
+    command: |
+      echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
+      echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python-bin"' >> $BASH_ENV
 
 step-gclient-sync: &step-gclient-sync
   run:
@@ -1131,6 +1133,7 @@ steps-lint: &steps-lint
           # "depot_tools" has to be checkout into "//third_party/depot_tools" so pylint.py can a "pylintrc" file.
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git src/third_party/depot_tools
           echo 'export PATH="$PATH:'"$PWD"'/src/third_party/depot_tools"' >> $BASH_ENV
+          echo 'export PATH="$PATH:'"$PWD"'/src/third_party/depot_tools/python-bin"' >> $BASH_ENV
     - run:
         name: Download GN Binary
         command: |

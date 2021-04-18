@@ -9,7 +9,7 @@ channel messaging.
 
 ## Class: MessageChannelMain
 
-Process: [Main](../glossary.md#main-process)
+Exported in: [Main](../glossary.md#main-process)
 
 Example:
 

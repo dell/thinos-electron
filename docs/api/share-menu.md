@@ -2,7 +2,7 @@
 
 > Create share menu on macOS.
 
-Process: [Main](../glossary.md#main-process)
+Exported in: [Main](../glossary.md#main-process)
 
 The `ShareMenu` class creates [Share Menu][share-menu] on macOS, which can be
 used to share information from the current context to apps, social media

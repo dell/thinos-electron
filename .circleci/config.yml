@@ -1014,7 +1014,7 @@ step-maybe-restore-src-cache: &step-maybe-restore-src-cache
 step-maybe-restore-src-cache-marker: &step-maybe-restore-src-cache-marker
   restore_cache:
     keys:
-      - v1-src-cache-marker-{{ checksum "src/electron/.depshash" }}
+      - v9-src-cache-marker-{{ checksum "src/electron/.depshash" }}
     name: Restoring src cache marker
 
 # Restore exact or closest git cache based on the hash of DEPS and .circle-sync-done
@@ -1106,7 +1106,7 @@ step-save-src-cache-marker: &step-save-src-cache-marker
   save_cache:
     paths:
       - .src-cache-marker
-    key: v1-src-cache-marker-{{ checksum "/var/portal/src/electron/.depshash" }}
+    key: v9-src-cache-marker-{{ checksum "/var/portal/src/electron/.depshash" }}
 
 # Check for doc only change
 step-check-for-doc-only-change: &step-check-for-doc-only-change

@@ -1243,6 +1243,10 @@ steps-checkout-and-save-cache: &steps-checkout-and-save-cache
     - *step-delete-git-directories
     - *step-fix-angle-git
     - prepare-cross-os-sync-restore
+    - run:
+        name: Move src folder to the cross-OS portal
+        command: |
+          mv ./src /var/portal
     - *step-save-src-cache
     - *step-make-src-cache-marker
     - *step-save-src-cache-marker

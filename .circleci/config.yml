@@ -232,6 +232,8 @@ env-macos-build: &env-macos-build
 env-windows-build: &env-windows-build
   # Disable pre-compiled headers to reduce out size, only useful for rebuilds
   GN_BUILDFLAG_ARGS: 'enable_precompiled_headers = false'
+
+env-windows-toolchain: &env-windows-toolchain
   # These should be dynamically pulled from build-tools instead of hard-coded in two places
   DEPOT_TOOLS_WIN_TOOLCHAIN: 1
   DEPOT_TOOLS_WIN_TOOLCHAIN_BASE_URL: https://electron-build-tools.s3-us-west-2.amazonaws.com/win32/toolchains/_
@@ -2428,6 +2430,7 @@ jobs:
       <<: *env-testing-build
       <<: *env-ninja-status
       <<: *env-windows-build
+      <<: *env-windows-toolchain
       GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
     steps:
       - electron-build:
@@ -2443,6 +2446,7 @@ jobs:
       <<: *env-testing-build
       <<: *env-ninja-status
       <<: *env-windows-build
+      <<: *env-windows-toolchain
       <<: *env-windows-ia32
       GCLIENT_EXTRA_ARGS: '--custom-var=checkout_win=True --custom-var=host_os=win'
     steps:

@@ -474,12 +474,22 @@ step-get-more-space-on-mac: &step-get-more-space-on-mac
 # TODO: maybe better to always leave out */.git/HEAD file for all targets ?
 step-delete-git-directories: &step-delete-git-directories
   run:
-    name: Delete all .git directories under src on MacOS to free space
+    name: Delete all .git directories under src to make the src cache smaller
     command: |
-      if [ "`uname`" == "Darwin" ]; then
-        cd src
-        ( find . -type d -name ".git" -not -path "./third_party/angle/*" ) | xargs rm -rf
-      fi
+      cd src
+      ( find . -type d -name ".git" -not -path "./third_party/angle/*" ) | xargs rm -rf
+
+# Restoring incomplete git directories has issues with the angle position
+# script. We can calcualate the version before saving the src cache
+# and hard-code it into the generation script
+step-fix-angle-git: &step-fix-angle-git
+  run:
+    name: Fix angle git for cross-os restore
+    command: |
+      cd src/third_party/angle
+      position=$(git rev-list HEAD --count)
+      echo Forcing ANGLE_POSITION to be $position
+      sed -i 's/return grab_output/return '$position' #/g' src/commit_id.py
 
 # On macOS/Windows the yarn install command during gclient sync was run on a linux
 # machine and therefore installed a slightly different set of dependencies
@@ -999,7 +1009,7 @@ step-touch-sync-done: &step-touch-sync-done
 step-maybe-restore-src-cache: &step-maybe-restore-src-cache
   restore_cache:
     keys:
-      - v8-src-cache-{{ checksum "src/electron/.depshash" }}
+      - v9-src-cache-{{ checksum "src/electron/.depshash" }}
     name: Restoring src cache
 step-maybe-restore-src-cache-marker: &step-maybe-restore-src-cache-marker
   restore_cache:
@@ -1024,7 +1034,7 @@ step-restore-out-cache: &step-restore-out-cache
     paths:
       - ./src/out/Default
     keys:
-      - v9-out-cache-{{ checksum "src/electron/.depshash" }}-{{ checksum "src/electron/.depshash-target" }}
+      - tmp9-out-cache-{{ checksum "src/electron/.depshash" }}-{{ checksum "src/electron/.depshash-target" }}
     name: Restoring out cache
 
 step-set-git-cache-path: &step-set-git-cache-path
@@ -1048,7 +1058,7 @@ step-save-out-cache: &step-save-out-cache
   save_cache:
     paths:
       - ./src/out/Default
-    key: v9-out-cache-{{ checksum "src/electron/.depshash" }}-{{ checksum "src/electron/.depshash-target" }}
+    key: tmp9-out-cache-{{ checksum "src/electron/.depshash" }}-{{ checksum "src/electron/.depshash-target" }}
     name: Persisting out cache
 
 step-run-electron-only-hooks: &step-run-electron-only-hooks
@@ -1086,7 +1096,7 @@ step-save-src-cache: &step-save-src-cache
   save_cache:
     paths:
       - /var/portal
-    key: v8-src-cache-{{ checksum "/var/portal/src/electron/.depshash" }}
+    key: v9-src-cache-{{ checksum "/var/portal/src/electron/.depshash" }}
     name: Persisting src cache
 step-make-src-cache-marker: &step-make-src-cache-marker
   run:
@@ -1229,6 +1239,7 @@ steps-checkout-and-save-cache: &steps-checkout-and-save-cache
     - *step-mark-sync-done
     - *step-minimize-workspace-size-from-checkout
     - *step-delete-git-directories
+    - *step-fix-angle-git
     - prepare-cross-os-sync-restore
     - *step-save-src-cache
     - *step-make-src-cache-marker
@@ -1709,7 +1720,8 @@ commands:
                   if [ "`uname`" == "Darwin" ]; then
                     mkdir -p src/out/Default
                     cd src/out/Default
-                    find . -type f -size +50M -delete
+                    # TODO: Re-enable
+                    # find . -type f -size +50M -delete
                     mkdir -p gen/electron
                     cd gen/electron
                     # These files do not seem to like being in a cache, let us remove them

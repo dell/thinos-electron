@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  win: circleci/windows@2.3.0
+  win: circleci/windows@2.4.0
 
 parameters:
   upload-to-s3:
@@ -178,7 +178,8 @@ env-mas-apple-silicon: &env-mas-apple-silicon
 
 env-windows-ia32: &env-windows-ia32
   TARGET_ARCH: ia32
-  GN_EXTRA_ARGS: 'target_cpu = "ia32"'
+  NPM_CONFIG_ARCH: x86
+  GN_EXTRA_ARGS: 'target_cpu = "x86"'
 
 env-send-slack-notifications: &env-send-slack-notifications
   NOTIFY_SLACK: true

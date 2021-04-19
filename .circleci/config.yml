@@ -285,6 +285,7 @@ step-depot-tools-add-to-path: &step-depot-tools-add-to-path
     command: |
       echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
       echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python-bin"' >> $BASH_ENV
+      echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python2-bin"' >> $BASH_ENV
 
 step-depot-tools-bootstrap: &step-depot-tools-bootstrap
   run:
@@ -504,7 +505,7 @@ step-fix-cross-sync: &step-fix-cross-sync
         python src/tools/clang/scripts/update.py
         # On windows, fix it all up
         if [ "`uname`" != "Darwin" ]; then
-          ./depot_tools/bootstrap-3_8_0_chromium_8_bin/python/bin/python.exe src/build/vs_toolchain.py update --force
+          python2 src/build/vs_toolchain.py update --force
         fi
       fi
 
@@ -1152,6 +1153,7 @@ steps-lint: &steps-lint
           git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git src/third_party/depot_tools
           echo 'export PATH="$PATH:'"$PWD"'/src/third_party/depot_tools"' >> $BASH_ENV
           echo 'export PATH="$PATH:'"$PWD"'/src/third_party/depot_tools/python-bin"' >> $BASH_ENV
+          echo 'export PATH="$PATH:'"$PWD"'/src/third_party/depot_tools/python2-bin"' >> $BASH_ENV
     - run:
         name: Download GN Binary
         command: |

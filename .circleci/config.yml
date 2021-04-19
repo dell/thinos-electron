@@ -1455,7 +1455,7 @@ commands:
               *)        isWindows=0
             esac
             if [ "${isWindows}" == "1" ]; then
-              node -e 'const cp=require("child_process"),cmd=process.argv[1],args=process.argv.slice(2),result=cp.spawnSync(`${cmd}.bat`,args,{stdio:"inherit"});result.signal&&(console.error("Subprocess died with signal:",result.signal),process.exit(1)),process.exit(result.status);' << parameters.command >>
+              node src/electron/script/run-via-cmd.js << parameters.command >>
             else
               << parameters.command >>
             fi

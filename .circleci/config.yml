@@ -290,8 +290,8 @@ step-depot-tools-add-to-path: &step-depot-tools-add-to-path
       if [ "`uname|cut -c 1-7`" == "MSYS_NT" ]; then
         echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python-bin"' >> $BASH_ENV
         echo 'export PATH="'"$PWD"'/depot_tools/python2-bin:$PATH"' >> $BASH_ENV
-        mv ./depot_tools/python2-bin/python2 ./depot_tools/python2-bin/python
-        mv ./depot_tools/python2-bin/python2.bat ./depot_tools/python2-bin/python.bat
+        cp ./depot_tools/python2-bin/python2 ./depot_tools/python2-bin/python
+        cp ./depot_tools/python2-bin/python2.bat ./depot_tools/python2-bin/python.bat
       fi
 
 step-depot-tools-bootstrap: &step-depot-tools-bootstrap

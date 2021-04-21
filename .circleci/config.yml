@@ -288,10 +288,10 @@ step-depot-tools-add-to-path: &step-depot-tools-add-to-path
     command: |
       echo 'export PATH="$PATH:'"$PWD"'/depot_tools"' >> $BASH_ENV
       if [ "`uname|cut -c 1-7`" == "MSYS_NT" ]; then
+        # Delete the weird python3 installation
+        rm -rf /c/tools/miniconda3
         echo 'export PATH="$PATH:'"$PWD"'/depot_tools/python-bin"' >> $BASH_ENV
-        echo 'export PATH="'"$PWD"'/depot_tools/python2-bin:$PATH"' >> $BASH_ENV
-        cp ./depot_tools/python2-bin/python2 ./depot_tools/python2-bin/python
-        cp ./depot_tools/python2-bin/python2.bat ./depot_tools/python2-bin/python.bat
+        choco install pywin32 --yes --force
       fi
 
 step-depot-tools-bootstrap: &step-depot-tools-bootstrap

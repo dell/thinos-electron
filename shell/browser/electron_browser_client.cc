@@ -207,6 +207,7 @@ content::SiteInfo GetSiteForURL(content::BrowserContext* browser_context,
 bool IsSameWebSite(content::BrowserContext* browser_context,
                    content::SiteInstance* site_instance,
                    const GURL& dest_url) {
+  LOG(INFO) << "Within IsSameSite";
   return site_instance->IsSameSiteWithURL(dest_url) ||
          // `IsSameSiteWithURL` doesn't seem to work for some URIs such as
          // `file:`, handle these scenarios by comparing only the site as
@@ -400,6 +401,7 @@ bool ElectronBrowserClient::ShouldForceNewSiteInstance(
     content::BrowserContext* browser_context,
     const GURL& url,
     bool has_response_started) const {
+  LOG(INFO) << "ShouldForceNewSiteInstance";
   if (url.SchemeIs(url::kJavaScriptScheme))
     // "javascript:" scheme should always use same SiteInstance
     return false;
@@ -445,6 +447,7 @@ bool ElectronBrowserClient::NavigationWasRedirectedCrossSite(
     content::SiteInstance* speculative_instance,
     const GURL& dest_url,
     bool has_response_started) const {
+  LOG(INFO) << "*** Navigation was redirected... ***";
   bool navigation_was_redirected = false;
   if (has_response_started) {
     navigation_was_redirected =
@@ -505,6 +508,7 @@ content::SiteInstance* ElectronBrowserClient::GetSiteInstanceFromAffinity(
     content::BrowserContext* browser_context,
     const GURL& url,
     content::RenderFrameHost* rfh) const {
+  LOG(INFO) << "GetSiteInstanceFromAffinity";
   std::string affinity = GetAffinityPreference(rfh);
   if (!affinity.empty()) {
     auto iter = site_per_affinities_.find(affinity);

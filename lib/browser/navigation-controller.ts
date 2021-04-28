@@ -50,6 +50,7 @@ export class NavigationController extends EventEmitter {
     if (options == null) {
       options = {};
     }
+    console.log('Inside Navigation Controller loadURL: ', url, ' Options: ', options);
     const p = new Promise<void>((resolve, reject) => {
       const resolveAndCleanup = () => {
         removeListeners();

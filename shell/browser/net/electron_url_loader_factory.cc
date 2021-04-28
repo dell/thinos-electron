@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/guid.h"
+#include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
@@ -235,6 +236,7 @@ void ElectronURLLoaderFactory::StartLoading(
   //
   // Note that we should not throw JS error in the callback no matter what is
   // passed, to keep compatibility with old code.
+  LOG(INFO) << "INSIDE START LOADING...";
   v8::Local<v8::Value> response;
   if (!args->GetNext(&response)) {
     OnComplete(std::move(client), request_id,
@@ -263,6 +265,7 @@ void ElectronURLLoaderFactory::StartLoading(
   // API in WebRequestProxyingURLLoaderFactory.
   std::string location;
   if (head->headers->IsRedirect(&location)) {
+    LOG(INFO) << "Is this a redirect?";
     // If the request is a MAIN_FRAME request, the first-party URL gets
     // updated on redirects.
     const net::RedirectInfo::FirstPartyURLPolicy first_party_url_policy =
@@ -308,6 +311,7 @@ void ElectronURLLoaderFactory::StartLoading(
     //
     // I'm not sure whether this is an intended behavior in Chromium.
     if (proxy_factory.is_valid()) {
+      LOG(INFO) << "Inside Valid Proxy Factory Block...";
       mojo::Remote<network::mojom::URLLoaderFactory> proxy_factory_remote(
           std::move(proxy_factory));
 
@@ -334,14 +338,17 @@ void ElectronURLLoaderFactory::StartLoading(
       StartLoadingBuffer(std::move(client), std::move(head), dict);
       break;
     case ProtocolType::kString:
+      LOG(INFO) << "STRING";
       StartLoadingString(std::move(client), std::move(head), dict,
                          args->isolate(), response);
       break;
     case ProtocolType::kFile:
+      LOG(INFO) << "FILE";
       StartLoadingFile(std::move(loader), request, std::move(client),
                        std::move(head), dict, args->isolate(), response);
       break;
     case ProtocolType::kHttp:
+      LOG(INFO) << "HTTP";
       StartLoadingHttp(std::move(loader), request, std::move(client),
                        traffic_annotation, dict);
       break;
@@ -393,9 +400,11 @@ void ElectronURLLoaderFactory::StartLoadingString(
   std::string contents;
   if (response->IsString()) {
     contents = gin::V8ToString(isolate, response);
+    LOG(INFO) << "Starting Loading String (Response IsString): " << contents;
   } else if (!dict.IsEmpty()) {
     dict.Get("data", &contents);
   } else {
+    LOG(INFO) << "Starting Loading String: Response Failed";
     mojo::Remote<network::mojom::URLLoaderClient> client_remote(
         std::move(client));
     client_remote->OnComplete(
@@ -418,12 +427,15 @@ void ElectronURLLoaderFactory::StartLoadingFile(
   base::FilePath path;
   if (gin::ConvertFromV8(isolate, response, &path)) {
     request.url = net::FilePathToFileURL(path);
+    LOG(INFO) << "Starting Loading File (Convert from V8): URL: " << request.url;
   } else if (!dict.IsEmpty()) {
     dict.Get("referrer", &request.referrer);
     dict.Get("method", &request.method);
     if (dict.Get("path", &path))
       request.url = net::FilePathToFileURL(path);
+      LOG(INFO) << "Starting Loading File (!dict.isEmpty()): URL: " << request.url;
   } else {
+    LOG(INFO) << "Request.URL in mojom block: " << request.url;
     mojo::Remote<network::mojom::URLLoaderClient> client_remote(
         std::move(client));
     client_remote->OnComplete(
@@ -542,6 +554,7 @@ void ElectronURLLoaderFactory::SendContents(
       std::move(client));
 
   // Add header to ignore CORS.
+  LOG(INFO) << "Adding header within SendContents";
   head->headers->AddHeader("Access-Control-Allow-Origin", "*");
   client_remote->OnReceiveResponse(std::move(head));
 
@@ -554,6 +567,7 @@ void ElectronURLLoaderFactory::SendContents(
     return;
   }
 
+  LOG(INFO) << "About to start loading response body...";
   client_remote->OnStartLoadingResponseBody(std::move(consumer));
 
   auto write_data = std::make_unique<WriteData>();
@@ -564,6 +578,9 @@ void ElectronURLLoaderFactory::SendContents(
   auto* producer_ptr = write_data->producer.get();
 
   base::StringPiece string_piece(write_data->data);
+  LOG(INFO) << "Made it to Write ptr...";
+  LOG(INFO) << "String Piece: " << string_piece;
+  LOG(INFO) << "Data: " << data;
   producer_ptr->Write(
       std::make_unique<mojo::StringDataSource>(
           string_piece, mojo::StringDataSource::AsyncWritingMode::

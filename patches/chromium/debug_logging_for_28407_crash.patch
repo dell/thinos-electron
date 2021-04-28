@@ -1,0 +1,83 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: VerteDinde <khammond@slack-corp.com>
+Date: Wed, 28 Apr 2021 12:38:09 -0700
+Subject: debug: logging for 28407 crash
+
+
+diff --git a/content/browser/child_process_security_policy_impl.cc b/content/browser/child_process_security_policy_impl.cc
+index 22dfc25c1a041b1e07e8d69ab814a00d2ad13c1b..20a6810d5ed355b318f459ca15c81e0e2e4c3c82 100644
+--- a/content/browser/child_process_security_policy_impl.cc
++++ b/content/browser/child_process_security_policy_impl.cc
+@@ -1583,9 +1583,14 @@ CanCommitStatus ChildProcessSecurityPolicyImpl::CanCommitOriginAndUrl(
+ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+     int child_id,
+     const url::Origin& origin) {
++  LOG(INFO) << "CanAccessDataForOrigin L1586";
+   GURL url_to_check;
++  LOG(INFO) << "Origin: " << origin;
+   if (origin.opaque()) {
+     auto precursor_tuple = origin.GetTupleOrPrecursorTupleIfOpaque();
++    LOG(INFO) << "Origin is opaque: " << origin;
++    LOG(INFO) << "precursor_tuple: " << precursor_tuple;
++    LOG(INFO) << "precursor_tuple.isValid() " << precursor_tuple.IsValid();
+     if (!precursor_tuple.IsValid()) {
+       // Allow opaque origins w/o precursors (if the security state exists).
+       // TODO(acolwell): Investigate all cases that trigger this path (e.g.,
+@@ -1601,6 +1606,7 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+   } else {
+     url_to_check = origin.GetURL();
+   }
++  LOG(INFO) << "url_to_check: " << url_to_check;
+   bool success =
+       CanAccessDataForOrigin(child_id, url_to_check, origin.opaque());
+   if (success)
+@@ -1698,6 +1704,8 @@ bool ChildProcessSecurityPolicyImpl::CanAccessDataForOrigin(
+             isolation_context,
+             UrlInfo(url, false /* origin_requests_isolation */),
+             actual_process_lock.coop_coep_cross_origin_isolated_info());
++        LOG(INFO) << "expected_process_lock: " << expected_process_lock.lock_url();
++        LOG(INFO) << "actual_process_lock: " << actual_process_lock.lock_url();
+ 
+         if (actual_process_lock.is_locked_to_site()) {
+           // Jail-style enforcement - a process with a lock can only access
+diff --git a/content/browser/renderer_host/navigation_request.cc b/content/browser/renderer_host/navigation_request.cc
+index c1d29c2684ed3d09ae12446e841c2c749c67c28a..e4d48681006b5c4b50ebe571f858ced24c02d6c9 100644
+--- a/content/browser/renderer_host/navigation_request.cc
++++ b/content/browser/renderer_host/navigation_request.cc
+@@ -189,6 +189,7 @@ NavigationURLScheme GetScheme(const GURL& url) {
+           {url::kHttpsScheme, NavigationURLScheme::HTTPS},
+       });
+   auto it = kSchemeMap->find(url.scheme());
++  LOG(INFO) << "URLScheme: " << url.scheme();
+   if (it != kSchemeMap->end())
+     return it->second;
+   return NavigationURLScheme::UNKNOWN;
+@@ -570,6 +571,7 @@ void RecordReadyToCommitMetrics(
+ // 1) Restarting a same-document navigation as cross-document.
+ // 2) Failing a navigation and committing an error page.
+ mojom::NavigationType ConvertToCrossDocumentType(mojom::NavigationType type) {
++  LOG(INFO) << "Converting to CrossDocument Type...";
+   switch (type) {
+     case mojom::NavigationType::SAME_DOCUMENT:
+       return mojom::NavigationType::DIFFERENT_DOCUMENT;
+@@ -4954,6 +4956,7 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactory() {
+   // TODO(https://crbug.com/1158370): Move special-casing error pages into
+   // ComputeSandboxFlagsToCommit (and renderer-side origin calculations) so that
+   // the most strict sandbox flags are applied.
++  LOG(INFO) << "use_opaque_origin: " << use_opaque_origin; 
+   if (GetNetErrorCode() != net::OK)
+     use_opaque_origin = true;
+   if (use_opaque_origin)
+diff --git a/ui/gfx/image/image_skia.cc b/ui/gfx/image/image_skia.cc
+index 31dfdf5d2f1b6195e24449f5d20d9b5ab95c7f17..c9fa602fe461406276e17fc7e6192b5cebd0d111 100644
+--- a/ui/gfx/image/image_skia.cc
++++ b/ui/gfx/image/image_skia.cc
+@@ -492,7 +492,7 @@ std::vector<ImageSkiaRep> ImageSkia::image_reps() const {
+ }
+ 
+ void ImageSkia::EnsureRepsForSupportedScales() const {
+-  DCHECK(g_supported_scales != NULL);
++  // DCHECK(g_supported_scales != NULL);
+   // Don't check ReadOnly because the source may generate images even for read
+   // only ImageSkia. Concurrent access will be protected by
+   // |DCHECK(sequence_checker_.CalledOnValidSequence())| in FindRepresentation.

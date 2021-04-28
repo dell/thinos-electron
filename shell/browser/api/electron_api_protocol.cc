@@ -91,6 +91,9 @@ std::vector<std::string> GetStandardSchemes() {
 
 void RegisterSchemesAsPrivileged(gin_helper::ErrorThrower thrower,
                                  v8::Local<v8::Value> val) {
+  LOG(INFO) << "***********************************";
+  LOG(INFO) << "Inside RegisterSchemesAsPrivledged";
+  LOG(INFO) << "***********************************";
   std::vector<CustomScheme> custom_schemes;
   if (!gin::ConvertFromV8(thrower.isolate(), val, &custom_schemes)) {
     thrower.ThrowError("Argument must be an array of custom schemes.");
@@ -192,6 +195,7 @@ ProtocolError Protocol::RegisterProtocol(ProtocolType type,
                                          const std::string& scheme,
                                          const ProtocolHandler& handler) {
   bool added = protocol_registry_->RegisterProtocol(type, scheme, handler);
+  LOG(INFO) << "Electron API Protocol: Added: " << added << " Scheme: " << scheme;
   return added ? ProtocolError::kOK : ProtocolError::kRegistered;
 }
 
@@ -211,6 +215,7 @@ ProtocolError Protocol::InterceptProtocol(ProtocolType type,
                                           const std::string& scheme,
                                           const ProtocolHandler& handler) {
   bool added = protocol_registry_->InterceptProtocol(type, scheme, handler);
+  LOG(INFO) << "Electron API Protocol: Intercepted: " << added << " Scheme: " << scheme;
   return added ? ProtocolError::kOK : ProtocolError::kIntercepted;
 }
 

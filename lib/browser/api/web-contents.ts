@@ -395,6 +395,7 @@ WebContents.prototype.loadFile = function (filePath, options = {}) {
   if (typeof filePath !== 'string') {
     throw new Error('Must pass filePath as a string');
   }
+  console.log('INSIDE OF WEBCONTENTS LOADFILE...');
   const { query, search, hash } = options;
 
   return this.loadURL(url.format({

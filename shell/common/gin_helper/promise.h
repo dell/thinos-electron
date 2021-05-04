@@ -106,8 +106,6 @@ class Promise : public PromiseBase {
     return resolved.GetHandle();
   }
 
-  // Promise resolution is a microtask
-  // We use the MicrotasksRunner to trigger the running of pending microtasks
   v8::Maybe<bool> Resolve(const RT& value) {
     gin_helper::Locker locker(isolate());
     v8::HandleScope handle_scope(isolate());

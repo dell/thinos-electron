@@ -18,7 +18,6 @@
 #include "content/public/common/content_switches.h"
 #include "gin/array_buffer.h"
 #include "gin/v8_initializer.h"
-#include "shell/browser/microtasks_runner.h"
 #include "shell/common/gin_helper/cleaned_up_at_exit.h"
 #include "shell/common/node_includes.h"
 #include "tracing/trace_event.h"
@@ -351,20 +350,14 @@ v8::Isolate* JavascriptEnvironment::GetIsolate() {
   return g_isolate;
 }
 
-void JavascriptEnvironment::OnMessageLoopCreated() {
-  DCHECK(!microtasks_runner_);
-  microtasks_runner_ = std::make_unique<MicrotasksRunner>(isolate());
-  base::CurrentThread::Get()->AddTaskObserver(microtasks_runner_.get());
-}
+void JavascriptEnvironment::OnMessageLoopCreated() {}
 
 void JavascriptEnvironment::OnMessageLoopDestroying() {
-  DCHECK(microtasks_runner_);
   {
     v8::Locker locker(isolate_);
     v8::HandleScope scope(isolate_);
     gin_helper::CleanedUpAtExit::DoCleanup();
   }
-  base::CurrentThread::Get()->RemoveTaskObserver(microtasks_runner_.get());
 }
 
 NodeEnvironment::NodeEnvironment(node::Environment* env) : env_(env) {}

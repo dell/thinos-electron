@@ -18,7 +18,6 @@ class MultiIsolatePlatform;
 
 namespace electron {
 
-class MicrotasksRunner;
 // Manage the V8 isolate and context automatically.
 class JavascriptEnvironment {
  public:
@@ -45,8 +44,6 @@ class JavascriptEnvironment {
   gin::IsolateHolder isolate_holder_;
   v8::Locker locker_;
   v8::Global<v8::Context> context_;
-
-  std::unique_ptr<MicrotasksRunner> microtasks_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptEnvironment);
 };

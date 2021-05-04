@@ -32,12 +32,6 @@ const dispatchEvent = function (
 };
 
 export function registerEvents (webView: WebViewImpl, viewInstanceId: number) {
-  ipcRendererInternal.on(`${IPC_MESSAGES.GUEST_VIEW_INTERNAL_DESTROY_GUEST}-${viewInstanceId}`, function () {
-    webView.guestInstanceId = undefined;
-    webView.reset();
-    webView.dispatchEvent('destroyed');
-  });
-
   ipcRendererInternal.on(`${IPC_MESSAGES.GUEST_VIEW_INTERNAL_DISPATCH_EVENT}-${viewInstanceId}`, function (event, eventName, ...args) {
     dispatchEvent(webView, eventName, eventName, ...args);
   });
@@ -48,7 +42,6 @@ export function registerEvents (webView: WebViewImpl, viewInstanceId: number) {
 }
 
 export function deregisterEvents (viewInstanceId: number) {
-  ipcRendererInternal.removeAllListeners(`${IPC_MESSAGES.GUEST_VIEW_INTERNAL_DESTROY_GUEST}-${viewInstanceId}`);
   ipcRendererInternal.removeAllListeners(`${IPC_MESSAGES.GUEST_VIEW_INTERNAL_DISPATCH_EVENT}-${viewInstanceId}`);
   ipcRendererInternal.removeAllListeners(`${IPC_MESSAGES.GUEST_VIEW_INTERNAL_IPC_MESSAGE}-${viewInstanceId}`);
 }

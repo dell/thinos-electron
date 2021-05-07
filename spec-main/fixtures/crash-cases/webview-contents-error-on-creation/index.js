@@ -6,16 +6,14 @@ app.on('web-contents-created', () => {
 
 function createWindow () {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600
+    show: false
   });
 
-  mainWindow.loadFile('about:blank');
+  mainWindow.loadFile('index.html');
 }
 
 app.whenReady().then(() => {
   createWindow();
 
-  setTimeout(() => app.quit());
-  process.exit(0);
+  app.quit();
 });

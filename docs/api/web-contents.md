@@ -1924,6 +1924,16 @@ when the page becomes backgrounded. This also affects the Page Visibility API.
 
 Returns `String` - the type of the webContent. Can be `backgroundPage`, `window`, `browserView`, `remote`, `webview` or `offscreen`.
 
+#### `contents.setImageAnimationPolicy(policy)`
+
+* `policy` String - Can be `animate`, `animateOnce` or `noAnimation`.
+
+Sets the image animation policy for this webContents.  The policy only affects
+_new_ images, existing images that are currently being animated are unaffected.
+This is a known limitation in Chromium, you can force image animation to be
+recalculated with `img.src = img.src` which will result in no network traffic
+but will update the animation policy.
+
 ### Instance Properties
 
 #### `contents.audioMuted`

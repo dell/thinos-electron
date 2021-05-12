@@ -1810,6 +1810,22 @@ void NativeWindowMac::SetForwardMouseMessages(bool forward) {
   [window_ setAcceptsMouseMovedEvents:forward];
 }
 
+gfx::Rect NativeWindowMac::GetWindowControlsOverlayRect() {
+  gfx::Rect bounding_rect;
+  if (title_bar_style_ == TitleBarStyle::kHidden ||
+      title_bar_style_ == TitleBarStyle::kHiddenInset) {
+    NSRect button_frame = [buttons_view_ frame];
+    const int overlay_width = GetContentSize().width() - NSWidth(button_frame);
+    int overlay_height = NSHeight(button_frame) + 8;
+    if (title_bar_style_ == TitleBarStyle::kHiddenInset) {
+      overlay_height += 4;
+    }
+    bounding_rect =
+        gfx::Rect(button_frame.size.width, 0, overlay_width, overlay_height);
+  }
+  return bounding_rect;
+}
+
 // static
 NativeWindow* NativeWindow::Create(const gin_helper::Dictionary& options,
                                    NativeWindow* parent) {

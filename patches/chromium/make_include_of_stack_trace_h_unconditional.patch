@@ -18,7 +18,7 @@ index 50a548a759c2dc6d79978741a0c803500d53a9f8..cd5049e8bf59c51b890bcc332f9a1c5f
 -#if DCHECK_IS_ON()
  #include "base/debug/stack_trace.h"
 -#endif
-+
++// test
  
  // SequenceChecker is a helper class used to help verify that some methods of a
  // class are called sequentially (for thread-safety). It supports thread safety

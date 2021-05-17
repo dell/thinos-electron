@@ -1,0 +1,123 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 17 May 2021 02:01:46 -0400
+Subject: extern node lib internal API for shell
+
+Fix build issues when ldd link error, need extern some node lib internal
+API, for node lib change to shared library.
+
+diff --git a/src/async_wrap.h b/src/async_wrap.h
+index 1248323ac5c0af2ac3cb219d6b9106ee7a90427b..1c55b9b413a449bb8d1b446b867cd7983b8f9bd9 100644
+--- a/src/async_wrap.h
++++ b/src/async_wrap.h
+@@ -26,6 +26,7 @@
+ 
+ #include "base_object.h"
+ #include "v8.h"
++#include "node.h"
+ 
+ #include <cstdint>
+ 
+@@ -100,7 +101,7 @@ namespace node {
+ class Environment;
+ class DestroyParam;
+ 
+-class AsyncWrap : public BaseObject {
++class NODE_EXTERN AsyncWrap : public BaseObject {
+  public:
+   enum ProviderType {
+ #define V(PROVIDER)                                                           \
+diff --git a/src/env.h b/src/env.h
+index a5c72b6c145feedd624f7b6e407617ab295ad3bb..dc339d5eeb173231c50bf5011ae73f8edc96aea1 100644
+--- a/src/env.h
++++ b/src/env.h
+@@ -830,7 +830,7 @@ class CleanupHookCallback {
+   uint64_t insertion_order_counter_;
+ };
+ 
+-class Environment : public MemoryRetainer {
++class NODE_EXTERN Environment : public MemoryRetainer {
+  public:
+   Environment(const Environment&) = delete;
+   Environment& operator=(const Environment&) = delete;
+diff --git a/src/node_internals.h b/src/node_internals.h
+index 294bed9175125bbd544c7aa7df4229d182ca442d..b65b6576c0a7014d82cde5764246931af26a2c38 100644
+--- a/src/node_internals.h
++++ b/src/node_internals.h
+@@ -90,7 +90,7 @@ void PrintCaughtException(v8::Isolate* isolate,
+                           v8::Local<v8::Context> context,
+                           const v8::TryCatch& try_catch);
+ 
+-void ResetStdio();  // Safe to call more than once and from signal handlers.
++NODE_EXTERN void ResetStdio();  // Safe to call more than once and from signal handlers.
+ void SignalExit(int signo);
+ #ifdef __POSIX__
+ void RegisterSignalHandler(int signal,
+@@ -325,7 +325,7 @@ void SetIsolateCreateParamsForNode(v8::Isolate::CreateParams* params);
+ 
+ #if HAVE_INSPECTOR
+ namespace profiler {
+-void StartProfilers(Environment* env);
++NODE_EXTERN void StartProfilers(Environment* env);
+ }
+ #endif  // HAVE_INSPECTOR
+ 
+diff --git a/src/node_native_module_env.h b/src/node_native_module_env.h
+index f662c67be50d404ee5b6cf6e2b8dd5991c59e723..792ac970971b9ebe13f62294a2c0fdc6c98d9410 100644
+--- a/src/node_native_module_env.h
++++ b/src/node_native_module_env.h
+@@ -3,6 +3,7 @@
+ 
+ #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
+ 
++#include "node.h"
+ #include "node_native_module.h"
+ 
+ namespace node {
+@@ -12,7 +13,7 @@ namespace native_module {
+ 
+ extern const bool has_code_cache;
+ 
+-class NativeModuleEnv {
++class NODE_EXTERN NativeModuleEnv {
+  public:
+   static void Initialize(v8::Local<v8::Object> target,
+                          v8::Local<v8::Value> unused,
+diff --git a/src/node_options.h b/src/node_options.h
+index be577703740548fa63d31e7a97ed9cd8427ba9e9..32c50202164d4b93385fdc4ad860b66947f7786a 100644
+--- a/src/node_options.h
++++ b/src/node_options.h
+@@ -59,7 +59,7 @@ struct InspectPublishUid {
+ // to keep them separate since they are a group of options applying to a very
+ // specific part of Node. It might also make more sense for them to be
+ // per-Isolate, rather than per-Environment.
+-class DebugOptions : public Options {
++class NODE_EXTERN DebugOptions : public Options {
+  public:
+   DebugOptions() = default;
+   DebugOptions(const DebugOptions&) = default;
+diff --git a/src/util.h b/src/util.h
+index eb214a880feba5007d08cea750ddc2462b4f78a2..1d8a369f82cb02e89e89edf8647fba3da06ead98 100644
+--- a/src/util.h
++++ b/src/util.h
+@@ -47,6 +47,8 @@
+ #include <unordered_map>
+ #include <utility>
+ 
++#include "node.h"
++
+ #ifdef __GNUC__
+ #define MUST_USE_RESULT __attribute__((warn_unused_result))
+ #else
+@@ -114,9 +116,9 @@ struct AssertionInfo {
+   const char* message;
+   const char* function;
+ };
+-[[noreturn]] void Assert(const AssertionInfo& info);
++[[noreturn]] NODE_EXTERN void Assert(const AssertionInfo& info);
+ [[noreturn]] void Abort();
+-void DumpBacktrace(FILE* fp);
++NODE_EXTERN void DumpBacktrace(FILE* fp);
+ 
+ // Windows 8+ does not like abort() in Release mode
+ #ifdef _WIN32

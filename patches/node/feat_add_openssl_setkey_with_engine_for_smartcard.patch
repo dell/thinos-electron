@@ -1,0 +1,96 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Thu, 22 Apr 2021 22:06:48 -0400
+Subject: feat add openssl setkey with engine for smartcard
+
+Thin OS smartcard design with openssl engines logic, so, node TLS API
+add 'options.key_engine' item for it.
+
+diff --git a/lib/_tls_common.js b/lib/_tls_common.js
+index 9f7747c1b52848ce960aa515c80f90c510ff0017..1c90aa8d74a80bdb2bf32162ed3111a500673f92 100644
+--- a/lib/_tls_common.js
++++ b/lib/_tls_common.js
+@@ -136,6 +136,7 @@ exports.createSecureContext = function createSecureContext(options) {
+   // which leads to the crash later on.
+   const key = options.key;
+   const passphrase = options.passphrase;
++  const key_engine = options.key_engine;
+   if (key) {
+     if (ArrayIsArray(key)) {
+       for (const val of key) {
+@@ -146,7 +147,7 @@ exports.createSecureContext = function createSecureContext(options) {
+       }
+     } else {
+       validateKeyOrCertOption('key', key);
+-      c.context.setKey(key, passphrase);
++      c.context.setKey(key, passphrase, key_engine);
+     }
+   }
+ 
+diff --git a/src/node_crypto.cc b/src/node_crypto.cc
+index c132e6a089b3cb7119910131fe740574d7917b89..c1c2de20117254b55e99c972528d21ec44fe583e 100644
+--- a/src/node_crypto.cc
++++ b/src/node_crypto.cc
+@@ -695,10 +695,60 @@ void SecureContext::SetKey(const FunctionCallbackInfo<Value>& args) {
+     return THROW_ERR_MISSING_ARGS(env, "Private key argument is mandatory");
+   }
+ 
+-  if (len > 2) {
+-    return env->ThrowError("Only private key and pass phrase are expected");
++  if (len > 3) {
++    return env->ThrowError("Only private key and pass phrase / key engine are expected");
+   }
+ 
++  if (len == 3) {
++    if (args[2]->IsUndefined() || args[2]->IsNull())
++      len = 2;
++    else
++      THROW_AND_RETURN_IF_NOT_STRING(env, args[2], "Key Engine");
++  }
++
++#ifndef OPENSSL_NO_ENGINE
++  if (len == 3) {
++    const node::Utf8Value key_file(env->isolate(), args[0]);
++    const node::Utf8Value engine_id(env->isolate(), args[2]);
++
++    ENGINE *engine = ENGINE_by_id(*engine_id);
++    if (!engine) {
++      return env->ThrowError("Can't load engine");
++    }
++
++    ENGINE_set_default(engine, ENGINE_METHOD_RSA);
++    if (!ENGINE_init(engine)) {
++      ENGINE_free(engine);
++      return env->ThrowError("Can't init engine");
++    }
++
++    EVPKeyPointer key(
++      ENGINE_load_private_key(engine, *key_file, nullptr, nullptr));
++    ENGINE_finish(engine);
++    ENGINE_free(engine);
++
++    if (!key) {
++      unsigned long err = ERR_get_error();
++      if (!err) {
++	        return env->ThrowError("Can't load private key from engine");
++      }
++      return ThrowCryptoError(env, err);
++    }
++
++    int rv = SSL_CTX_use_PrivateKey(sc->ctx_.get(), key.get());
++
++    if (!rv) {
++      unsigned long err = ERR_get_error();  // NOLINT(runtime/int)
++      return ThrowCryptoError(env, err, "SSL_CTX_use_PrivateKey");
++    }
++
++    return;
++  }
++
++#else
++  return env->ThrowError("No privateKey engine support");
++#endif // #ifndef OPENSSL_NO_ENGINE
++
+   if (len == 2) {
+     if (args[1]->IsUndefined() || args[1]->IsNull())
+       len = 1;

@@ -1,0 +1,71 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 17 May 2021 01:47:37 -0400
+Subject: revert IDNA Support
+
+Not converts parts of the domain name that have non-ASCII characters.
+
+diff --git a/lib/dns.js b/lib/dns.js
+index 92b70c73effbf299969a3853ec5a04ec41eccfb9..9478aa3977fc87183b6dd329642be446b18d4231 100644
+--- a/lib/dns.js
++++ b/lib/dns.js
+@@ -28,7 +28,7 @@ const {
+ } = primordials;
+ 
+ const cares = internalBinding('cares_wrap');
+-const { toASCII } = require('internal/idna');
++// const { toASCII } = require('internal/idna');
+ const { isIP } = require('internal/net');
+ const { customPromisifyArgs } = require('internal/util');
+ const errors = require('internal/errors');
+@@ -145,7 +145,7 @@ function lookup(hostname, options, callback) {
+   req.oncomplete = all ? onlookupall : onlookup;
+ 
+   const err = cares.getaddrinfo(
+-    req, toASCII(hostname), family, hints, verbatim
++    req, hostname, family, hints, verbatim
+   );
+   if (err) {
+     process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
+@@ -224,7 +224,7 @@ function resolver(bindingName) {
+     req.hostname = name;
+     req.oncomplete = onresolve;
+     req.ttl = !!(options && options.ttl);
+-    const err = this._handle[bindingName](req, toASCII(name));
++    const err = this._handle[bindingName](req, name);
+     if (err) throw dnsException(err, bindingName, name);
+     return req;
+   }
+diff --git a/lib/url.js b/lib/url.js
+index 735390dfd2e59b1bf91871bf63e04ad317606ed9..721ef66537b566e6f380d608998ddf4aa38170b8 100644
+--- a/lib/url.js
++++ b/lib/url.js
+@@ -27,7 +27,7 @@ const {
+   SafeSet,
+ } = primordials;
+ 
+-const { toASCII } = require('internal/idna');
++// const { toASCII } = require('internal/idna');
+ const { encodeStr, hexTable } = require('internal/querystring');
+ 
+ const {
+@@ -378,7 +378,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
+       this.hostname = this.hostname.toLowerCase();
+     }
+ 
+-    if (!ipv6Hostname) {
++    // if (!ipv6Hostname) {
+       // IDNA Support: Returns a punycoded representation of "domain".
+       // It only converts parts of the domain name that
+       // have non-ASCII characters, i.e. it doesn't matter if
+@@ -386,8 +386,8 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
+ 
+       // Use lenient mode (`true`) to try to support even non-compliant
+       // URLs.
+-      this.hostname = toASCII(this.hostname, true);
+-    }
++      // this.hostname = toASCII(this.hostname, true);
++    // }
+ 
+     const p = this.port ? ':' + this.port : '';
+     const h = this.hostname || '';

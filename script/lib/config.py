@@ -30,6 +30,7 @@ LINUX_BINARIES = [
   'electron',
   'chrome-sandbox',
   'libffmpeg.so',
+  'libnode_lib.so',
   'libGLESv2.so',
   'libEGL.so',
   'swiftshader/libGLESv2.so',

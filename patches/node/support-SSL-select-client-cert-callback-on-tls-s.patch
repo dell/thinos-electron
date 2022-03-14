@@ -1,0 +1,222 @@
+From 3435014e91a8c48de7c0e334ae4f2bb6bc161ef3 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 14 Mar 2022 17:22:34 +0800
+Subject: [PATCH 2/2] src: support SSL select client cert callback on tls
+ socket
+
+Node TLS connection support SSLSelectClientCertCallback function
+tls.options add onselectclientcert.
+---
+ lib/_tls_wrap.js             |  2 ++
+ src/crypto/crypto_context.cc |  8 +++++-
+ src/crypto/crypto_context.h  |  4 +++
+ src/crypto/crypto_tls.cc     | 49 ++++++++++++++++++++++++++++++++++--
+ src/crypto/crypto_tls.h      |  1 +
+ src/env.h                    |  1 +
+ 6 files changed, 62 insertions(+), 3 deletions(-)
+
+diff --git a/lib/_tls_wrap.js b/lib/_tls_wrap.js
+index 57399c602a..8a686b7c13 100644
+--- a/lib/_tls_wrap.js
++++ b/lib/_tls_wrap.js
+@@ -725,6 +725,7 @@ TLSSocket.prototype._init = function(socket, wrap) {
+       this._finishInit();
+     };
+     ssl.onocspresponse = onocspresponse;
++    ssl.onselectclientcert = options.onselectclientcert;
+ 
+     if (options.session)
+       ssl.setSession(options.session);
+@@ -1635,6 +1636,7 @@ exports.connect = function connect(...args) {
+     highWaterMark: options.highWaterMark,
+     onread: options.onread,
+     signal: options.signal,
++    onselectclientcert: options.onselectclientcert,
+   });
+ 
+   // rejectUnauthorized property can be explicitly defined as `undefined`
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index 34884a21d1..86aedd7f58 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -227,6 +227,7 @@ X509_STORE* NewRootCertStore() {
+       Thin_X509_STORE_add_cert(store, cert);
+     }
+   }
++  Thin_X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+ 
+   return store;
+ }
+@@ -363,6 +364,7 @@ inline void SecureContext::Reset() {
+   ctx_.reset();
+   cert_.reset();
+   issuer_.reset();
++  client_key_provided_ = false;
+ }
+ 
+ SecureContext::~SecureContext() {
+@@ -521,7 +523,9 @@ void SecureContext::SetGetSessionCallback(GetSessionCb cb) {
+ void SecureContext::SetSelectSNIContextCallback(SelectSNIContextCb cb) {
+   Thin_SSL_CTX_set_tlsext_servername_callback(ctx_.get(), cb);
+ }
+-
++void SecureContext::SetSelectClientCertCallback(SelectClientCertCb cb) {
++  Thin_SSL_CTX_set_client_cert_cb(ctx_.get(), cb);
++}
+ void SecureContext::SetKeylogCallback(KeylogCb cb) {
+   Thin_SSL_CTX_set_keylog_callback(ctx_.get(), cb);
+ }
+@@ -557,6 +561,8 @@ void SecureContext::SetKey(const FunctionCallbackInfo<Value>& args) {
+ 
+   if (!Thin_SSL_CTX_use_PrivateKey(sc->ctx_.get(), key.get()))
+     return ThrowCryptoError(env, Thin_ERR_get_error(), "SSL_CTX_use_PrivateKey");
++
++  sc->client_key_provided_ = true;
+ }
+ 
+ void SecureContext::SetSigalgs(const FunctionCallbackInfo<Value>& args) {
+diff --git a/src/crypto/crypto_context.h b/src/crypto/crypto_context.h
+index b857019e47..b2cca06212 100644
+--- a/src/crypto/crypto_context.h
++++ b/src/crypto/crypto_context.h
+@@ -31,6 +31,7 @@ class SecureContext final : public BaseObject {
+   using KeylogCb = void (*)(const SSL*, const char*);
+   using NewSessionCb = int (*)(SSL*, SSL_SESSION*);
+   using SelectSNIContextCb = int (*)(SSL*, int*, void*);
++  using SelectClientCertCb = int (*)(SSL*, X509 **, EVP_PKEY **);
+ 
+   ~SecureContext() override;
+ 
+@@ -50,6 +51,7 @@ class SecureContext final : public BaseObject {
+   void SetKeylogCallback(KeylogCb cb);
+   void SetNewSessionCallback(NewSessionCb cb);
+   void SetSelectSNIContextCallback(SelectSNIContextCb cb);
++  void SetSelectClientCertCallback(SelectClientCertCb cb);
+ 
+   // TODO(joyeecheung): track the memory used by OpenSSL types
+   SET_NO_MEMORY_INFO()
+@@ -64,6 +66,8 @@ class SecureContext final : public BaseObject {
+   EnginePointer private_key_engine_;
+ #endif  // !OPENSSL_NO_ENGINE
+ 
++  bool client_key_provided_ = false;
++
+   static const int kMaxSessionSize = 10 * 1024;
+ 
+   // See TicketKeyCallback
+diff --git a/src/crypto/crypto_tls.cc b/src/crypto/crypto_tls.cc
+index 2170fff8a4..4eae1c2ba1 100644
+--- a/src/crypto/crypto_tls.cc
++++ b/src/crypto/crypto_tls.cc
+@@ -60,6 +60,7 @@ using v8::String;
+ using v8::True;
+ using v8::Uint32;
+ using v8::Value;
++using errors::TryCatchScope;
+ 
+ namespace crypto {
+ 
+@@ -415,6 +416,10 @@ void TLSWrap::InitSSL() {
+   if (is_server())
+     sc_->SetSelectSNIContextCallback(SelectSNIContextCallback);
+ 
++  if (is_client() && !sc_->client_key_provided_) {
++    sc_->SetSelectClientCertCallback(SelectClientCertCallback);
++  }
++
+   ConfigureSecureContext(sc_.get());
+ 
+   Thin_SSL_set_cert_cb(ssl_.get(), SSLCertCallback, this);
+@@ -677,9 +682,8 @@ MaybeLocal<Value> TLSWrap::GetSSLError(int status, int* err, std::string* msg) {
+     case SSL_ERROR_NONE:
+     case SSL_ERROR_WANT_READ:
+     case SSL_ERROR_WANT_WRITE:
+-    case SSL_ERROR_WANT_X509_LOOKUP:
+       return MaybeLocal<Value>();
+-
++    case SSL_ERROR_WANT_X509_LOOKUP:
+     case SSL_ERROR_ZERO_RETURN:
+       return scope.Escape(env()->zero_return_string());
+ 
+@@ -820,6 +824,9 @@ void TLSWrap::ClearOut() {
+ 
+     if (LIKELY(!arg.IsEmpty())) {
+       Debug(this, "Got SSL error (%d), calling onerror", err);
++      if (err == SSL_ERROR_WANT_X509_LOOKUP) {
++        eof_ = true;
++      }
+       // When TLS Alert are stored in wbio,
+       // it should be flushed to socket before destroyed.
+       if (Thin_BIO_pending(enc_out_) != 0)
+@@ -1332,6 +1339,44 @@ int TLSWrap::SelectSNIContextCallback(SSL* s, int* ad, void* arg) {
+   return SSL_TLSEXT_ERR_OK;
+ }
+ 
++int TLSWrap::SelectClientCertCallback(SSL* s, X509 **cert, EVP_PKEY ** key) {
++  TLSWrap* p = static_cast<TLSWrap*>(Thin_SSL_get_app_data(s));
++  if (!p->is_client())
++    return 0;
++
++  Environment* env = p->env();
++  Local<Object> object = p->object();
++  Local<Value> onselectclientcert = object->Get(env->context(),
++                                                env->onselectclientcert_string()).ToLocalChecked();
++
++  // Not an function, probably undefined or null
++  if (onselectclientcert->IsUndefined() || !onselectclientcert->IsFunction()) {
++    return 0;
++  }
++
++  Local<Array> distinguishedNames = Array::New(env->isolate());
++  char buf[BUFSIZ];
++  STACK_OF(X509_NAME) * sk = Thin_SSL_get_client_CA_list(s);
++  X509_NAME *name;
++  if (sk != NULL && (Thin_sk_X509_NAME_num(sk) > 0)) {
++    for (int i = 0; i < Thin_sk_X509_NAME_num(sk); i++) {
++      name = Thin_sk_X509_NAME_value(sk, i);
++      Thin_X509_NAME_oneline(name, buf, sizeof(buf));
++      distinguishedNames->Set(env->context(), i, OneByteString(env->isolate(), buf)).Check();
++    }
++  }
++  int value_int = 0;
++  Local<Value> value;
++  Local<Value> argv[] = { distinguishedNames };
++  TryCatchScope try_catch(env);
++  if (!p->MakeCallback(env->onselectclientcert_string(), arraysize(argv), argv).ToLocal(&value) ||
++      !value->Int32Value(env->context()).To(&value_int)) {
++        if (try_catch.HasCaught() && !try_catch.HasTerminated())
++          errors::TriggerUncaughtException(env->isolate(), try_catch);
++  }
++  return value_int;
++}
++
+ int TLSWrap::SetCACerts(SecureContext* sc) {
+   int err = Thin_SSL_set1_verify_cert_store(
+       ssl_.get(), Thin_SSL_CTX_get_cert_store(sc->ctx_.get()));
+diff --git a/src/crypto/crypto_tls.h b/src/crypto/crypto_tls.h
+index dee8a67cc1..ed7e0f806a 100644
+--- a/src/crypto/crypto_tls.h
++++ b/src/crypto/crypto_tls.h
+@@ -169,6 +169,7 @@ class TLSWrap : public AsyncWrap,
+   v8::MaybeLocal<v8::Value> GetSSLError(int status, int* err, std::string* msg);
+ 
+   static int SelectSNIContextCallback(SSL* s, int* ad, void* arg);
++  static int SelectClientCertCallback(SSL* s, X509 **cert, EVP_PKEY ** key);
+ 
+   static void CertCbDone(const v8::FunctionCallbackInfo<v8::Value>& args);
+   static void DestroySSL(const v8::FunctionCallbackInfo<v8::Value>& args);
+diff --git a/src/env.h b/src/env.h
+index ab8334bf0e..97ff7c950e 100644
+--- a/src/env.h
++++ b/src/env.h
+@@ -344,6 +344,7 @@ constexpr size_t kFsStatsBufferLength =
+   V(onmessage_string, "onmessage")                                             \
+   V(onnewsession_string, "onnewsession")                                       \
+   V(onocspresponse_string, "onocspresponse")                                   \
++  V(onselectclientcert_string, "onselectclientcert")                           \
+   V(onreadstart_string, "onreadstart")                                         \
+   V(onreadstop_string, "onreadstop")                                           \
+   V(onshutdown_string, "onshutdown")                                           \
+-- 
+2.17.1
+

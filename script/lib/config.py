@@ -19,6 +19,7 @@ LINUX_BINARIES = [
   'electron',
   'libEGL.so',
   'libGLESv2.so',
+  'libcrypto_wrapper.so',
   'libffmpeg.so',
   'libvk_swiftshader.so',
   'swiftshader/libEGL.so',

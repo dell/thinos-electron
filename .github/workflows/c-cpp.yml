@@ -1,0 +1,88 @@
+name: Linux C/C++ CI
+
+on:
+  push:
+    branches: [ v18.x.y-thin ]
+  pull_request:
+    branches: [ v18.x.y-thin ]
+
+defaults:
+  run:
+    working-directory: ./
+
+jobs:
+  build:
+
+    runs-on: [self-hosted, Linux, X64]
+    #env:
+
+    steps:
+    - name: path
+      run: |
+        realpath .
+    - name: install tools
+      run: |
+        #sudo apt-get -y --force-yes install build-essential curl clang libdbus-1-dev libgtk-3-dev libnotify-dev libgnome-keyring-dev libasound2-dev libcap-dev libcups2-dev libxtst-dev libxss1 libnss3-dev gcc-multilib g++-multilib gperf bison python-dbusmock openjdk-8-jre
+        mkdir -p /opt && cd /opt
+        rm -rf /opt/depot_tools
+        rm -rf /opt/node-v16.14.0-linux-x64
+        rm -rf ./src/out/Release/dist.zip
+        rm -rf ./src/out/Release/debug
+        rm -rf ./src/out/Release/breakpad_symbols
+
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+        curl -o node.tar.xz https://nodejs.org/dist/v16.14.0/node-v16.14.0-linux-x64.tar.xz
+        tar xf node.tar.xz
+    - name: gclient config
+      run: |
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        echo yes| npx @electron/check-python-tls
+        
+        gclient config --name "src/electron" --unmanaged https://github.com/dell/thinos-electron@v18.x.y-thin
+    - name: gclient sync & build
+      run: |
+        export GIT_CACHE_PATH=`pwd`/.git_cache
+        export CHROMIUM_BUILDTOOLS_PATH=`pwd`/src/buildtools
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        if [ -d src ];then
+          rm -rf src 
+        fi
+
+        gclient sync --with_branch_heads --with_tags
+        cd src
+
+        gn gen out/Release --args="import(\"//electron/build/args/release.gn\") $GN_EXTRA_ARGS use_allocator=\"tcmalloc\" use_allocator_shim=false"
+        ninja -C out/Release electron
+
+    - name: debug version
+      run: |
+        echo "ELECTRON_VAR=`cat src/out/Release/version`" >> $GITHUB_ENV
+        echo ${{env.ELECTRON_VAR}}
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        rm -rf out/Release/dist.zip
+        ninja -C out/Release electron:electron_dist_zip
+
+        rm -rf out/Release/electron-${{env.ELECTRON_VAR}}
+        mkdir -p out/Release/electron-${{env.ELECTRON_VAR}}
+        unzip -d out/Release/electron-${{env.ELECTRON_VAR}} out/Release/dist.zip
+
+        cd out/Release
+        zip -r electron-${{env.ELECTRON_VAR}}.zip electron-${{env.ELECTRON_VAR}}
+        cd -
+    - uses: actions/upload-artifact@v2
+      with:
+        name: electron-${{env.ELECTRON_VAR}}.zip
+        path: src/out/Release/debug
+
+    - name: release version
+      run: |
+        echo "ELECTRON_VAR=`cat src/out/Release/version`" >> $GITHUB_ENV
+        echo ${{env.ELECTRON_VAR}}
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        rm -rf out/Release/dist.zip
+        electron/script/strip-binaries.py -d out/Release
+        ninja -C out/Release electron:electron_dist_zip
+    - uses: actions/upload-artifact@v2
+      with:
+        name: electron-${{env.ELECTRON_VAR}}
+        path: src/out/Release/dist.zip

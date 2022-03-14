@@ -1,0 +1,93 @@
+name: Linux C/C++ CI
+
+on:
+  push:
+    branches: [ v20.x.y-thin ]
+  pull_request:
+    branches: [ v20.x.y-thin ]
+
+defaults:
+  run:
+    working-directory: ./
+
+jobs:
+  build:
+
+    runs-on: [self-hosted, Linux, X64]
+    env:
+      ELECTRON_VAR: '20.1.4-thin'
+
+    steps:
+    - name: path
+      run: |
+        realpath .
+        echo 'start build for ${ELECTRON_VAR}'
+       
+    - name: install tools
+      run: |
+        #sudo apt-get -y --force-yes install build-essential curl clang libdbus-1-dev libgtk-3-dev libnotify-dev libgnome-keyring-dev libasound2-dev libcap-dev libcups2-dev libxtst-dev libxss1 libnss3-dev gcc-multilib g++-multilib gperf bison python-dbusmock openjdk-8-jre
+        mkdir -p /opt && cd /opt
+        rm -rf /opt/depot_tools
+        rm -rf /opt/node-v16.14.0-linux-x64
+        rm -rf ./src/out/Release/dist.zip
+        rm -rf ./src/out/Release/debug
+        rm -rf ./src/out/Release/breakpad_symbols
+
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+        curl -o node.tar.xz https://nodejs.org/dist/v16.14.0/node-v16.14.0-linux-x64.tar.xz
+        tar xf node.tar.xz
+    - name: gclient config
+      run: |
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        echo yes| npx @electron/check-python-tls
+        
+        gclient config --name "src/electron" --unmanaged https://github.com/dell/thinos-electron@v20.x.y-thin
+    - name: gclient sync & build
+      run: |
+        export GIT_CACHE_PATH=`pwd`/.git_cache
+        export CHROMIUM_BUILDTOOLS_PATH=`pwd`/src/buildtools
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        if [ -d src ];then
+          rm -rf src 
+        fi
+
+        gclient sync --with_branch_heads --with_tags
+        cd src
+
+        gn gen out/Release --args="import(\"//electron/build/args/release.gn\") $GN_EXTRA_ARGS use_allocator=\"none\""
+        ninja -C out/Release electron
+
+    - name: debug version
+      run: |
+        cd src
+        rm -rf out/Release/dist.zip
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        ninja -C out/Release electron:electron_dist_zip
+
+        rm -rf out/Release/electron-${ELECTRON_VAR}-linux-x64-debug
+        rm -rf out/Release/electron-${ELECTRON_VAR}-linux-x64-debug.zip
+        mkdir -p out/Release/electron-${ELECTRON_VAR}-linux-x64-debug
+        unzip -d out/Release/electron-${ELECTRON_VAR}-linux-x64-debug out/Release/dist.zip
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: electron-${{env.ELECTRON_VAR}}-linux-x64-debug
+        path: src/out/Release/electron-${{env.ELECTRON_VAR}}-linux-x64-debug
+
+    - name: release version
+      run: |
+        cd src
+        rm -rf out/Release/dist.zip
+        export PATH=/opt/depot_tools:/opt/node-v16.14.0-linux-x64/bin:$PATH
+        electron/script/strip-binaries.py -d out/Release
+        ninja -C out/Release electron:electron_dist_zip
+
+        rm -rf out/Release/electron-${ELECTRON_VAR}-linux-x64
+        rm -rf out/Release/electron-${ELECTRON_VAR}-linux-x64.zip
+        mkdir -p out/Release/electron-${ELECTRON_VAR}-linux-x64
+        unzip -d out/Release/electron-${ELECTRON_VAR}-linux-x64 out/Release/dist.zip
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: electron-${{env.ELECTRON_VAR}}
+        path: src/out/Release/electron-${{env.ELECTRON_VAR}}-linux-x64

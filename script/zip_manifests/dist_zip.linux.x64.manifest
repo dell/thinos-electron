@@ -9,6 +9,7 @@ icudtl.dat
 libEGL.so
 libGLESv2.so
 libffmpeg.so
+libcrypto_wrapper.so
 libvk_swiftshader.so
 libvulkan.so.1
 locales/am.pak

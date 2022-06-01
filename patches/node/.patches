@@ -45,3 +45,4 @@ feat_add_uv_loop_interrupt_on_io_change_option_to_uv_loop_configure.patch
 fix_preserve_proper_method_names_as-is_in_error_stack.patch
 macos_avoid_posix_spawnp_cwd_bug_3597.patch
 buffer_fix_atob_input_validation.patch
+fix-creates-a-new-without-fill-buffer-issues.patch

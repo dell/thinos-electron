@@ -329,6 +329,10 @@ NativeWindowViews::NativeWindowViews(const gin_helper::Dictionary& options,
       state_atom_list.push_back(x11::GetAtom("_NET_WM_STATE_SKIP_TASKBAR"));
     }
 
+    bool top;
+    if (options.Get(options::kAlwaysOnTop, &top) && top) {
+      state_atom_list.push_back(x11::GetAtom("_NET_WM_STATE_ABOVE"));
+    }
     // Before the window is mapped, there is no SHOW_FULLSCREEN_STATE.
     if (fullscreen) {
       state_atom_list.push_back(x11::GetAtom("_NET_WM_STATE_FULLSCREEN"));

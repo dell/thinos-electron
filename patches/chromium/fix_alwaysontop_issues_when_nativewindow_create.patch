@@ -1,0 +1,34 @@
+From 2911534b7e89ebbda048306236364f72c548c5be Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Wed, 1 Jun 2022 21:51:32 +0800
+Subject: [PATCH] fix alwaysOnTop not being respected when NativeWindow hidden
+
+Thin OS UI has alwaysOnTop flag when window not mapped in X client.
+---
+ ui/ozone/platform/x11/x11_window.cc | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/ui/ozone/platform/x11/x11_window.cc b/ui/ozone/platform/x11/x11_window.cc
+index 3f696838ee798..955d2f9144ba7 100644
+--- a/ui/ozone/platform/x11/x11_window.cc
++++ b/ui/ozone/platform/x11/x11_window.cc
+@@ -2254,13 +2254,14 @@ void X11Window::OnWMStateUpdated() {
+ 
+ void X11Window::UpdateWindowProperties(
+     const base::flat_set<x11::Atom>& new_window_properties) {
++
++  window_properties_ = new_window_properties;
++
+   // If the window is hidden, ignore new properties.
+   // See https://crbug.com/1260832
+   if (!window_mapped_in_client_)
+     return;
+ 
+-  window_properties_ = new_window_properties;
+-
+   // Ignore requests by the window manager to enter or exit fullscreen (e.g. as
+   // a result of pressing a window manager accelerator key). Chrome does not
+   // handle window manager initiated fullscreen. In particular, Chrome needs to
+-- 
+2.25.1
+

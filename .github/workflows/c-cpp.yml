@@ -15,7 +15,7 @@ jobs:
 
     runs-on: [self-hosted, Linux, X64]
     env:
-      ELECTRON_VAR: '19.0.7-thin'
+      ELECTRON_VAR: '19.0.8-thin'
 
     steps:
     - name: path

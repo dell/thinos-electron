@@ -1,0 +1,29 @@
+From 1db647514ff7b0f9527799cd592fd0d581db6413 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 19 Sep 2022 16:22:12 +0800
+Subject: [PATCH] src: remove execSync return stderr write to process.stderr
+ logic on ThinOS
+
+process.stderr has issues when execSync result pass
+---
+ lib/child_process.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/child_process.js b/lib/child_process.js
+index 9cd99a7440..c212264e68 100644
+--- a/lib/child_process.js
++++ b/lib/child_process.js
+@@ -905,8 +905,8 @@ function execSync(command, options) {
+ 
+   const ret = spawnSync(opts.file, opts.options);
+ 
+-  if (inheritStderr && ret.stderr)
+-    process.stderr.write(ret.stderr);
++  // if (inheritStderr && ret.stderr)
++  //   process.stderr.write(ret.stderr);
+ 
+   const err = checkExecSyncError(ret, opts.args, command);
+ 
+-- 
+2.25.1
+

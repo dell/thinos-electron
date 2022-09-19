@@ -46,3 +46,4 @@ buffer_fix_atob_input_validation.patch
 fix-creates-a-new-without-fill-buffer-issues.patch
 support-SSL-select-client-cert-callback-on-tls-s.patch
 src-add-crypto-wrapper-for-node-openssl.patch
+src_remove_execsync_return_stderr_write_to_process.patch

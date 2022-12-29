@@ -111,6 +111,7 @@
 #include "shell/common/application_info.h"
 #include "shell/common/electron_paths.h"
 #include "shell/common/logging.h"
+#include "shell/browser/crypto_module_delegate_nss.h"
 #include "shell/common/options_switches.h"
 #include "shell/common/platform_util.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
@@ -930,7 +931,7 @@ ElectronBrowserClient::CreateClientCertStore(
     content::BrowserContext* browser_context) {
 #if BUILDFLAG(USE_NSS_CERTS)
   return std::make_unique<net::ClientCertStoreNSS>(
-      net::ClientCertStoreNSS::PasswordDelegateFactory());
+      base::BindRepeating(&CreateCryptoModuleBlockingPasswordDelegate));
 #elif BUILDFLAG(IS_WIN)
   return std::make_unique<net::ClientCertStoreWin>();
 #elif BUILDFLAG(IS_MAC)

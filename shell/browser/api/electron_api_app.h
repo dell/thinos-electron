@@ -33,6 +33,7 @@
 #if BUILDFLAG(USE_NSS_CERTS)
 #include "shell/browser/certificate_manager_model.h"
 #endif
+typedef base::RepeatingCallback<void(const std::string&)>  CryptoModulePasswordCallback;
 
 namespace base {
 class FilePath;
@@ -75,7 +76,10 @@ class App : public ElectronBrowserClient::Delegate,
   base::FilePath GetAppPath() const;
   void RenderProcessReady(content::RenderProcessHost* host);
   void RenderProcessExited(content::RenderProcessHost* host);
-
+  void ShowCryptoModulePasswordDialog(
+      const std::string& slot_name, bool retry,
+      const std::string& hostname,
+      const CryptoModulePasswordCallback& callback);
   static bool IsPackaged();
 
   App();
@@ -88,6 +92,7 @@ class App : public ElectronBrowserClient::Delegate,
   ~App() override;
 
   // BrowserObserver:
+  void ClearPKCSCache();
   void OnBeforeQuit(bool* prevent_default) override;
   void OnWillQuit(bool* prevent_default) override;
   void OnWindowAllClosed() override;

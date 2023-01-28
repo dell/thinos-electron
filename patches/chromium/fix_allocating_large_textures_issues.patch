@@ -1,0 +1,26 @@
+From 763c1b742efced10030ddaf4c2bf935b65a9b259 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sat, 28 Jan 2023 16:53:58 +0800
+Subject: [PATCH] fix: allocating large textures issues, OS kernel version < 4
+     will applay max_texture_size_limit_4096
+
+---
+ gpu/config/gpu_driver_bug_list.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/gpu/config/gpu_driver_bug_list.json b/gpu/config/gpu_driver_bug_list.json
+index d2646b34e4bbf..1c675db0d0afd 100644
+--- a/gpu/config/gpu_driver_bug_list.json
++++ b/gpu/config/gpu_driver_bug_list.json
+@@ -2812,7 +2812,7 @@
+         "type" : "linux",
+         "version": {
+           "op": "<",
+-          "value": "5.0"
++          "value": "4.0"
+         }
+       },
+       "vendor_id": "0x8086",
+--
+2.25.1
+

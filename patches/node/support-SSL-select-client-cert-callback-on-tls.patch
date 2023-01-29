@@ -1,0 +1,232 @@
+From efa8c6a5c5120b71348060182c9eea42a6b572bb Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 20 Feb 2023 07:31:28 +0000
+Subject: [PATCH] src: support SSL select client cert callback on tls socket
+
+NodeJS TLS connection support SSLSelectClientCertCallback function
+tls.options add onselectclientcert
+---
+ lib/_tls_wrap.js             |  2 ++
+ src/crypto/crypto_context.cc | 11 ++++++++-
+ src/crypto/crypto_context.h  |  3 +++
+ src/crypto/crypto_tls.cc     | 46 +++++++++++++++++++++++++++++++++++-
+ src/crypto/crypto_tls.h      |  1 +
+ src/env.h                    |  1 +
+ 6 files changed, 62 insertions(+), 2 deletions(-)
+
+diff --git a/lib/_tls_wrap.js b/lib/_tls_wrap.js
+index eda0c0987f..963292770f 100644
+--- a/lib/_tls_wrap.js
++++ b/lib/_tls_wrap.js
+@@ -730,6 +730,7 @@ TLSSocket.prototype._init = function(socket, wrap) {
+       this._finishInit();
+     };
+     ssl.onocspresponse = onocspresponse;
++    ssl.onselectclientcert = options.onselectclientcert;
+ 
+     if (options.session)
+       ssl.setSession(options.session);
+@@ -1640,6 +1641,7 @@ exports.connect = function connect(...args) {
+     highWaterMark: options.highWaterMark,
+     onread: options.onread,
+     signal: options.signal,
++    onselectclientcert: options.onselectclientcert,
+   });
+ 
+   // rejectUnauthorized property can be explicitly defined as `undefined`
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index 0bb5bedbcd..a13fe8f21b 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -227,7 +227,6 @@ X509_STORE* NewRootCertStore() {
+       X509_STORE_add_cert(store, cert);
+     }
+   }
+-
+   return store;
+ }
+ 
+@@ -404,6 +403,7 @@ inline void SecureContext::Reset() {
+   ctx_.reset();
+   cert_.reset();
+   issuer_.reset();
++  client_key_provided_ = false;
+ }
+ 
+ SecureContext::~SecureContext() {
+@@ -566,6 +566,10 @@ void SecureContext::SetSelectSNIContextCallback(SelectSNIContextCb cb) {
+   SSL_CTX_set_tlsext_servername_callback(ctx_.get(), cb);
+ }
+ 
++void SecureContext::SetSelectClientCertCallback(SelectClientCertCb cb) {
++  SSL_CTX_set_client_cert_cb(ctx_.get(), cb);
++}
++
+ void SecureContext::SetKeylogCallback(KeylogCb cb) {
+   SSL_CTX_set_keylog_callback(ctx_.get(), cb);
+ }
+@@ -601,6 +605,7 @@ void SecureContext::SetKey(const FunctionCallbackInfo<Value>& args) {
+ 
+   if (!SSL_CTX_use_PrivateKey(sc->ctx_.get(), key.get()))
+     return ThrowCryptoError(env, ERR_get_error(), "SSL_CTX_use_PrivateKey");
++  sc->client_key_provided_ = true;
+ }
+ 
+ void SecureContext::SetSigalgs(const FunctionCallbackInfo<Value>& args) {
+@@ -709,6 +714,9 @@ void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
+     SSL_CTX_add_client_CA(sc->ctx_.get(), x509);
+     X509_free(x509);
+   }
++  if (cert_store) {
++    X509_STORE_set_flags(cert_store, X509_V_FLAG_PARTIAL_CHAIN);
++  }
+ }
+ 
+ void SecureContext::AddCRL(const FunctionCallbackInfo<Value>& args) {
+@@ -753,6 +761,7 @@ void SecureContext::AddRootCerts(const FunctionCallbackInfo<Value>& args) {
+ 
+   // Increment reference count so global store is not deleted along with CTX.
+   X509_STORE_up_ref(root_cert_store);
++  X509_STORE_set_flags(root_cert_store, X509_V_FLAG_PARTIAL_CHAIN);
+   SSL_CTX_set_cert_store(sc->ctx_.get(), root_cert_store);
+ }
+ 
+diff --git a/src/crypto/crypto_context.h b/src/crypto/crypto_context.h
+index ee2df97ac2..c49ca2b313 100644
+--- a/src/crypto/crypto_context.h
++++ b/src/crypto/crypto_context.h
+@@ -31,6 +31,7 @@ class SecureContext final : public BaseObject {
+   using KeylogCb = void (*)(const SSL*, const char*);
+   using NewSessionCb = int (*)(SSL*, SSL_SESSION*);
+   using SelectSNIContextCb = int (*)(SSL*, int*, void*);
++  using SelectClientCertCb = int (*)(SSL*, X509 **, EVP_PKEY **);
+ 
+   ~SecureContext() override;
+ 
+@@ -49,12 +50,14 @@ class SecureContext final : public BaseObject {
+   void SetKeylogCallback(KeylogCb cb);
+   void SetNewSessionCallback(NewSessionCb cb);
+   void SetSelectSNIContextCallback(SelectSNIContextCb cb);
++  void SetSelectClientCertCallback(SelectClientCertCb cb);
+ 
+   // TODO(joyeecheung): track the memory used by OpenSSL types
+   SET_NO_MEMORY_INFO()
+   SET_MEMORY_INFO_NAME(SecureContext)
+   SET_SELF_SIZE(SecureContext)
+ 
++  bool client_key_provided_ = false;
+   static const int kMaxSessionSize = 10 * 1024;
+ 
+   // See TicketKeyCallback
+diff --git a/src/crypto/crypto_tls.cc b/src/crypto/crypto_tls.cc
+index a192956f0f..bd174e24bf 100644
+--- a/src/crypto/crypto_tls.cc
++++ b/src/crypto/crypto_tls.cc
+@@ -60,6 +60,7 @@ using v8::String;
+ using v8::True;
+ using v8::Uint32;
+ using v8::Value;
++using errors::TryCatchScope;
+ 
+ namespace crypto {
+ 
+@@ -425,6 +426,9 @@ void TLSWrap::InitSSL() {
+ 
+   if (is_server())
+     sc_->SetSelectSNIContextCallback(SelectSNIContextCallback);
++  if (is_client() && !sc_->client_key_provided_) {
++    sc_->SetSelectClientCertCallback(SelectClientCertCallback);
++  }
+ 
+   ConfigureSecureContext(sc_.get());
+ 
+@@ -750,6 +754,7 @@ void TLSWrap::ClearOut() {
+     int err = GetSSLError(read);
+     switch (err) {
+       case SSL_ERROR_ZERO_RETURN:
++      case SSL_ERROR_WANT_X509_LOOKUP:
+         // Ignore ZERO_RETURN after EOF, it is basically not an error.
+         if (eof_) return;
+         error = env()->zero_return_string();
+@@ -793,7 +798,9 @@ void TLSWrap::ClearOut() {
+       default:
+         return;
+     }
+-
++    if (err == SSL_ERROR_WANT_X509_LOOKUP) {
++      eof_ = true;
++    }
+     Debug(this, "Got SSL error (%d), calling onerror", err);
+     // When TLS Alert are stored in wbio,
+     // it should be flushed to socket before destroyed.
+@@ -1308,6 +1315,43 @@ int TLSWrap::SelectSNIContextCallback(SSL* s, int* ad, void* arg) {
+ 
+   return SSL_TLSEXT_ERR_OK;
+ }
++int TLSWrap::SelectClientCertCallback(SSL* s, X509 **cert, EVP_PKEY ** key) {
++  TLSWrap* p = static_cast<TLSWrap*>(SSL_get_app_data(s));
++  if (!p->is_client())
++    return 0;
++
++  Environment* env = p->env();
++  Local<Object> object = p->object();
++  Local<Value> onselectclientcert = object->Get(env->context(),
++                                                env->onselectclientcert_string()).ToLocalChecked();
++
++  // Not an function, probably undefined or null
++  if (onselectclientcert->IsUndefined() || !onselectclientcert->IsFunction()) {
++    return 0;
++  }
++
++  Local<Array> distinguishedNames = Array::New(env->isolate());
++  char buf[BUFSIZ];
++  STACK_OF(X509_NAME) * sk = SSL_get_client_CA_list(s);
++  X509_NAME *name;
++  if (sk != NULL && (sk_X509_NAME_num(sk) > 0)) {
++    for (int i = 0; i < sk_X509_NAME_num(sk); i++) {
++      name = sk_X509_NAME_value(sk, i);
++      X509_NAME_oneline(name, buf, sizeof(buf));
++      distinguishedNames->Set(env->context(), i, OneByteString(env->isolate(), buf)).Check();
++    }
++  }
++  int value_int = 0;
++  Local<Value> value;
++  Local<Value> argv[] = { distinguishedNames };
++  TryCatchScope try_catch(env);
++  if (!p->MakeCallback(env->onselectclientcert_string(), arraysize(argv), argv).ToLocal(&value) ||
++      !value->Int32Value(env->context()).To(&value_int)) {
++        if (try_catch.HasCaught() && !try_catch.HasTerminated())
++          errors::TriggerUncaughtException(env->isolate(), try_catch);
++  }
++  return value_int;
++}
+ 
+ int TLSWrap::SetCACerts(SecureContext* sc) {
+   int err = SSL_set1_verify_cert_store(ssl_.get(),
+diff --git a/src/crypto/crypto_tls.h b/src/crypto/crypto_tls.h
+index 765c6c476b..226c988d0a 100644
+--- a/src/crypto/crypto_tls.h
++++ b/src/crypto/crypto_tls.h
+@@ -169,6 +169,7 @@ class TLSWrap : public AsyncWrap,
+   int GetSSLError(int status) const;
+ 
+   static int SelectSNIContextCallback(SSL* s, int* ad, void* arg);
++  static int SelectClientCertCallback(SSL* s, X509 **cert, EVP_PKEY ** key);
+ 
+   static void CertCbDone(const v8::FunctionCallbackInfo<v8::Value>& args);
+   static void DestroySSL(const v8::FunctionCallbackInfo<v8::Value>& args);
+diff --git a/src/env.h b/src/env.h
+index 099d8c9efe..6768981b44 100644
+--- a/src/env.h
++++ b/src/env.h
+@@ -364,6 +364,7 @@ class NoArrayBufferZeroFillScope {
+   V(onmessage_string, "onmessage")                                             \
+   V(onnewsession_string, "onnewsession")                                       \
+   V(onocspresponse_string, "onocspresponse")                                   \
++  V(onselectclientcert_string, "onselectclientcert")                           \
+   V(onreadstart_string, "onreadstart")                                         \
+   V(onreadstop_string, "onreadstop")                                           \
+   V(onshutdown_string, "onshutdown")                                           \
+-- 
+2.25.1
+

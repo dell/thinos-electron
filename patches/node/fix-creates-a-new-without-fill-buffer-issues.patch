@@ -1,0 +1,30 @@
+From b3c4596eb8a9d5dc25ddf069224573b532b2f9b1 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 29 Jan 2023 14:17:55 +0800
+Subject: [PATCH] fix: creates a new without fill buffer issues
+
+Buffer.alloc has quick alloc without fill issues on Thin OS, use the
+slow buffer and fill 0 replace it.
+---
+ lib/buffer.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/buffer.js b/lib/buffer.js
+index 874b9b5595..954e133982 100644
+--- a/lib/buffer.js
++++ b/lib/buffer.js
+@@ -364,9 +364,9 @@ const assertSize = hideStackFrames((size) => {
+  */
+ Buffer.alloc = function alloc(size, fill, encoding) {
+   assertSize(size);
+-  if (fill !== undefined && fill !== 0 && size > 0) {
++  if (/*fill !== undefined &&*/ fill !== 0 && size > 0) {
+     const buf = createUnsafeBuffer(size);
+-    return _fill(buf, fill, 0, buf.length, encoding);
++    return _fill(buf, fill || 0, 0, buf.length, encoding);
+   }
+   return new FastBuffer(size);
+ };
+-- 
+2.25.1
+

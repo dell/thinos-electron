@@ -1,0 +1,29 @@
+From 5594a7653cd4f297accbb2c626e94da9cb350fa7 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 29 Jan 2023 10:11:34 +0800
+Subject: [PATCH] fix: host platform window close for twice issues
+
+webContents on Thin OS machines it may happen that the window gets
+destroyed for twice, checking platform_window() can effectively
+guard against that.
+---
+ .../widget/desktop_aura/desktop_window_tree_host_platform.cc   | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/ui/views/widget/desktop_aura/desktop_window_tree_host_platform.cc b/ui/views/widget/desktop_aura/desktop_window_tree_host_platform.cc
+index 774a2d23a87a6..79df7f4770bbf 100644
+--- a/ui/views/widget/desktop_aura/desktop_window_tree_host_platform.cc
++++ b/ui/views/widget/desktop_aura/desktop_window_tree_host_platform.cc
+@@ -395,7 +395,8 @@ void DesktopWindowTreeHostPlatform::CloseNow() {
+   // example.
+   DestroyCompositor();
+
+-  platform_window()->Close();
++  if (platform_window())
++    platform_window()->Close();
+ }
+
+ aura::WindowTreeHost* DesktopWindowTreeHostPlatform::AsWindowTreeHost() {
+--
+2.25.1
+

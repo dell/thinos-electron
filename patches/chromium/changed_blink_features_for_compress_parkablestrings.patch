@@ -1,0 +1,26 @@
+From feb284e1d8404a44de8ef308af138288d01f7a09 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 29 Jan 2023 14:45:34 +0800
+Subject: [PATCH] src: changed blink features for compress parkablestrings
+
+ThinOS compress parkable strings with UseSnappyForParkableStrings enabled by default
+---
+ third_party/blink/common/features.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+index 7a62f556156c2..c4a2cb172fae0 100644
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -785,7 +785,7 @@ BASE_FEATURE(kCompressParkableStrings,
+ // kCompressParkableStrings is enabled.
+ BASE_FEATURE(kUseSnappyForParkableStrings,
+              "UseSnappyForParkableStrings",
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ // Enabling this will delay the first aging of strings by 60 seconds instead of
+ // the default. See comment around the use of the feature for the logic behind
+-- 
+2.25.1
+

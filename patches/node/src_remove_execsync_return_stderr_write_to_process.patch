@@ -1,0 +1,39 @@
+From b36d2eb26fb8c3b8f9916a41d6f4a8ad8fdfba57 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 25 Jun 2023 05:56:24 +0000
+Subject: [PATCH] src: remove execSync return stderr write to process.stderr
+
+ThinOS process.stderr has issues when execSync/execFileSync result data pass
+---
+ lib/child_process.js | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/lib/child_process.js b/lib/child_process.js
+index d9d6a39f11..68af8f5487 100644
+--- a/lib/child_process.js
++++ b/lib/child_process.js
+@@ -939,8 +939,8 @@ function execFileSync(file, args, options) {
+   const inheritStderr = !options.stdio;
+   const ret = spawnSync(file, args, options);
+ 
+-  if (inheritStderr && ret.stderr)
+-    process.stderr.write(ret.stderr);
++  //if (inheritStderr && ret.stderr)
++  //  process.stderr.write(ret.stderr);
+ 
+   const errArgs = [options.argv0 || file];
+   ArrayPrototypePushApply(errArgs, args);
+@@ -977,8 +977,8 @@ function execSync(command, options) {
+ 
+   const ret = spawnSync(opts.file, opts.options);
+ 
+-  if (inheritStderr && ret.stderr)
+-    process.stderr.write(ret.stderr);
++  //if (inheritStderr && ret.stderr)
++  //  process.stderr.write(ret.stderr);
+ 
+   const err = checkExecSyncError(ret, undefined, command);
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,26 @@
+From 01c323e1b55e02d5811e9fb93a71ff46f837006c Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 4 Sep 2023 05:16:46 +0000
+Subject: [PATCH] src: changed blink features for compress parkablestrings
+
+ThinOS compress parkable strings with UseSnappyForParkableStrings enabled by default
+---
+ third_party/blink/common/features.cc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/blink/common/features.cc b/third_party/blink/common/features.cc
+index 88c273721354f..2a902b6bfa21e 100644
+--- a/third_party/blink/common/features.cc
++++ b/third_party/blink/common/features.cc
+@@ -1743,7 +1743,7 @@ BASE_FEATURE(kUsePageViewportInLCP,
+ // kCompressParkableStrings is enabled.
+ BASE_FEATURE(kUseSnappyForParkableStrings,
+              "UseSnappyForParkableStrings",
+-             base::FEATURE_DISABLED_BY_DEFAULT);
++             base::FEATURE_ENABLED_BY_DEFAULT);
+ 
+ BASE_FEATURE(kUseThreadPoolForMediaStreamVideoTaskRunner,
+              "UseThreadPoolForMediaStreamVideoTaskRunner",
+-- 
+2.25.1
+

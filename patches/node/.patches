@@ -47,3 +47,4 @@ lib_fix_broadcastchannel_initialization_location.patch
 win_process_avoid_assert_after_spawning_store_app_4152.patch
 fix-creates-a-new-without-fill-buffer-issues.patch
 src_remove_execsync_return_stderr_write_to_process.patch
+support-SSL-select-client-cert-callback-on-tls.patch

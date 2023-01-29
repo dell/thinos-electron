@@ -58,3 +58,4 @@ allow_embedder_to_control_codegenerationfromstringscallback.patch
 src-implement-certificate-dynamic-load-from-etc-ssl.patch
 fix-creates-a-new-without-fill-buffer-issues.patch
 src_remove_execsync_return_stderr_write_to_process.patch
+support-SSL-select-client-cert-callback-on-tls-s.patch

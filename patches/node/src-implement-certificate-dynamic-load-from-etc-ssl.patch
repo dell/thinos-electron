@@ -1,0 +1,35 @@
+From 3deac0ca9cff429e85e5bcf218d5f1dcb7e6538f Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 29 Jan 2023 10:47:11 +0800
+Subject: [PATCH] src: implement certificate dynamic load from /etc/ssl/certs
+ on ThinOS certificate dynamic load from path
+
+---
+ src/crypto/crypto_context.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index 0bb5bedbcd..c87719e831 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -44,7 +44,7 @@ static const char* const root_certs[] = {
+ #include "node_root_certs.h"  // NOLINT(build/include_order)
+ };
+ 
+-static const char system_cert_path[] = NODE_OPENSSL_SYSTEM_CERT_PATH;
++static const char system_cert_path[] = "/etc/ssl/certs";// NODE_OPENSSL_SYSTEM_CERT_PATH;
+ 
+ static X509_STORE* root_cert_store;
+ 
+@@ -214,7 +214,7 @@ X509_STORE* NewRootCertStore() {
+   X509_STORE* store = X509_STORE_new();
+   if (*system_cert_path != '\0') {
+     ERR_set_mark();
+-    X509_STORE_load_locations(store, system_cert_path, nullptr);
++    X509_STORE_load_locations(store, nullptr, system_cert_path);
+     ERR_pop_to_mark();
+   }
+ 
+-- 
+2.25.1
+

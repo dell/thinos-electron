@@ -284,6 +284,9 @@ NativeWindowViews::NativeWindowViews(const gin_helper::Dictionary& options,
   widget()->Init(std::move(params));
   SetCanResize(resizable_);
 
+  bool top;
+  options.Get(options::kAlwaysOnTop, &top);
+
   bool fullscreen = false;
   options.Get(options::kFullscreen, &fullscreen);
 
@@ -307,6 +310,9 @@ NativeWindowViews::NativeWindowViews(const gin_helper::Dictionary& options,
     // to manually set the _NET_WM_STATE.
     std::vector<x11::Atom> state_atom_list;
 
+    if (top) {
+      state_atom_list.push_back(x11::GetAtom("_NET_WM_STATE_ABOVE"));
+    }
     // Before the window is mapped, there is no SHOW_FULLSCREEN_STATE.
     if (fullscreen) {
       state_atom_list.push_back(x11::GetAtom("_NET_WM_STATE_FULLSCREEN"));

@@ -1,0 +1,26 @@
+From b88235d4b059c80d7c1733432c5b0d4792fada20 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 29 Jan 2023 11:07:45 +0800
+Subject: [PATCH] fix: allocator with partition issues on Thin OS
+
+Allocator with partition has some issues without memset
+---
+ base/allocator/partition_allocator/page_allocator.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/base/allocator/partition_allocator/page_allocator.h b/base/allocator/partition_allocator/page_allocator.h
+index f524d6a3b0afa..45cc3a9ef1609 100644
+--- a/base/allocator/partition_allocator/page_allocator.h
++++ b/base/allocator/partition_allocator/page_allocator.h
+@@ -231,7 +231,7 @@ void DecommitAndZeroSystemPages(void* address, size_t length);
+ // recommitted. Do not assume that this will not change over time.
+ constexpr PA_COMPONENT_EXPORT(
+     PARTITION_ALLOC) bool DecommittedMemoryIsAlwaysZeroed() {
+-#if BUILDFLAG(IS_APPLE)
++#if 1 || BUILDFLAG(IS_APPLE)
+   return false;
+ #else
+   return true;
+-- 
+2.25.1
+

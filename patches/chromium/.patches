@@ -151,3 +151,4 @@ cherry-pick-d9081493c4b2.patch
 fix_allocating_large_textures_issues.patch
 fix_alwaysontop_issues_when_nativewindow_create.patch
 fix_host_platform_window_close_for_twice_issues.patch
+fix-allocator-with-partition-issues.patch

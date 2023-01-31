@@ -78,6 +78,7 @@
 #include "shell/browser/api/electron_api_web_request.h"
 #include "shell/browser/badging/badge_manager.h"
 #include "shell/browser/child_web_contents_tracker.h"
+#include "shell/browser/crypto_module_delegate_nss.h"
 #include "shell/browser/electron_api_ipc_handler_impl.h"
 #include "shell/browser/electron_autofill_driver_factory.h"
 #include "shell/browser/electron_browser_context.h"
@@ -833,7 +834,7 @@ ElectronBrowserClient::CreateClientCertStore(
     content::BrowserContext* browser_context) {
 #if BUILDFLAG(USE_NSS_CERTS)
   return std::make_unique<net::ClientCertStoreNSS>(
-      net::ClientCertStoreNSS::PasswordDelegateFactory());
+      base::BindRepeating(&CreateCryptoModuleBlockingPasswordDelegate));
 #elif BUILDFLAG(IS_WIN)
   return std::make_unique<net::ClientCertStoreWin>();
 #elif BUILDFLAG(IS_MAC)

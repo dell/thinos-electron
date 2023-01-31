@@ -374,6 +374,8 @@ filenames = {
     "shell/browser/electron_autofill_driver_factory.h",
     "shell/browser/electron_browser_client.cc",
     "shell/browser/electron_browser_client.h",
+    "shell/browser/crypto_module_delegate_nss.cc",
+    "shell/browser/crypto_module_delegate_nss.h",
     "shell/browser/electron_browser_context.cc",
     "shell/browser/electron_browser_context.h",
     "shell/browser/electron_browser_main_parts.cc",

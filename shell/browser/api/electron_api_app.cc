@@ -860,7 +860,9 @@ base::OnceClosure App::SelectClientCertificate(
 
   v8::Isolate* isolate = JavascriptEnvironment::GetIsolate();
   v8::HandleScope handle_scope(isolate);
+#if 0 // prevent default does not work on thin client, todo
   bool prevent_default =
+#endif
       Emit("select-client-certificate",
            WebContents::FromOrCreate(isolate, web_contents),
            cert_request_info->host_and_port.ToString(), std::move(client_certs),
@@ -868,6 +870,7 @@ base::OnceClosure App::SelectClientCertificate(
                           shared_delegate, shared_identities));
 
   // Default to first certificate from the platform store.
+#if 0
   if (!prevent_default) {
     scoped_refptr<net::X509Certificate> cert =
         (*shared_identities)[0]->certificate();
@@ -875,7 +878,21 @@ base::OnceClosure App::SelectClientCertificate(
         std::move((*shared_identities)[0]),
         base::BindRepeating(&GotPrivateKey, shared_delegate, std::move(cert)));
   }
+#endif
   return base::OnceClosure();
+}
+
+void App::ShowCryptoModulePasswordDialog(
+    const std::string& slot_name,
+    bool retry,
+    const std::string& hostname,
+    const CryptoModulePasswordCallback& callback) {
+    Emit("code", callback, slot_name, retry, hostname);
+}
+
+void App::ClearPKCSCache() {
+  content::GetNetworkService()->ClearNSSCache();
+  content::GetNetworkService()->OnCertDBChanged();
 }
 
 void App::OnGpuInfoUpdate() {
@@ -1803,6 +1820,7 @@ gin::ObjectTemplateBuilder App::GetObjectTemplateBuilder(v8::Isolate* isolate) {
       .SetMethod("getPath", &App::GetPath)
       .SetMethod("setAppLogsPath", &App::SetAppLogsPath)
       .SetMethod("setDesktopName", &App::SetDesktopName)
+      .SetMethod("clearPKCSCache", &App::ClearPKCSCache)
       .SetMethod("getLocale", &App::GetLocale)
       .SetMethod("getPreferredSystemLanguages", &GetPreferredLanguages)
       .SetMethod("getSystemLocale", &App::GetSystemLocale)

@@ -1,0 +1,64 @@
+From 7356a232ab14a4f1dda64459c86524fc262b6816 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Tue, 31 Jan 2023 17:33:03 +0800
+Subject: [PATCH] expose: add NSS reset interface in network service module
+
+NSS reset interface when smartcard status need to be reset
+---
+ services/network/network_service.cc                 | 5 +++++
+ services/network/network_service.h                  | 1 +
+ services/network/public/mojom/network_service.mojom | 3 +++
+ 3 files changed, 9 insertions(+)
+
+diff --git a/services/network/network_service.cc b/services/network/network_service.cc
+index 2c9840266b892..82d7befad2942 100644
+--- a/services/network/network_service.cc
++++ b/services/network/network_service.cc
+@@ -7,6 +7,7 @@
+ #include <map>
+ #include <utility>
+ #include <vector>
++#include <pk11pub.h>
+ 
+ #include "base/bind.h"
+ #include "base/callback.h"
+@@ -650,6 +651,10 @@ void NetworkService::OnCertDBChanged() {
+   net::CertDatabase::GetInstance()->NotifyObserversCertDBChanged();
+ }
+ 
++void NetworkService::ClearNSSCache() {
++  PK11_LogoutAll();
++}
++
+ void NetworkService::SetEncryptionKey(const std::string& encryption_key) {
+   OSCrypt::SetRawEncryptionKey(encryption_key);
+ }
+diff --git a/services/network/network_service.h b/services/network/network_service.h
+index d904aab1e0e66..594866f97ab5b 100644
+--- a/services/network/network_service.h
++++ b/services/network/network_service.h
+@@ -175,6 +175,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkService
+       base::span<const uint8_t> crl_set,
+       mojom::NetworkService::UpdateCRLSetCallback callback) override;
+   void OnCertDBChanged() override;
++  void ClearNSSCache() override;
+   void SetEncryptionKey(const std::string& encryption_key) override;
+   void OnMemoryPressure(base::MemoryPressureListener::MemoryPressureLevel
+                             memory_pressure_level) override;
+diff --git a/services/network/public/mojom/network_service.mojom b/services/network/public/mojom/network_service.mojom
+index 3b4908af50a5f..695097d5e2137 100644
+--- a/services/network/public/mojom/network_service.mojom
++++ b/services/network/public/mojom/network_service.mojom
+@@ -278,6 +278,9 @@ interface NetworkService {
+   // Notification that the certificate database has been modified.
+   OnCertDBChanged();
+ 
++  // Reset NSS state.
++  ClearNSSCache();
++
+   // Send the encryption key to the network service to use for AES encryption.
+   SetEncryptionKey(mojo_base.mojom.ByteString encryption_key);
+ 
+-- 
+2.25.1
+

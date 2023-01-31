@@ -141,3 +141,4 @@ fix_alwaysontop_issues_when_nativewindow_create.patch
 fix_host_platform_window_close_for_twice_issues.patch
 fix-allocator-with-partition-issues.patch
 changed_blink_features_for_compress_parkablestrings.patch
+add-nss-reset-interface.patch

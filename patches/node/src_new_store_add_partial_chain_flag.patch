@@ -1,0 +1,42 @@
+From 0e3028ba5bef23d01be6ecdc368cfadb83b08022 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Wed, 15 Feb 2023 12:03:46 +0000
+Subject: [PATCH] src: new store add X509_V_FLAG_PARTIAL_CHAIN flag
+
+---
+ src/crypto/crypto_context.cc | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index 1e1057ccbb..bd12fd76c6 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -227,7 +227,6 @@ X509_STORE* NewRootCertStore() {
+       Thin_X509_STORE_add_cert(store, cert);
+     }
+   }
+-  Thin_X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+ 
+   return store;
+ }
+@@ -714,6 +713,9 @@ void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
+     Thin_SSL_CTX_add_client_CA(sc->ctx_.get(), x509);
+     Thin_X509_free(x509);
+   }
++  if (cert_store) {
++    Thin_X509_STORE_set_flags(cert_store, X509_V_FLAG_PARTIAL_CHAIN);
++  }
+ }
+ 
+ void SecureContext::AddCRL(const FunctionCallbackInfo<Value>& args) {
+@@ -758,6 +760,7 @@ void SecureContext::AddRootCerts(const FunctionCallbackInfo<Value>& args) {
+ 
+   // Increment reference count so global store is not deleted along with CTX.
+   Thin_X509_STORE_up_ref(root_cert_store);
++  Thin_X509_STORE_set_flags(root_cert_store, X509_V_FLAG_PARTIAL_CHAIN);
+   Thin_SSL_CTX_set_cert_store(sc->ctx_.get(), root_cert_store);
+ }
+ 
+-- 
+2.25.1
+

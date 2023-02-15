@@ -1,0 +1,38 @@
+From 660ed8492a13371c96ec0aa9bd99dfce43ed49ed Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Thu, 30 Mar 2023 06:34:48 +0000
+Subject: [PATCH] nodejs root store add partial chain flag
+
+* Update .patches
+
+Co-authored-by: Lin Cheng <lin_cheng@dell.com>
+---
+ src/crypto/crypto_context.cc | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index a5fe5e906b..54c07c30e5 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -714,6 +714,10 @@ void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
+     Thin_SSL_CTX_add_client_CA(sc->ctx_.get(), x509);
+     Thin_X509_free(x509);
+   }
++
++  if (cert_store) {
++    Thin_X509_STORE_set_flags(cert_store, X509_V_FLAG_PARTIAL_CHAIN);
++  }
+ }
+ 
+ void SecureContext::AddCRL(const FunctionCallbackInfo<Value>& args) {
+@@ -758,6 +762,7 @@ void SecureContext::AddRootCerts(const FunctionCallbackInfo<Value>& args) {
+ 
+   // Increment reference count so global store is not deleted along with CTX.
+   Thin_X509_STORE_up_ref(root_cert_store);
++  Thin_X509_STORE_set_flags(root_cert_store, X509_V_FLAG_PARTIAL_CHAIN);
+   Thin_SSL_CTX_set_cert_store(sc->ctx_.get(), root_cert_store);
+ }
+ 
+-- 
+2.25.1
+

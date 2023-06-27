@@ -9,7 +9,6 @@ build_modify_js2c_py_to_allow_injection_of_original-fs_and_custom_embedder_js.pa
 refactor_allow_embedder_overriding_of_internal_fs_calls.patch
 chore_allow_the_node_entrypoint_to_be_a_builtin_module.patch
 chore_add_context_to_context_aware_module_prevention.patch
-fix_handle_boringssl_and_openssl_incompatibilities.patch
 fix_crypto_tests_to_run_with_bssl.patch
 fix_account_for_debugger_agent_race_condition.patch
 fix_readbarrier_undefined_symbol_error_on_woa_arm64.patch
@@ -49,3 +48,4 @@ fix-creates-a-new-without-fill-buffer-issues.patch
 src_remove_execsync_return_stderr_write_to_process.patch
 support-SSL-select-client-cert-callback-on-tls.patch
 src_new_store_add_partial_chain_flag.patch
+src-add-crypto_wrapper-shared-library-for-openssl-su.patch

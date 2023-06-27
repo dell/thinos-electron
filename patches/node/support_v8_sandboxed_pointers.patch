@@ -103,7 +103,7 @@ index 0fe7358d3f419f6e6f00eb4cc8422e9c5cb6cb9a..1a8337412f2fe1f10df280fbf8bdefb8
 +#endif  // defined(V8_ENABLE_SANDBOX)
  
  void SecureHeapUsed(const FunctionCallbackInfo<Value>& args) {
- #ifndef OPENSSL_IS_BORINGSSL
+   Environment* env = Environment::GetCurrent(args);
 diff --git a/src/crypto/crypto_util.h b/src/crypto/crypto_util.h
 index bf19334cf61fa497c9325c1d2e996a16545f1b7f..333039b3b7cdf29e911a9c09932b2588d4cccf1a 100644
 --- a/src/crypto/crypto_util.h

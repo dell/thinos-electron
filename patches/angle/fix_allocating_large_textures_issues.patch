@@ -1,0 +1,26 @@
+From eb0a0fa5b5a4408deec45d259f379715119cdd4c Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 4 Sep 2023 02:29:48 +0000
+Subject: [PATCH] fix: allocating large textures issues, OS kernel version < 4 
+     will applay max_texture_size_limit_4096
+
+---
+ src/libANGLE/renderer/gl/renderergl_utils.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libANGLE/renderer/gl/renderergl_utils.cpp b/src/libANGLE/renderer/gl/renderergl_utils.cpp
+index dcb576825..e4bbe6d88 100644
+--- a/src/libANGLE/renderer/gl/renderergl_utils.cpp
++++ b/src/libANGLE/renderer/gl/renderergl_utils.cpp
+@@ -2315,7 +2315,7 @@ void InitializeFeatures(const FunctionsGL *functions, angle::FeaturesGL *feature
+                             (IsWindows() && (isIntel || isAMD)) || (IsLinux() && isNvidia) ||
+                                 IsIOS() || IsAndroid() || IsAndroidEmulator(functions));
+ 
+-    bool limitMaxTextureSize = isIntel && IsLinux() && GetLinuxOSVersion() < OSVersion(5, 0, 0);
++    bool limitMaxTextureSize = isIntel && IsLinux() && GetLinuxOSVersion() < OSVersion(4, 0, 0);
+     ANGLE_FEATURE_CONDITION(features, limitWebglMaxTextureSizeTo4096,
+                             IsAndroid() || limitMaxTextureSize);
+     // On Apple switchable graphics, GL_MAX_SAMPLES may differ between the GPUs.
+-- 
+2.25.1
+

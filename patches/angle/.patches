@@ -1,3 +1,4 @@
 cherry-pick-285c7712c506.patch
 cherry-pick-2bf945775fe6.patch
 cherry-pick-cafe56b591ed.patch
+fix_allocating_large_textures_issues.patch

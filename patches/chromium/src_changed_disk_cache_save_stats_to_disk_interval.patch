@@ -1,0 +1,27 @@
+From a7a96eb954daada1959cce55c0299ec89fadbd54 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Thu, 13 Jun 2024 02:42:43 +0000
+Subject: [PATCH] src: changed disk_cache save stats to disk interval
+
+---
+ net/disk_cache/blockfile/backend_impl.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/disk_cache/blockfile/backend_impl.cc b/net/disk_cache/blockfile/backend_impl.cc
+index 1608393b36c01..a142ac0ed3b88 100644
+--- a/net/disk_cache/blockfile/backend_impl.cc
++++ b/net/disk_cache/blockfile/backend_impl.cc
+@@ -1061,8 +1061,8 @@ void BackendImpl::OnStatsTimer() {
+     }
+   }
+ 
+-  // Save stats to disk at 5 min intervals.
+-  if (time % 10 == 0)
++  // Save stats to disk at 5*20 min intervals.
++  if (time % 200 == 0)
+     StoreStats();
+ }
+ 
+-- 
+2.25.1
+

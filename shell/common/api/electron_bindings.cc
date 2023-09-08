@@ -31,6 +31,8 @@
 #include "shell/common/thread_restrictions.h"
 #include "third_party/blink/renderer/platform/heap/process_heap.h"  // nogncheck
 
+#include <syslog.h>
+
 namespace electron {
 
 ElectronBindings::ElectronBindings(uv_loop_t* loop) {
@@ -46,6 +48,7 @@ void ElectronBindings::BindProcess(v8::Isolate* isolate,
                                    gin_helper::Dictionary* process,
                                    base::ProcessMetrics* metrics) {
   // These bindings are shared between sandboxed & unsandboxed renderers
+  process->SetMethod("syslog", &Syslog);
   process->SetMethod("crash", &Crash);
   process->SetMethod("hang", &Hang);
   process->SetMethod("getCreationTime", &GetCreationTime);
@@ -120,6 +123,19 @@ void ElectronBindings::OnCallNextTick(uv_async_t* handle) {
   }
 
   self->pending_next_ticks_.clear();
+}
+
+// static
+void ElectronBindings::Syslog(v8::Isolate* isolate,
+                              gin_helper::Arguments* args) {
+  std::string message;
+  int facility, priority;
+  if (args->GetNext(&facility) && args->GetNext(&priority) &&
+      args->GetNext(&message)) {
+    openlog("", 0, facility);
+    syslog(priority, "%s", message.c_str());
+    closelog();
+  }
 }
 
 // static

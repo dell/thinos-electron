@@ -1,0 +1,180 @@
+From 0cecf11486c720f83e3046d9620b9b1937103e86 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Wed, 11 Oct 2023 02:30:00 +0000
+Subject: [PATCH] src: add is_thinos buildflag support
+
+---
+ base/BUILD.gn                  |  6 +++
+ base/system/sys_info.h         |  9 ++++
+ base/system/sys_info_thinos.cc | 82 ++++++++++++++++++++++++++++++++++
+ build/build_config.h           |  6 +++
+ build/config/thinos/config.gni |  7 +++
+ 5 files changed, 110 insertions(+)
+ create mode 100644 base/system/sys_info_thinos.cc
+ create mode 100644 build/config/thinos/config.gni
+
+diff --git a/base/BUILD.gn b/base/BUILD.gn
+index e9efa7f9d4497..8a6abb31eadc5 100644
+--- a/base/BUILD.gn
++++ b/base/BUILD.gn
+@@ -30,6 +30,7 @@ import("//build/config/compiler/compiler.gni")
+ import("//build/config/cronet/config.gni")
+ import("//build/config/dcheck_always_on.gni")
+ import("//build/config/ios/config.gni")
++import("//build/config/thinos/config.gni")
+ import("//build/config/logging.gni")
+ import("//build/config/nacl/config.gni")
+ import("//build/config/profiling/profiling.gni")
+@@ -2187,6 +2188,11 @@ component("base") {
+     }
+   }
+ 
++  if (is_thinos) {
++    defines += [ "OS_THINOS" ]
++    sources += [ "system/sys_info_thinos.cc" ]
++  }
++
+   # iOS
+   if (is_ios) {
+     sources += [
+diff --git a/base/system/sys_info.h b/base/system/sys_info.h
+index 5704ddb989868..a42031af8718e 100644
+--- a/base/system/sys_info.h
++++ b/base/system/sys_info.h
+@@ -222,6 +222,15 @@ class BASE_EXPORT SysInfo {
+   static int DalvikHeapGrowthLimitMB();
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
++#if BUILDFLAG(IS_THINOS)
++  static std::string GetOperatingSystemCLK();
++  static std::string GetOperatingSystemIssue();
++
++  // Returns the kernel version of the host operating system.
++  static std::string KernelVersion();
++  static std::string GetLsbRelease();
++#endif  // BUILDFLAG(IS_THINOS)
++
+ #if BUILDFLAG(IS_IOS)
+   // Returns the iOS build number string which is normally an alphanumeric
+   // string like 12E456. This build number can differentiate between different
+diff --git a/base/system/sys_info_thinos.cc b/base/system/sys_info_thinos.cc
+new file mode 100644
+index 0000000000000..5a7dbc6e5f24e
+--- /dev/null
++++ b/base/system/sys_info_thinos.cc
+@@ -0,0 +1,82 @@
++// Copyright 2011 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "base/system/sys_info.h"
++
++#include <stddef.h>
++#include <stdint.h>
++#include <sys/utsname.h>
++
++#include <algorithm>
++#include <limits>
++#include <sstream>
++
++#include "base/check.h"
++#include "base/files/file_util.h"
++#include "base/lazy_instance.h"
++#include "base/notreached.h"
++#include "base/numerics/safe_conversions.h"
++#include "base/process/process_metrics.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/strings/string_util.h"
++#include "base/strings/stringprintf.h"
++#include "base/system/sys_info_internal.h"
++#include "build/build_config.h"
++
++namespace {
++  const char kIssueFile[] = "/etc/issue";
++  const char kLinuxStandardBaseReleaseFile[] = "/etc/lsb-release";
++
++}  // namespace
++
++namespace base {
++
++// static
++std::string SysInfo::GetOperatingSystemCLK() {
++  long result = 0;
++  asm volatile (
++    "call sysconf"
++    : "=a" (result)
++    : "D"(2)
++    : "memory"
++  );
++
++  return base::StringPrintf("%ld", result);
++}
++
++// static
++std::string SysInfo::GetOperatingSystemIssue() {
++  std::string contents;
++  ReadFileToString(FilePath(kIssueFile), &contents);
++  DCHECK(!contents.empty());
++  if (!contents.empty()) {
++    std::string line;
++    std::istringstream iss(contents);
++    std::getline(iss, line);
++    size_t pos = line.find(" ");
++    return line.substr(0, pos);
++  }
++
++  return std::string();
++}
++
++// static
++std::string SysInfo::KernelVersion() {
++  struct utsname info;
++  if (uname(&info) < 0) {
++    NOTREACHED();
++    return std::string();
++  }
++  return std::string(info.release);
++}
++
++// static
++std::string SysInfo::GetLsbRelease() {
++  std::string lsb_release;
++  FilePath path(kLinuxStandardBaseReleaseFile);
++  ReadFileToString(path, &lsb_release);
++  return lsb_release;
++}
++
++}  // namespace base
+diff --git a/build/build_config.h b/build/build_config.h
+index 2484703699208..82c3971488bb5 100644
+--- a/build/build_config.h
++++ b/build/build_config.h
+@@ -182,6 +182,12 @@
+ #define BUILDFLAG_INTERNAL_IS_FUCHSIA() (0)
+ #endif
+ 
++#if defined(OS_THINOS)
++#define BUILDFLAG_INTERNAL_IS_THINOS() (1)
++#else
++#define BUILDFLAG_INTERNAL_IS_THINOS() (0)
++#endif
++
+ #if defined(OS_IOS)
+ #define BUILDFLAG_INTERNAL_IS_IOS() (1)
+ #else
+diff --git a/build/config/thinos/config.gni b/build/config/thinos/config.gni
+new file mode 100644
+index 0000000000000..d5221a1500057
+--- /dev/null
++++ b/build/config/thinos/config.gni
+@@ -0,0 +1,7 @@
++# Copyright 2020 The Chromium Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++declare_args() {
++  is_thinos = false  # Set a default value if needed
++}
+-- 
+2.25.1
+

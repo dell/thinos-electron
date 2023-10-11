@@ -1,5 +1,6 @@
 import("//build/config/locales.gni")
 import("//build/config/ui.gni")
+import("//build/config/thinos/config.gni")
 import("//build/config/win/manifest.gni")
 import("//components/os_crypt/sync/features.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
@@ -503,6 +504,10 @@ source_set("electron_lib") {
 
   if (is_linux) {
     defines += [ "GDK_DISABLE_DEPRECATION_WARNINGS" ]
+  }
+
+  if (is_thinos) {
+    defines += [ "OS_THINOS" ]
   }
 
   if (!is_mas_build) {

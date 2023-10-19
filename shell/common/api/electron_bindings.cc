@@ -57,6 +57,14 @@ void ElectronBindings::BindProcess(v8::Isolate* isolate,
   process->SetMethod("getSystemMemoryInfo", &GetSystemMemoryInfo);
   process->SetMethod("getSystemVersion",
                      &base::SysInfo::OperatingSystemVersion);
+  process->SetMethod("getSystemCLK",
+                     &base::SysInfo::GetOperatingSystemCLK);
+  process->SetMethod("getSystemIssue",
+                     &base::SysInfo::GetOperatingSystemIssue);
+  process->SetMethod("kernelVersion",
+                     &base::SysInfo::KernelVersion);
+  process->SetMethod("getLsbRelease",
+                     &base::SysInfo::GetLsbRelease);
   process->SetMethod("getIOCounters", &GetIOCounters);
   process->SetMethod("getCPUUsage",
                      base::BindRepeating(&ElectronBindings::GetCPUUsage,

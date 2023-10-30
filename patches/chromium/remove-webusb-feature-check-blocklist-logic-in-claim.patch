@@ -1,0 +1,32 @@
+From ab63906fd184d22c8fda5179803911bf95ea89c7 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Fri, 20 Oct 2023 09:01:01 +0000
+Subject: [PATCH] remove webusb feature check blocklist logic in claim
+ interface
+
+---
+ services/device/usb/mojo/device_impl.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/services/device/usb/mojo/device_impl.cc b/services/device/usb/mojo/device_impl.cc
+index 34cc1f360a034..4d82c2a225b0b 100644
+--- a/services/device/usb/mojo/device_impl.cc
++++ b/services/device/usb/mojo/device_impl.cc
+@@ -255,12 +255,12 @@ void DeviceImpl::ClaimInterface(uint8_t interface_number,
+     return;
+   }
+ 
+-  for (const auto& alternate : (*interface_it)->alternates) {
++  /*for (const auto& alternate : (*interface_it)->alternates) {
+     if (base::Contains(blocked_interface_classes_, alternate->class_code)) {
+       std::move(callback).Run(mojom::UsbClaimInterfaceResult::kProtectedClass);
+       return;
+     }
+-  }
++  }*/
+ 
+   device_handle_->ClaimInterface(
+       interface_number,
+-- 
+2.25.1
+

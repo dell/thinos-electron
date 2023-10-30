@@ -133,3 +133,4 @@ fix_move_autopipsettingshelper_behind_branding_buildflag.patch
 revert_remove_the_allowaggressivethrottlingwithwebsocket_feature.patch
 revert_same_party_cookie_attribute_removal.patch
 src-add-is_thinos-buildflag-support.patch
+src-add-webusb-detach-driver-support.patch

@@ -316,4 +316,10 @@ bool ElectronUsbDelegate::PageMayUseUsb(content::Page& page) {
   return true;
 }
 
+bool ElectronUsbDelegate::DetachUSBDriver(
+    content::BrowserContext* browser_context, const std::string& guid) {
+
+  auto* chooser_context = GetChooserContext(browser_context);
+  return chooser_context->DetachUSBDriver(guid);
+}
 }  // namespace electron

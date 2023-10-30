@@ -87,6 +87,9 @@ class ElectronUsbDelegate : public content::UsbDelegate {
 
   bool PageMayUseUsb(content::Page& page) override;
 
+  bool DetachUSBDriver(content::BrowserContext* browser_context,
+                       const std::string& guid);
+
  private:
   UsbChooserController* ControllerForFrame(
       content::RenderFrameHost* render_frame_host);

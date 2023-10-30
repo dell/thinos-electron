@@ -77,6 +77,8 @@ class UsbChooserContext : public KeyedService,
       mojo::PendingReceiver<device::mojom::UsbDevice> device_receiver,
       mojo::PendingRemote<device::mojom::UsbDeviceClient> device_client);
 
+  bool DetachUSBDriver(const std::string& guid);
+
   // This method should only be called when you are sure that |devices_| has
   // been initialized. It will return nullptr if the guid cannot be found.
   const device::mojom::UsbDeviceInfo* GetDeviceInfo(const std::string& guid);
@@ -94,6 +96,7 @@ class UsbChooserContext : public KeyedService,
                                       const base::Value& object,
                                       bool revoked_by_website);
 
+  void OnDetachedUSBDriver(const std::string& guid, bool success);
   void OnDeviceManagerConnectionError();
   void EnsureConnectionWithDeviceManager();
   void SetUpDeviceManagerConnection();

@@ -68,6 +68,7 @@
 #include "shell/browser/net/cert_verifier_client.h"
 #include "shell/browser/net/resolve_host_function.h"
 #include "shell/browser/session_preferences.h"
+#include "shell/browser/usb/electron_usb_delegate.h"
 #include "shell/common/gin_converters/callback_converter.h"
 #include "shell/common/gin_converters/content_converter.h"
 #include "shell/common/gin_converters/file_path_converter.h"
@@ -713,6 +714,22 @@ void Session::SetUSBProtectedClassesHandler(v8::Local<v8::Value> val,
   permission_manager->SetProtectedUSBHandler(handler);
 }
 
+void Session::DetachUSBDriver(gin::Arguments* args) {
+  std::string guid;
+  gin_helper::Dictionary options;
+  if (!args->GetNext(&options)) {
+    args->ThrowTypeError("Must pass Object with {guid: 'xxx-xxx-xxx-xxx'}");
+    return;
+  }
+  options.Get("guid", &guid);
+
+  auto* usb_delegate = static_cast<ElectronBrowserClient*>(
+    ElectronBrowserClient::Get())->GetUsbDelegate();
+
+  static_cast<ElectronUsbDelegate*>(
+    usb_delegate)->DetachUSBDriver(browser_context_, guid);
+}
+
 void Session::SetBluetoothPairingHandler(v8::Local<v8::Value> val,
                                          gin::Arguments* args) {
   ElectronPermissionManager::BluetoothPairingHandler handler;
@@ -1324,6 +1341,7 @@ void Session::FillObjectTemplate(v8::Isolate* isolate,
                  &Session::SetDevicePermissionHandler)
       .SetMethod("setUSBProtectedClassesHandler",
                  &Session::SetUSBProtectedClassesHandler)
+      .SetMethod("detachUSBDriver", &Session::DetachUSBDriver)
       .SetMethod("setBluetoothPairingHandler",
                  &Session::SetBluetoothPairingHandler)
       .SetMethod("clearHostResolverCache", &Session::ClearHostResolverCache)

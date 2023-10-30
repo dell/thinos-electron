@@ -280,6 +280,21 @@ const device::mojom::UsbDeviceInfo* UsbChooserContext::GetDeviceInfo(
   return it == devices_.end() ? nullptr : it->second.get();
 }
 
+void UsbChooserContext::OnDetachedUSBDriver(
+    const std::string& guid, bool success) {
+  if (!success)
+    return;
+}
+
+bool UsbChooserContext::DetachUSBDriver(const std::string& guid) {
+  DCHECK(device_manager_);
+
+  device_manager_->DetachUSBDriver(guid,
+                                   base::BindOnce(&UsbChooserContext::OnDetachedUSBDriver,
+                                                  weak_factory_.GetWeakPtr(), guid));
+  return true;
+}
+
 void UsbChooserContext::AddObserver(DeviceObserver* observer) {
   EnsureConnectionWithDeviceManager();
   device_observer_list_.AddObserver(observer);

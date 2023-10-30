@@ -1,0 +1,408 @@
+From 5619c579e92d5e91a7d9defc9a95a357efaf02c9 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 30 Oct 2023 08:23:02 +0000
+Subject: [PATCH 1/2] src: add webusb detach driver support
+
+---
+ .../device/public/mojom/usb_manager.mojom     |  3 +
+ .../device/usb/mojo/device_manager_impl.cc    | 13 ++++
+ .../device/usb/mojo/device_manager_impl.h     |  4 +
+ services/device/usb/usb_device.cc             |  5 ++
+ services/device/usb/usb_device.h              |  2 +
+ services/device/usb/usb_device_handle.h       |  1 +
+ services/device/usb/usb_device_handle_impl.cc | 10 +++
+ services/device/usb/usb_device_handle_impl.h  |  1 +
+ .../device/usb/usb_device_handle_usbfs.cc     | 25 ++++++
+ services/device/usb/usb_device_handle_usbfs.h |  1 +
+ services/device/usb/usb_device_handle_win.cc  | 77 +++++++++++++++++++
+ services/device/usb/usb_device_handle_win.h   |  2 +
+ services/device/usb/usb_device_linux.cc       |  8 ++
+ services/device/usb/usb_device_linux.h        |  2 +
+ services/device/usb/usb_device_win.cc         |  8 ++
+ services/device/usb/usb_device_win.h          |  1 +
+ services/device/usb/usb_service_win.cc        |  2 +-
+ 17 files changed, 164 insertions(+), 1 deletion(-)
+
+diff --git a/services/device/public/mojom/usb_manager.mojom b/services/device/public/mojom/usb_manager.mojom
+index fd5853684716f..73bf4fa9a08dc 100644
+--- a/services/device/public/mojom/usb_manager.mojom
++++ b/services/device/public/mojom/usb_manager.mojom
+@@ -25,6 +25,9 @@ interface UsbDeviceManager {
+             pending_receiver<UsbDevice> device_receiver,
+             pending_remote<UsbDeviceClient>? device_client);
+ 
++  // Detach the USB Driver form kernel.
++  DetachUSBDriver(string guid) => (bool success);
++
+   // Requests a device by guid. The returned device will be permitted to send
+   // control transfers that attempt to configure an AOA[1] version that
+   // indicates a security key request. See comment in
+diff --git a/services/device/usb/mojo/device_manager_impl.cc b/services/device/usb/mojo/device_manager_impl.cc
+index e9ffdba252ab1..4611e359a0399 100644
+--- a/services/device/usb/mojo/device_manager_impl.cc
++++ b/services/device/usb/mojo/device_manager_impl.cc
+@@ -72,6 +72,19 @@ void DeviceManagerImpl::GetDevice(
+                            /*allow_security_key_requests=*/false);
+ }
+ 
++void DeviceManagerImpl::DetachUSBDriver(
++    const std::string& guid,
++    DetachUSBDriverCallback callback) {
++  scoped_refptr<UsbDevice> device = usb_service_->GetDevice(guid);
++  if (device) {
++    device->DetachUSBDriver(std::move(callback));
++  } else {
++    LOG(ERROR) << "Was asked to detach usb driver to non-existent USB device: "
++               << guid;
++    std::move(callback).Run(false);
++  }
++}
++
+ void DeviceManagerImpl::GetSecurityKeyDevice(
+     const std::string& guid,
+     mojo::PendingReceiver<mojom::UsbDevice> device_receiver,
+diff --git a/services/device/usb/mojo/device_manager_impl.h b/services/device/usb/mojo/device_manager_impl.h
+index 0d41fd0fd6725..41cfcd215b43c 100644
+--- a/services/device/usb/mojo/device_manager_impl.h
++++ b/services/device/usb/mojo/device_manager_impl.h
+@@ -60,6 +60,10 @@ class DeviceManagerImpl : public mojom::UsbDeviceManager,
+       const std::vector<uint8_t>& blocked_interface_classes,
+       mojo::PendingReceiver<mojom::UsbDevice> device_receiver,
+       mojo::PendingRemote<mojom::UsbDeviceClient> device_client) override;
++
++  void DetachUSBDriver(const std::string& guid,
++                       DetachUSBDriverCallback callback) override;
++
+   void GetSecurityKeyDevice(
+       const std::string& guid,
+       mojo::PendingReceiver<mojom::UsbDevice> device_receiver,
+diff --git a/services/device/usb/usb_device.cc b/services/device/usb/usb_device.cc
+index 0abc0566b81f2..0db093cc3e1d1 100644
+--- a/services/device/usb/usb_device.cc
++++ b/services/device/usb/usb_device.cc
+@@ -82,6 +82,11 @@ const mojom::UsbConfigurationInfo* UsbDevice::GetActiveConfiguration() const {
+   return nullptr;
+ }
+ 
++void UsbDevice::DetachUSBDriver(ResultCallback callback) {
++  // By default assume that access to the device is allowed. This is implemented
++  std::move(callback).Run(true);
++}
++
+ void UsbDevice::CheckUsbAccess(ResultCallback callback) {
+   // By default assume that access to the device is allowed. This is implemented
+   // on Chrome OS by checking with permission_broker.
+diff --git a/services/device/usb/usb_device.h b/services/device/usb/usb_device.h
+index 9a26fac489063..c04fba1d7f2da 100644
+--- a/services/device/usb/usb_device.h
++++ b/services/device/usb/usb_device.h
+@@ -96,6 +96,8 @@ class UsbDevice : public base::RefCountedThreadSafe<UsbDevice> {
+   }
+   const mojom::UsbConfigurationInfo* GetActiveConfiguration() const;
+ 
++  virtual void DetachUSBDriver(ResultCallback callback);
++
+   // On ChromeOS the permission_broker service must be used to open USB devices.
+   // This function asks it to check whether a future Open call will be allowed.
+   // On all other platforms this is a no-op and always returns true.
+diff --git a/services/device/usb/usb_device_handle.h b/services/device/usb/usb_device_handle.h
+index 90844fec1f491..a6340017dd876 100644
+--- a/services/device/usb/usb_device_handle.h
++++ b/services/device/usb/usb_device_handle.h
+@@ -59,6 +59,7 @@ class UsbDeviceHandle : public base::RefCountedThreadSafe<UsbDeviceHandle> {
+                                             int alternate_setting,
+                                             ResultCallback callback) = 0;
+   virtual void ResetDevice(ResultCallback callback) = 0;
++  virtual void DetachUSBDriver(ResultCallback callback) = 0;
+   virtual void ClearHalt(mojom::UsbTransferDirection direction,
+                          uint8_t endpoint_number,
+                          ResultCallback callback) = 0;
+diff --git a/services/device/usb/usb_device_handle_impl.cc b/services/device/usb/usb_device_handle_impl.cc
+index fcdf88199c667..73dfa941dc1c8 100644
+--- a/services/device/usb/usb_device_handle_impl.cc
++++ b/services/device/usb/usb_device_handle_impl.cc
+@@ -644,6 +644,16 @@ void UsbDeviceHandleImpl::ResetDevice(ResultCallback callback) {
+                                 std::move(callback)));
+ }
+ 
++void UsbDeviceHandleImpl::DetachUSBDriver(ResultCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++
++  if (!device_) {
++    std::move(callback).Run(false);
++    return;
++  }
++
++}
++
+ void UsbDeviceHandleImpl::ClearHalt(UsbTransferDirection direction,
+                                     uint8_t endpoint_number,
+                                     ResultCallback callback) {
+diff --git a/services/device/usb/usb_device_handle_impl.h b/services/device/usb/usb_device_handle_impl.h
+index 738c0de754604..3759158189d0b 100644
+--- a/services/device/usb/usb_device_handle_impl.h
++++ b/services/device/usb/usb_device_handle_impl.h
+@@ -55,6 +55,7 @@ class UsbDeviceHandleImpl : public UsbDeviceHandle {
+                                     int alternate_setting,
+                                     ResultCallback callback) override;
+   void ResetDevice(ResultCallback callback) override;
++  void DetachUSBDriver(ResultCallback callback) override;
+   void ClearHalt(mojom::UsbTransferDirection direction,
+                  uint8_t endpoint_number,
+                  ResultCallback callback) override;
+diff --git a/services/device/usb/usb_device_handle_usbfs.cc b/services/device/usb/usb_device_handle_usbfs.cc
+index 3657aa4991299..8857df232674d 100644
+--- a/services/device/usb/usb_device_handle_usbfs.cc
++++ b/services/device/usb/usb_device_handle_usbfs.cc
+@@ -571,6 +571,31 @@ void UsbDeviceHandleUsbfs::ResetDevice(ResultCallback callback) {
+       .Then(std::move(callback));
+ }
+ 
++void UsbDeviceHandleUsbfs::DetachUSBDriver(ResultCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!device_) {
++    task_runner_->PostTask(FROM_HERE,
++                           base::BindOnce(std::move(callback), false));
++    return;
++  }
++
++#ifndef USBFS_MAXINTERFACES
++#define USBFS_MAXINTERFACES 32
++#endif
++
++  for (int i = 0; i < USBFS_MAXINTERFACES; i++) {
++    usbdevfs_ioctl command = {0};
++    command.ifno = i;
++    command.ioctl_code = USBDEVFS_DISCONNECT;
++    command.data = NULL;
++
++    ioctl(fd_, USBDEVFS_IOCTL, &command);
++  }
++
++  task_runner_->PostTask(FROM_HERE,
++                          base::BindOnce(std::move(callback), true));
++}
++
+ void UsbDeviceHandleUsbfs::ClearHalt(mojom::UsbTransferDirection direction,
+                                      uint8_t endpoint_number,
+                                      ResultCallback callback) {
+diff --git a/services/device/usb/usb_device_handle_usbfs.h b/services/device/usb/usb_device_handle_usbfs.h
+index 52ed3a7ce0bd7..4396a6f71818b 100644
+--- a/services/device/usb/usb_device_handle_usbfs.h
++++ b/services/device/usb/usb_device_handle_usbfs.h
+@@ -51,6 +51,7 @@ class UsbDeviceHandleUsbfs : public UsbDeviceHandle {
+                                     int alternate_setting,
+                                     ResultCallback callback) override;
+   void ResetDevice(ResultCallback callback) override;
++  void DetachUSBDriver(ResultCallback callback) override;
+   void ClearHalt(mojom::UsbTransferDirection direction,
+                  uint8_t endpoint_number,
+                  ResultCallback callback) override;
+diff --git a/services/device/usb/usb_device_handle_win.cc b/services/device/usb/usb_device_handle_win.cc
+index a33e6efbde552..865b8963cb226 100644
+--- a/services/device/usb/usb_device_handle_win.cc
++++ b/services/device/usb/usb_device_handle_win.cc
+@@ -6,6 +6,7 @@
+ 
+ #include <windows.h>  // Must be in front of other Windows header files.
+ 
++#include <SetupApi.h>
+ #include <usbioctl.h>
+ #include <usbspec.h>
+ #include <winioctl.h>
+@@ -119,6 +120,53 @@ bool ResetPipeBlocking(WINUSB_INTERFACE_HANDLE handle, UCHAR pipeId) {
+   return true;
+ }
+ 
++bool DisableDeviceBlocking(TCHAR *current_hardware_id) {
++  base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
++                                                base::BlockingType::WILL_BLOCK);
++  // Initialize a device information set
++  HDEVINFO deviceInfoSet = SetupDiGetClassDevs(
++      &GUID_DEVINTERFACE_USB_DEVICE, nullptr, 0, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
++  if (deviceInfoSet == INVALID_HANDLE_VALUE) {
++    return false;
++  }
++  SP_DEVINFO_DATA deviceInfoData = {};
++  deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
++  BOOL success = false;
++  DWORD dwDeviceIndex = 0;
++  
++  while (SetupDiEnumDeviceInfo(deviceInfoSet, dwDeviceIndex++, &deviceInfoData)) {
++
++    TCHAR hardware_id[MAX_PATH];
++    DWORD propertyRegDataType;
++
++    SetupDiGetDeviceRegistryProperty(
++        deviceInfoSet, &deviceInfoData, SPDRP_HARDWAREID, &propertyRegDataType, (PBYTE)&hardware_id, MAX_PATH, NULL);
++
++    if (wcsncmp(hardware_id, current_hardware_id, 21) == 0) {
++      SP_PROPCHANGE_PARAMS params = {};
++      params.ClassInstallHeader.cbSize = sizeof(SP_CLASSINSTALL_HEADER);
++      params.ClassInstallHeader.InstallFunction = DIF_PROPERTYCHANGE;
++      params.Scope = DICS_FLAG_GLOBAL;
++      params.StateChange = DICS_DISABLE;
++      params.HwProfile = 0;
++
++      if (SetupDiSetClassInstallParams(deviceInfoSet, &deviceInfoData, &params.ClassInstallHeader, sizeof(params))) {
++        SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, deviceInfoSet, &deviceInfoData);
++        params.StateChange = DICS_ENABLE;
++
++        SetupDiSetClassInstallParams(deviceInfoSet, &deviceInfoData, &params.ClassInstallHeader, sizeof(params));
++        SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, deviceInfoSet, &deviceInfoData);
++        success = true;
++      } else {
++        printf("SetupDiSetClassInstallParams StateChange to DICS_DISABLE failed!\n");
++      }
++      break;
++    }
++  }
++  SetupDiDestroyDeviceInfoList(deviceInfoSet);
++  return success;
++}
++
+ bool SetCurrentAlternateSettingBlocking(WINUSB_INTERFACE_HANDLE handle,
+                                         UCHAR settingNumber) {
+   base::ScopedBlockingCall scoped_blocking_call(FROM_HERE,
+@@ -369,6 +417,30 @@ void UsbDeviceHandleWin::ResetDevice(ResultCallback callback) {
+   task_runner_->PostTask(FROM_HERE, base::BindOnce(std::move(callback), false));
+ }
+ 
++void UsbDeviceHandleWin::DetachUSBDriver(ResultCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  if (!device_) {
++    task_runner_->PostTask(FROM_HERE,
++                           base::BindOnce(std::move(callback), false));
++    return;
++  }
++  TCHAR current_hardware_id[MAX_PATH];
++  // USB\VID_046D&PID_0843&REV_0013
++
++  _snwprintf(current_hardware_id, sizeof(current_hardware_id) / sizeof(wchar_t),
++    L"USB\\VID_%04X&PID_%04X", device_->vendor_id(), device_->product_id());
++  LOG(0) << device_->vendor_id() << device_->product_id() << "\n";
++
++  blocking_task_runner_->PostTaskAndReplyWithResult(
++      FROM_HERE,
++      base::BindOnce(&DisableDeviceBlocking, current_hardware_id),
++      base::BindOnce(&UsbDeviceHandleWin::OnDisableDevice, this,
++                     std::move(callback)));
++
++  // task_runner_->PostTask(FROM_HERE,
++  //                         base::BindOnce(std::move(callback), success));
++}
++
+ void UsbDeviceHandleWin::ClearHalt(mojom::UsbTransferDirection direction,
+                                    uint8_t endpoint_number,
+                                    ResultCallback callback) {
+@@ -870,6 +942,11 @@ void UsbDeviceHandleWin::OnClearHalt(int interface_number,
+   std::move(callback).Run(result);
+ }
+ 
++void UsbDeviceHandleWin::OnDisableDevice(ResultCallback callback,
++                                         bool result) {
++  std::move(callback).Run(result);
++}
++
+ void UsbDeviceHandleWin::OpenInterfaceForControlTransfer(
+     UsbControlTransferRecipient recipient,
+     uint16_t index,
+diff --git a/services/device/usb/usb_device_handle_win.h b/services/device/usb/usb_device_handle_win.h
+index cd8381da6505a..bf40ea71b26ab 100644
+--- a/services/device/usb/usb_device_handle_win.h
++++ b/services/device/usb/usb_device_handle_win.h
+@@ -44,6 +44,7 @@ class UsbDeviceHandleWin : public UsbDeviceHandle {
+                                     int alternate_setting,
+                                     ResultCallback callback) override;
+   void ResetDevice(ResultCallback callback) override;
++  void DetachUSBDriver(ResultCallback callback) override;
+   void ClearHalt(mojom::UsbTransferDirection direction,
+                  uint8_t endpoint_number,
+                  ResultCallback callback) override;
+@@ -170,6 +171,7 @@ class UsbDeviceHandleWin : public UsbDeviceHandle {
+                          const mojom::UsbAlternateInterfaceInfo& alternate);
+   void UnregisterEndpoints(const mojom::UsbAlternateInterfaceInfo& alternate);
+   void OnClearHalt(int interface_number, ResultCallback callback, bool result);
++  void OnDisableDevice(ResultCallback callback, bool result);
+   void OpenInterfaceForControlTransfer(
+       mojom::UsbControlTransferRecipient recipient,
+       uint16_t index,
+diff --git a/services/device/usb/usb_device_linux.cc b/services/device/usb/usb_device_linux.cc
+index a9208c7671568..03246e4255d23 100644
+--- a/services/device/usb/usb_device_linux.cc
++++ b/services/device/usb/usb_device_linux.cc
+@@ -39,6 +39,14 @@ UsbDeviceLinux::UsbDeviceLinux(const std::string& device_path,
+ 
+ UsbDeviceLinux::~UsbDeviceLinux() = default;
+ 
++void UsbDeviceLinux::DetachUSBDriver(ResultCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++
++  for (UsbDeviceHandle* handle : handles()) {
++    static_cast<UsbDeviceHandle*>(handle)->DetachUSBDriver(std::move(callback));
++  }
++}
++
+ #if BUILDFLAG(IS_CHROMEOS)
+ 
+ void UsbDeviceLinux::CheckUsbAccess(ResultCallback callback) {
+diff --git a/services/device/usb/usb_device_linux.h b/services/device/usb/usb_device_linux.h
+index 8986b50432bae..5e18742d6b26d 100644
+--- a/services/device/usb/usb_device_linux.h
++++ b/services/device/usb/usb_device_linux.h
+@@ -29,6 +29,8 @@ class UsbDeviceLinux : public UsbDevice {
+   UsbDeviceLinux(const UsbDeviceLinux&) = delete;
+   UsbDeviceLinux& operator=(const UsbDeviceLinux&) = delete;
+ 
++  void DetachUSBDriver(ResultCallback callback) override;
++
+ // UsbDevice implementation:
+ #if BUILDFLAG(IS_CHROMEOS)
+   void CheckUsbAccess(ResultCallback callback) override;
+diff --git a/services/device/usb/usb_device_win.cc b/services/device/usb/usb_device_win.cc
+index ca4eb1f9fefeb..f4c772a57c79c 100644
+--- a/services/device/usb/usb_device_win.cc
++++ b/services/device/usb/usb_device_win.cc
+@@ -50,6 +50,14 @@ void UsbDeviceWin::Open(OpenCallback callback) {
+       FROM_HERE, base::BindOnce(std::move(callback), std::move(device_handle)));
+ }
+ 
++void UsbDeviceWin::DetachUSBDriver(ResultCallback callback) {
++  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++
++  for (UsbDeviceHandle* handle : handles()) {
++    static_cast<UsbDeviceHandle*>(handle)->DetachUSBDriver(std::move(callback));
++  }
++}
++
+ void UsbDeviceWin::ReadDescriptors(
+     scoped_refptr<base::SequencedTaskRunner> blocking_task_runner,
+     base::OnceCallback<void(bool)> callback) {
+diff --git a/services/device/usb/usb_device_win.h b/services/device/usb/usb_device_win.h
+index 7b35fb892b602..041752f59e96f 100644
+--- a/services/device/usb/usb_device_win.h
++++ b/services/device/usb/usb_device_win.h
+@@ -45,6 +45,7 @@ class UsbDeviceWin : public UsbDevice {
+ 
+   // UsbDevice implementation:
+   void Open(OpenCallback callback) override;
++  void DetachUSBDriver(ResultCallback callback) override;
+ 
+  protected:
+   friend class UsbServiceWin;
+diff --git a/services/device/usb/usb_service_win.cc b/services/device/usb/usb_service_win.cc
+index 0b33cf7ac5eb4..c283002403faa 100644
+--- a/services/device/usb/usb_service_win.cc
++++ b/services/device/usb/usb_service_win.cc
+@@ -316,7 +316,7 @@ std::wstring GetDevicePath(const std::wstring& instance_id,
+           /*child_instance_ids=*/nullptr, /*hardware_ids=*/nullptr,
+           /*service_name=*/nullptr)) {
+     return std::wstring();
+-  }
++  } 
+ 
+   return device_path;
+ }
+-- 
+2.42.0.windows.2
+

@@ -1,0 +1,212 @@
+From b3303aa0e01eed7ed6c39fb1fe5578b20a67b1bc Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Tue, 23 Apr 2024 09:21:46 +0000
+Subject: [PATCH] fix address iteration with autoSelectFamily
+
+---
+ lib/_tls_wrap.js | 24 +++++++++++++++++++++--
+ lib/net.js       | 50 +++++++++++++++++++++++++++++++++---------------
+ 2 files changed, 57 insertions(+), 17 deletions(-)
+
+diff --git a/lib/_tls_wrap.js b/lib/_tls_wrap.js
+index 00a4d503e4..71cb7f065e 100644
+--- a/lib/_tls_wrap.js
++++ b/lib/_tls_wrap.js
+@@ -638,12 +638,24 @@ TLSSocket.prototype._wrapHandle = function(wrap, handle) {
+ 
+ TLSSocket.prototype[kWrapConnectedHandle] = function(handle) {
+   this._handle = this._wrapHandle(null, handle);
++
++  const originalServername = this._handle.getServername();
++  const originalSession = this._handle.getSession();
++
+   this.ssl = this._handle;
+   this._init();
+ 
+   if (this._tlsOptions.enableTrace) {
+     this._handle.enableTrace();
+   }
++
++  if (originalSession) {
++    this.setSession(originalSession);
++  }
++
++  if (originalServername) {
++    this.setServername(originalServername);
++  }
+ };
+ 
+ // This eliminates a cyclic reference to TLSWrap
+@@ -818,6 +830,12 @@ TLSSocket.prototype._init = function(socket, wrap) {
+     }
+   }
+ 
++  const connectOptions = this[kConnectOptions];
++  if (!options.isServer && connectOptions) {
++    if (connectOptions.servername) {
++      this.setServername(connectOptions.servername);
++    }
++  }
+ 
+   if (options.handshakeTimeout > 0)
+     this.setTimeout(options.handshakeTimeout, this._handleTimeout);
+@@ -991,13 +1009,15 @@ TLSSocket.prototype.setServername = function(name) {
+     throw new ERR_TLS_SNI_FROM_SERVER();
+   }
+ 
+-  this._handle.setServername(name);
++  if (this._handle)
++    this._handle.setServername(name);
+ };
+ 
+ TLSSocket.prototype.setSession = function(session) {
+   if (typeof session === 'string')
+     session = Buffer.from(session, 'latin1');
+-  this._handle.setSession(session);
++  if (this._handle)
++    this._handle.setSession(session);
+ };
+ 
+ TLSSocket.prototype.getPeerCertificate = function(detailed) {
+diff --git a/lib/net.js b/lib/net.js
+index a99cfa241d..fadb6c7149 100644
+--- a/lib/net.js
++++ b/lib/net.js
+@@ -55,6 +55,7 @@ const {
+   UV_EADDRINUSE,
+   UV_EINVAL,
+   UV_ENOTCONN,
++  UV_ECANCELED,
+ } = internalBinding('uv');
+ 
+ const { Buffer } = require('buffer');
+@@ -1071,19 +1072,21 @@ function internalConnect(
+ }
+ 
+ 
+-function internalConnectMultiple(context) {
++function internalConnectMultiple(context, canceled) {
+   clearTimeout(context[kTimeout]);
+   const self = context.socket;
+   assert(self.connecting);
+ 
+   // All connections have been tried without success, destroy with error
+-  if (context.current === context.addresses.length) {
++  if (canceled || context.current === context.addresses.length) {
+     self.destroy(aggregateErrors(context.errors));
+     return;
+   }
+ 
++
++  const current = context.current++;
+   const { localPort, port, flags } = context;
+-  const { address, family: addressType } = context.addresses[context.current++];
++  const { address, family: addressType } = context.addresses[current];
+   const handle = new TCP(TCPConstants.SOCKET);
+   let localAddress;
+   let err;
+@@ -1109,12 +1112,14 @@ function internalConnectMultiple(context) {
+   }
+ 
+   const req = new TCPConnectWrap();
+-  req.oncomplete = FunctionPrototypeBind(afterConnectMultiple, undefined, context);
++  req.oncomplete = FunctionPrototypeBind(afterConnectMultiple, undefined, context, current);
+   req.address = address;
+   req.port = port;
+   req.localAddress = localAddress;
+   req.localPort = localPort;
+ 
++  ArrayPrototypePush(self.autoSelectFamilyAttemptedAddresses, `${address}:${port}`);
++
+   if (addressType === 4) {
+     err = handle.connect(req, address, port);
+   } else {
+@@ -1134,8 +1139,12 @@ function internalConnectMultiple(context) {
+     return;
+   }
+ 
+-  // If the attempt has not returned an error, start the connection timer
+-  context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req);
++  if (current < context.addresses.length - 1) {
++    debug('connect/multiple: setting the attempt timeout to %d ms', context.timeout);
++
++    // If the attempt has not returned an error, start the connection timer
++    context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req, handle);
++  }
+ }
+ 
+ Socket.prototype.connect = function(...args) {
+@@ -1393,15 +1402,16 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options,
+         }
+       }
+ 
++      self.autoSelectFamilyAttemptedAddresses = [];
++
+       const context = {
+         socket: self,
+-        addresses,
++        addresses: toAttempt,
+         current: 0,
+         port,
+         localPort,
+         timeout,
+         [kTimeout]: null,
+-        [kTimeoutTriggered]: false,
+         errors: [],
+       };
+ 
+@@ -1504,12 +1514,20 @@ function afterConnect(status, handle, req, readable, writable) {
+   }
+ }
+ 
+-function afterConnectMultiple(context, status, handle, req, readable, writable) {
+-  const self = context.socket;
+-
++function afterConnectMultiple(context, current, status, handle, req, readable, writable) {
+   // Make sure another connection is not spawned
+   clearTimeout(context[kTimeout]);
+ 
++  // One of the connection has completed and correctly dispatched but after timeout, ignore this one
++  if (status === 0 && current !== context.current - 1) {
++    debug('connect/multiple: ignoring successful but timedout connection to %s:%s', req.address, req.port);
++    handle.close();
++    return;
++  }
++
++  const self = context.socket;
++
++
+   // Some error occurred, add to the list of exceptions
+   if (status !== 0) {
+     let details;
+@@ -1529,12 +1547,12 @@ function afterConnectMultiple(context, status, handle, req, readable, writable)
+     ArrayPrototypePush(context.errors, ex);
+ 
+     // Try the next address
+-    internalConnectMultiple(context);
++    internalConnectMultiple(context, status === UV_ECANCELED);
+     return;
+   }
+ 
+   // One of the connection has completed and correctly dispatched but after timeout, ignore this one
+-  if (context[kTimeoutTriggered]) {
++  if (status === 0 && current !== context.current - 1) {
+     debug('connect/multiple: ignoring successful but timedout connection to %s:%s', req.address, req.port);
+     handle.close();
+     return;
+@@ -1560,8 +1578,10 @@ function afterConnectMultiple(context, status, handle, req, readable, writable)
+   afterConnect(status, handle, req, readable, writable);
+ }
+ 
+-function internalConnectMultipleTimeout(context, req) {
+-  context[kTimeoutTriggered] = true;
++function internalConnectMultipleTimeout(context, req, handle) {
++  debug('connect/multiple: connection to %s:%s timed out', req.address, req.port);
++  req.oncomplete = undefined;
++  handle.close();
+   internalConnectMultiple(context);
+ }
+ 
+-- 
+2.25.1
+

@@ -1,0 +1,34 @@
+From 0a5056bdfadf18c1d851defab9f4455da5e1e740 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Sun, 28 Apr 2024 08:04:06 +0000
+Subject: [PATCH] src: onMouseEvent PRESSED/RELEASED without SetCapture
+
+---
+ .../renderer_host/render_widget_host_view_event_handler.cc    | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/content/browser/renderer_host/render_widget_host_view_event_handler.cc b/content/browser/renderer_host/render_widget_host_view_event_handler.cc
+index c611cb3bd15b2..7ea43352e92aa 100644
+--- a/content/browser/renderer_host/render_widget_host_view_event_handler.cc
++++ b/content/browser/renderer_host/render_widget_host_view_event_handler.cc
+@@ -379,7 +379,7 @@ void RenderWidgetHostViewEventHandler::OnMouseEvent(ui::MouseEvent* event) {
+     }
+   }
+ 
+-  switch (event->type()) {
++  /* switch (event->type()) {
+     case ui::ET_MOUSE_PRESSED:
+       window_->SetCapture();
+       break;
+@@ -389,7 +389,7 @@ void RenderWidgetHostViewEventHandler::OnMouseEvent(ui::MouseEvent* event) {
+       break;
+     default:
+       break;
+-  }
++  } */
+ 
+   if (!ShouldGenerateAppCommand(event))
+     event->SetHandled();
+-- 
+2.25.1
+

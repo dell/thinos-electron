@@ -1,0 +1,34 @@
+From 8e0845a8a6e28d16de966c25f82f6cd13d9b9c42 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 24 Feb 2025 00:45:52 +0000
+Subject: [PATCH] src: nodejs root store add partial chain flag
+
+---
+ src/crypto/crypto_context.cc | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/src/crypto/crypto_context.cc b/src/crypto/crypto_context.cc
+index cef0c877c6..68500a773d 100644
+--- a/src/crypto/crypto_context.cc
++++ b/src/crypto/crypto_context.cc
+@@ -753,6 +753,9 @@ void SecureContext::SetCACert(const BIOPointer& bio) {
+                                  x509.get()));
+     CHECK_EQ(1, SSL_CTX_add_client_CA(ctx_.get(), x509.get()));
+   }
++  if (GetCertStoreOwnedByThisSecureContext()) {
++    X509_STORE_set_flags(GetCertStoreOwnedByThisSecureContext(), X509_V_FLAG_PARTIAL_CHAIN);
++  }
+ }
+ 
+ void SecureContext::AddCACert(const FunctionCallbackInfo<Value>& args) {
+@@ -806,6 +809,7 @@ void SecureContext::SetRootCerts() {
+ 
+   // Increment reference count so global store is not deleted along with CTX.
+   X509_STORE_up_ref(store);
++  X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+   SSL_CTX_set_cert_store(ctx_.get(), store);
+ }
+ 
+-- 
+2.25.1
+

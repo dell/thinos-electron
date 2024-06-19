@@ -1,0 +1,3124 @@
+From bb0f57f04e0340cbee3ed15c195cfb94d863e726 Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Wed, 19 Jun 2024 05:23:48 +0000
+Subject: [PATCH] src: add crypto wrapper shared library for openssl support
+
+Patch-Dir: src/electron/patches/node
+Patch-Filename: src-add-crypto-wrapper-shared-library-for-openssl-su.patch
+---
+ BUILD.gn                     |   47 +-
+ src/crypto/crypto_wrapper.cc | 1866 ++++++++++++++++++++++++++++++++++
+ src/crypto/crypto_wrapper.h  | 1158 +++++++++++++++++++++
+ 3 files changed, 3070 insertions(+), 1 deletion(-)
+ create mode 100644 src/crypto/crypto_wrapper.cc
+ create mode 100644 src/crypto/crypto_wrapper.h
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 2ce1e8a7dc..17f74a4574 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -212,7 +212,7 @@ config("node_internal_config") {
+   if (node_use_openssl) {
+     defines += [
+       "NODE_OPENSSL_SYSTEM_CERT_PATH=\"$node_openssl_system_ca_path\"",
+-      "EVP_CTRL_CCM_SET_TAG=EVP_CTRL_GCM_SET_TAG",
++#      "EVP_CTRL_CCM_SET_TAG=EVP_CTRL_GCM_SET_TAG",
+     ]
+   }
+ }
+@@ -252,9 +252,54 @@ if (current_toolchain == electron_js2c_toolchain) {
+   }
+ }
+ 
++shared_library("crypto_wrapper") {
++  defines = []
++  public_deps = [
++    "//electron:electron_js2c",
++  ]
++
++  configs += [ ":node_internal_config" ]
++  public_configs = [ ":node_lib_config" ]
++  include_dirs = [ "src", "deps/openssl/openssl/include" ]
++  libs = []
++  frameworks = []
++  cflags_c = []
++  sources = []
++
++  cflags_cc = [
++    "-Wno-deprecated-declarations",
++    "-Wno-implicit-fallthrough",
++    "-Wno-return-type",
++    "-Wno-sometimes-uninitialized",
++    "-Wno-string-plus-int",
++    "-Wno-unused-function",
++    "-Wno-unused-label",
++    "-Wno-unused-private-field",
++    "-Wno-unused-variable",
++    "-Wno-shadow",
++    "-Wno-unreachable-code",
++  ]
++
++  if (node_use_openssl) {
++    #deps = [ "//third_party/boringssl" ]
++    #libs += [ "ssl", "crypto" ]
++    libs += ["deps/openssl/openssl/libcrypto.so.3", "deps/openssl/openssl/libssl.so.3"]
++    sources += [
++      "src/crypto/crypto_wrapper.cc",
++      "src/crypto/crypto_wrapper.h",
++    ]
++    cflags_cc += [ "-Wno-sign-compare" ]
++  }
++
++  if (is_linux) {
++    defines += []
++  }
++}
++
+ component("node_lib") {
+   deps = [
+     ":node_js2c_exec",
++    ":crypto_wrapper",
+     "deps/googletest:gtest",
+     "deps/ada",
+     "deps/base64",
+diff --git a/src/crypto/crypto_wrapper.cc b/src/crypto/crypto_wrapper.cc
+new file mode 100644
+index 0000000000..9fa72a334c
+--- /dev/null
++++ b/src/crypto/crypto_wrapper.cc
+@@ -0,0 +1,1866 @@
++#include <stdarg.h>
++
++#include <openssl/bn.h>
++#include <openssl/aes.h>
++#include <openssl/ssl.h>
++#include <openssl/err.h>
++#include <openssl/engine.h>
++#include <openssl/crypto.h>
++#include <openssl/evp.h>
++#include <openssl/tls1.h>
++#include <openssl/x509v3.h>
++#include <openssl/sha.h>
++
++#include "crypto_wrapper.h"
++
++# define NODE_CRYPTO_EXTERN __attribute__((visibility("default")))
++
++NODE_CRYPTO_EXTERN void Thin_X509_free(X509 *x) {
++    return X509_free(x);
++}
++
++NODE_CRYPTO_EXTERN void Thin_BIO_free_all(BIO *a) {
++    return BIO_free_all(a);
++}
++
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_free(SSL_CTX *ctx) {
++    return SSL_CTX_free(ctx);
++}
++
++NODE_CRYPTO_EXTERN void Thin_SSL_SESSION_free(SSL_SESSION *ses) {
++    return SSL_SESSION_free(ses);
++}
++
++NODE_CRYPTO_EXTERN void Thin_SSL_free(SSL *ssl) {
++    return SSL_free(ssl);
++}
++
++NODE_CRYPTO_EXTERN void Thin_PKCS8_PRIV_KEY_INFO_free(PKCS8_PRIV_KEY_INFO* p) {
++    return PKCS8_PRIV_KEY_INFO_free(p);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EVP_PKEY_free(EVP_PKEY *pkey) {
++    return EVP_PKEY_free(pkey);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_CTX_free(ctx);
++}
++NODE_CRYPTO_EXTERN void Thin_EVP_MD_CTX_free(EVP_MD_CTX *ctx) {
++    return EVP_MD_CTX_free(ctx);
++}
++
++NODE_CRYPTO_EXTERN void Thin_RSA_free(RSA *rsa) {
++    return RSA_free(rsa);
++}
++NODE_CRYPTO_EXTERN void Thin_EC_KEY_free(EC_KEY *key) {
++    return EC_KEY_free(key);
++}
++
++NODE_CRYPTO_EXTERN BIGNUM *Thin_BN_new(void) {
++    return BN_new();
++}
++
++NODE_CRYPTO_EXTERN void Thin_BN_free(BIGNUM *bn) {
++    return BN_free(bn);
++}
++
++NODE_CRYPTO_EXTERN void Thin_BN_clear_free(BIGNUM *a) {
++    return BN_clear_free(a);
++}
++
++NODE_CRYPTO_EXTERN void Thin_BN_CTX_free(BN_CTX *ctx) {
++    return BN_CTX_free(ctx);
++}
++
++NODE_CRYPTO_EXTERN void Thin_NETSCAPE_SPKI_free(NETSCAPE_SPKI *spki) {
++    return NETSCAPE_SPKI_free(spki);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EC_GROUP_free(EC_GROUP *group) {
++    return EC_GROUP_free(group);
++}
++NODE_CRYPTO_EXTERN void Thin_EC_POINT_free(EC_POINT *point) {
++    return EC_POINT_free(point);
++}
++
++NODE_CRYPTO_EXTERN void Thin_DH_free(DH *dh) {
++    return DH_free(dh);
++}
++NODE_CRYPTO_EXTERN void Thin_ECDSA_SIG_free(ECDSA_SIG *sig) {
++    return ECDSA_SIG_free(sig);
++}
++NODE_CRYPTO_EXTERN void Thin_HMAC_CTX_free(HMAC_CTX *ctx) {
++    return HMAC_CTX_free(ctx);
++}
++NODE_CRYPTO_EXTERN void Thin_EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx) {
++    return EVP_CIPHER_CTX_free(ctx);
++}
++
++NODE_CRYPTO_EXTERN void Thin_DSA_free(DSA *dsa) {
++    return DSA_free(dsa);
++}
++NODE_CRYPTO_EXTERN void Thin_DSA_SIG_free(DSA_SIG *sig) {
++    return DSA_SIG_free(sig);
++}
++
++NODE_CRYPTO_EXTERN void Thin_OPENSSL_free(void *addr) {
++    return OPENSSL_free(addr);
++}
++
++NODE_CRYPTO_EXTERN void Thin_ERR_clear_error(void) {
++    return ERR_clear_error();
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
++    return SSL_CTX_use_PrivateKey(ctx, pkey);
++}
++
++NODE_CRYPTO_EXTERN int Thin_ERR_set_mark(void) {
++    return ERR_set_mark();
++}
++NODE_CRYPTO_EXTERN int Thin_ERR_pop_to_mark(void) {
++    return ERR_pop_to_mark();
++}
++NODE_CRYPTO_EXTERN unsigned long Thin_ERR_peek_error(void) {
++    return ERR_peek_error();
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str) {
++    return SSL_CTX_set_ciphersuites(ctx, str);
++}
++NODE_CRYPTO_EXTERN void Thin_CRYPTO_secure_free(void *ptr, const char *file, int line) {
++    return CRYPTO_secure_free(ptr, file, line);
++}
++NODE_CRYPTO_EXTERN void *Thin_CRYPTO_memdup(const void *str, size_t siz, const char *file, int line) {
++    return CRYPTO_memdup(str, siz, file, line);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_write(BIO_METHOD *biom,
++                       int (*write) (BIO *, const char *, int)) {
++    return BIO_meth_set_write(biom, write);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_read(BIO_METHOD *biom,
++                      int (*read) (BIO *, char *, int)) {
++    return BIO_meth_set_read(biom, read);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_puts(BIO_METHOD *biom,
++                      int (*puts) (BIO *, const char *)) {
++    return BIO_meth_set_puts(biom, puts);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_gets(BIO_METHOD *biom,
++                      int (*gets) (BIO *, char *, int)) {
++    return BIO_meth_set_gets(biom, gets);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_ctrl(BIO_METHOD *biom,
++                      long (*ctrl) (BIO *, int, long, void *)) {
++    return BIO_meth_set_ctrl(biom, ctrl);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_meth_set_create(BIO_METHOD *biom, int (*create) (BIO *)) {
++    return BIO_meth_set_create(biom, create);
++}
++NODE_CRYPTO_EXTERN  int Thin_BIO_meth_set_destroy(BIO_METHOD *biom, int (*destroy) (BIO *)) {
++    return BIO_meth_set_destroy(biom, destroy);
++}
++NODE_CRYPTO_EXTERN const char *Thin_SSL_CIPHER_get_name(const SSL_CIPHER *c) {
++    return SSL_CIPHER_get_name(c);
++}
++NODE_CRYPTO_EXTERN SSL_CTX_keylog_cb_func Thin_SSL_CTX_get_keylog_callback(const SSL_CTX *ctx) {
++    return SSL_CTX_get_keylog_callback(ctx);
++}
++NODE_CRYPTO_EXTERN BIO_METHOD *Thin_BIO_meth_new(int type, const char *name) {
++    return BIO_meth_new(type, name);
++}
++
++NODE_CRYPTO_EXTERN int Thin_SSL_set_session(SSL *to, SSL_SESSION *session) {
++    return SSL_set_session(to, session);
++}
++
++NODE_CRYPTO_EXTERN int Thin_RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2) {
++    return RSA_pkey_ctx_ctrl(ctx, optype, cmd, p1, p2);
++}
++NODE_CRYPTO_EXTERN void Thin_CRYPTO_clear_free(void *ptr, size_t num, const char *file, int line) {
++    return CRYPTO_clear_free(ptr, num, file, line);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_set_keylog_callback(SSL_CTX *ctx, SSL_CTX_keylog_cb_func cb) {
++    return SSL_CTX_set_keylog_callback(ctx, cb);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_sess_set_new_cb(SSL_CTX *ctx,
++                             int (*new_session_cb) (struct ssl_st *ssl,
++                                                    SSL_SESSION *sess)) {
++    return SSL_CTX_sess_set_new_cb(ctx, new_session_cb);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_sess_set_get_cb(SSL_CTX *ctx,
++                             SSL_SESSION *(*get_session_cb) (struct ssl_st
++                                                             *ssl,
++                                                             const unsigned char
++                                                             *data, int len,
++                                                             int *copy)) {
++    return SSL_CTX_sess_set_get_cb(ctx, get_session_cb);
++}
++
++NODE_CRYPTO_EXTERN void Thin_SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio) {
++    return SSL_set_bio(s, rbio, wbio);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_verify(SSL *s, int mode, SSL_verify_cb callback) {
++    return SSL_set_verify(s, mode, callback);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_msg_callback(SSL *ssl,
++                          void (*cb) (int write_p, int version,
++                                      int content_type, const void *buf,
++                                      size_t len, SSL *ssl, void *arg)) {
++    return SSL_set_msg_callback(ssl, cb);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_trace(int write_p, int version, int content_type,
++               const void *buf, size_t len, SSL *ssl, void *arg) {
++    // return SSL_trace(write_p, version, content_type, buf, len, ssl, arg);
++}
++NODE_CRYPTO_EXTERN SSL_CTX *Thin_SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
++    return SSL_set_SSL_CTX(ssl, ctx);
++}
++NODE_CRYPTO_EXTERN STACK_OF(X509_NAME) *Thin_SSL_dup_CA_list(const STACK_OF(X509_NAME) *sk) {
++    return SSL_dup_CA_list(sk);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_client_CA_list(SSL *s, STACK_OF(X509_NAME) *name_list) {
++    return SSL_set_client_CA_list(s, name_list);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_use_psk_identity_hint(SSL *s, const char *identity_hint) {
++    return SSL_use_psk_identity_hint(s, identity_hint);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_psk_server_callback(SSL *ssl, SSL_psk_server_cb_func cb) {
++    return SSL_set_psk_server_callback(ssl, cb);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_psk_client_callback(SSL *ssl, SSL_psk_client_cb_func cb) {
++    return SSL_set_psk_client_callback(ssl, cb);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
++                                SSL_CTX_alpn_select_cb_func cb,
++                                void *arg) {
++    return SSL_CTX_set_alpn_select_cb(ctx, cb, arg);
++}
++NODE_CRYPTO_EXTERN const EVP_CIPHER *Thin_EVP_get_cipherbyname(const char *name) {
++    return EVP_get_cipherbyname(name);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
++                      int cmd, int p1, void *p2) {
++    return EVP_PKEY_CTX_ctrl(ctx, keytype, optype, cmd, p1, p2);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_use_certificate(SSL *ssl, X509 *x) {
++    return SSL_use_certificate(ssl, x);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_SSL_COMP_zero(STACK_OF(SSL_COMP) *sk) {
++    return sk_SSL_COMP_zero(sk);
++}
++NODE_CRYPTO_EXTERN STACK_OF(X509) *Thin_sk_X509_new(sk_X509_compfunc fn) {
++    return sk_X509_new(fn);
++}
++NODE_CRYPTO_EXTERN int Thin_sk_X509_num(const struct stack_st_X509 *sk) {
++    return sk_X509_num(sk);
++}
++NODE_CRYPTO_EXTERN int Thin_sk_SSL_CIPHER_num(STACK_OF(SSL_CIPHER)* ciphers) {
++    return sk_SSL_CIPHER_num(ciphers);
++}
++NODE_CRYPTO_EXTERN x509_st *Thin_sk_X509_delete(STACK_OF(X509) *sk, int i) {
++    return sk_X509_delete(sk, i);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
++    return SSL_use_PrivateKey(ssl, pkey);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
++    return SSL_CTX_get0_certificate(ctx);
++}
++NODE_CRYPTO_EXTERN void Thin_EVP_CIPHER_do_all_sorted(void (*fn)
++                               (const EVP_CIPHER *ciph, const char *from,
++                                const char *to, void *x), void *arg) {
++    return EVP_CIPHER_do_all_sorted(fn, arg);
++}
++NODE_CRYPTO_EXTERN BN_ULONG Thin_BN_get_word(const BIGNUM *a) {
++    return BN_get_word(a);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
++    return BN_lshift(r, a, n);
++}
++NODE_CRYPTO_EXTERN const char *Thin_OBJ_nid2sn(int n) {
++    return OBJ_nid2sn(n);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_BN_value_one(void) {
++    return BN_value_one();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_md5(void) {
++    return EVP_md5();
++}
++NODE_CRYPTO_EXTERN int Thin_EC_GROUP_order_bits(const EC_GROUP *group) {
++    return EC_GROUP_order_bits(group);
++}
++NODE_CRYPTO_EXTERN void Thin_X509V3_conf_free(CONF_VALUE *val) {
++    return X509V3_conf_free(val);
++}
++NODE_CRYPTO_EXTERN void Thin_GENERAL_NAME_free(GENERAL_NAME *p) {
++    return GENERAL_NAME_free(p);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *x, int keylen) {
++    return EVP_CIPHER_CTX_set_key_length(x, keylen);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx,
++                            unsigned char *rout, size_t *routlen,
++                            const unsigned char *sig, size_t siglen) {
++    EVP_PKEY_verify_recover(ctx, rout, routlen, sig, siglen);
++}
++NODE_CRYPTO_EXTERN void Thin_X509_STORE_CTX_free(X509_STORE_CTX *ctx) {
++    return X509_STORE_CTX_free(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
++    return BN_sub(r, a, b);
++}
++NODE_CRYPTO_EXTERN const char *Thin_SSL_CIPHER_standard_name(const SSL_CIPHER *c) {
++    return SSL_CIPHER_standard_name(c);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EVP_CIPHER_CTX_set_flags(EVP_CIPHER_CTX *ctx, int flags) {
++    return EVP_CIPHER_CTX_set_flags(ctx, flags);
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha1(void) {
++    return EVP_sha1();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha224(void) {
++    return EVP_sha224();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha256(void) {
++    return EVP_sha256();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha384(void) {
++    return EVP_sha384();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha512(void) {
++    return EVP_sha512();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha512_224(void) {
++    return EVP_sha512_224();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha512_256(void) {
++    return EVP_sha512_256();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha3_224(void) {
++    return EVP_sha3_224();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha3_256(void) {
++    return EVP_sha3_256();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha3_384(void) {
++    return EVP_sha3_384();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_sha3_512(void) {
++    return EVP_sha3_512();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_shake128(void) {
++    return EVP_shake128();
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_shake256(void) {
++    return EVP_shake256();
++}
++
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
++    return SSL_CTX_get0_privatekey(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_client_hello_get0_ext(SSL *s, unsigned int type,
++                              const unsigned char **out, size_t *outlen) {
++    return SSL_client_hello_get0_ext(s, type, out, outlen);
++}
++NODE_CRYPTO_EXTERN const char *Thin_X509_verify_cert_error_string(long n) {
++    return X509_verify_cert_error_string(n);
++}
++NODE_CRYPTO_EXTERN void Thin_CRYPTO_secure_clear_free(void *ptr, size_t num,
++                              const char *file, int line) {
++    return CRYPTO_secure_clear_free(ptr, num, file, line);
++}
++NODE_CRYPTO_EXTERN const char *Thin_SSL_get_servername(const SSL *s, const int type) {
++    return SSL_get_servername(s, type);
++}
++NODE_CRYPTO_EXTERN void *Thin_OPENSSL_sk_value(const OPENSSL_STACK *sk, int i) {
++    return OPENSSL_sk_value(sk, i);
++}
++NODE_CRYPTO_EXTERN void Thin_BIO_set_flags(BIO *b, int flags) {
++    return BIO_set_flags(b, flags);
++}
++NODE_CRYPTO_EXTERN void Thin_BIO_clear_flags(BIO *b, int flags) {
++    return BIO_clear_flags(b, flags);
++}
++NODE_CRYPTO_EXTERN int Thin_sk_ASN1_OBJECT_num(const struct stack_st_ASN1_OBJECT *sk) {
++    return sk_ASN1_OBJECT_num(sk);
++}
++NODE_CRYPTO_EXTERN const ASN1_OBJECT *Thin_sk_ASN1_OBJECT_value(const struct stack_st_ASN1_OBJECT *sk, int i) {
++    return sk_ASN1_OBJECT_value(sk, i);
++}
++NODE_CRYPTO_EXTERN x509_st *Thin_sk_X509_value(const struct stack_st_X509 *sk, int i) {
++    return sk_X509_value(sk, i);
++}
++NODE_CRYPTO_EXTERN GENERAL_NAME *Thin_sk_GENERAL_NAME_value(const struct stack_st_GENERAL_NAME *sk, int i) {
++    return sk_GENERAL_NAME_value(sk, i);
++}
++NODE_CRYPTO_EXTERN int Thin_i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a) {
++    return i2t_ASN1_OBJECT(buf, buf_len, a);
++}
++NODE_CRYPTO_EXTERN int Thin_sk_ACCESS_DESCRIPTION_num(STACK_OF(ACCESS_DESCRIPTION)* sk) {
++    return sk_ACCESS_DESCRIPTION_num(sk);
++}
++NODE_CRYPTO_EXTERN ACCESS_DESCRIPTION *Thin_sk_ACCESS_DESCRIPTION_value(const struct stack_st_ACCESS_DESCRIPTION *sk, int i) {
++    return sk_ACCESS_DESCRIPTION_value(sk, i);
++}
++NODE_CRYPTO_EXTERN void Thin_ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *p) {
++    return ACCESS_DESCRIPTION_free(p);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_ACCESS_DESCRIPTION_pop_free(STACK_OF(ACCESS_DESCRIPTION) *sk, void (*fn)(ACCESS_DESCRIPTION *))  {
++    return sk_ACCESS_DESCRIPTION_pop_free(sk, fn);
++}
++NODE_CRYPTO_EXTERN int Thin_sk_GENERAL_NAME_num(STACK_OF(GENERAL_NAME)* sk) {
++    return sk_GENERAL_NAME_num(sk);
++}
++NODE_CRYPTO_EXTERN int Thin_OBJ_obj2txt(char *buf, int buf_len, const ASN1_OBJECT *a, int no_name) {
++    return OBJ_obj2txt(buf, buf_len, a, no_name);
++}
++NODE_CRYPTO_EXTERN const SSL_CIPHER *Thin_sk_SSL_CIPHER_value(const struct stack_st_SSL_CIPHER *sk, int i) {
++    return sk_SSL_CIPHER_value(sk, i);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_GENERAL_NAME_pop_free(STACK_OF(GENERAL_NAME) *sk, void (*fn)(GENERAL_NAME *)) {
++    return sk_GENERAL_NAME_pop_free(sk, fn);
++}
++NODE_CRYPTO_EXTERN void Thin_X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent, int ml) {
++    return X509V3_EXT_val_prn(out, val, indent, ml);
++}
++NODE_CRYPTO_EXTERN STACK_OF(CONF_VALUE) *Thin_i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen, STACK_OF(CONF_VALUE) *ret) {
++    return i2v_GENERAL_NAME(method, gen, ret);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_CONF_VALUE_pop_free(STACK_OF(CONF_VALUE) *sk, void (*fn)(CONF_VALUE *)) {
++    return sk_CONF_VALUE_pop_free(sk, fn);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_add_cert(X509_STORE *ctx, X509 *x) {
++    return X509_STORE_add_cert(ctx, x);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_set_cert_store(SSL_CTX *ctx, X509_STORE *store) {
++    return SSL_CTX_set_cert_store(ctx, store);
++}
++NODE_CRYPTO_EXTERN int Thin_ENGINE_free(ENGINE *e) {
++    return ENGINE_free(e);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_ASN1_OBJECT_pop_free(STACK_OF(ASN1_OBJECT)* sk, void (*fn)(asn1_object_st *)) {
++    return sk_ASN1_OBJECT_pop_free(sk, fn);
++}
++NODE_CRYPTO_EXTERN void Thin_sk_X509_pop_free(STACK_OF(X509) *sk, void (*fn)(x509_st *)) {
++    return sk_X509_pop_free(sk, fn);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *c) {
++    return EVP_CIPHER_CTX_reset(c);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_PUBKEY(BIO *bp, const EVP_PKEY *x) {
++    return PEM_write_bio_PUBKEY(bp, x);
++}
++NODE_CRYPTO_EXTERN void *Thin_SSL_get_ex_data(const SSL *ssl, int idx) {
++    return SSL_get_ex_data(ssl, idx);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_PEM_read_bio_X509_AUX(BIO *bp, X509 **x, pem_password_cb *cb, void *u) {
++    return PEM_read_bio_X509_AUX(bp, x, cb, u);
++}
++NODE_CRYPTO_EXTERN long Thin_BIO_ctrl(BIO *bp, int cmd, long larg, void *parg) {
++    return BIO_ctrl(bp, cmd, larg, parg);
++}
++NODE_CRYPTO_EXTERN void *Thin_OPENSSL_malloc(size_t num) {
++    return OPENSSL_malloc(num);
++}
++
++NODE_CRYPTO_EXTERN void *Thin_OPENSSL_realloc(void *addr, size_t num) {
++    return OPENSSL_realloc(addr, num);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_keygen_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey) {
++    return EVP_PKEY_keygen(ctx, ppkey);
++}
++
++NODE_CRYPTO_EXTERN int Thin_FIPS_mode() {
++    return 0; //FIPS_mode();
++}
++
++NODE_CRYPTO_EXTERN int Thin_FIPS_mode_set(int r) {
++    return 0;// FIPS_mode_set(r);
++}
++
++NODE_CRYPTO_EXTERN BIGNUM *Thin_BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret) {
++    return BN_bin2bn(s, len, ret);
++}
++
++NODE_CRYPTO_EXTERN void Thin_ERR_print_errors_fp(FILE *fp) {
++    return ERR_print_errors_fp(fp);
++}
++NODE_CRYPTO_EXTERN int Thin_OBJ_txt2nid(const char *s) {
++    return OBJ_txt2nid(s);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_NAME_get_index_by_NID(X509_NAME *name, int nid, int lastpos) {
++    return X509_NAME_get_index_by_NID(name, nid, lastpos);
++}
++NODE_CRYPTO_EXTERN X509_NAME_ENTRY *Thin_X509_NAME_get_entry(const X509_NAME *name, int loc) {
++    return X509_NAME_get_entry(name, loc);
++}
++NODE_CRYPTO_EXTERN ASN1_STRING * Thin_X509_NAME_ENTRY_get_data(const X509_NAME_ENTRY *ne) {
++    return X509_NAME_ENTRY_get_data(ne);
++}
++NODE_CRYPTO_EXTERN const unsigned char *Thin_ASN1_STRING_get0_data(const ASN1_STRING *x) {
++    return ASN1_STRING_get0_data(x);
++}
++NODE_CRYPTO_EXTERN void Thin_BIO_set_shutdown(BIO *a, int shut) {
++    return BIO_set_shutdown(a, shut);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
++                            unsigned int *len) {
++    return SSL_get0_alpn_selected(ssl, data, len);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_renegotiate(SSL *s) {
++    return SSL_renegotiate(s);
++}
++NODE_CRYPTO_EXTERN const char *Thin_SSL_get_version(const SSL *s) {
++    return SSL_get_version(s);
++}
++NODE_CRYPTO_EXTERN void Thin_OPENSSL_init(void) {
++    return OPENSSL_init();
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
++                                      const char *label, size_t llen,
++                                      const unsigned char *context,
++                                      size_t contextlen, int use_context) {
++    return SSL_export_keying_material(s, out, olen, label, llen, context, contextlen, use_context);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_get_shared_sigalgs(SSL *s, int idx,
++                           int *psign, int *phash, int *psignandhash,
++                           unsigned char *rsig, unsigned char *rhash) {
++    return SSL_get_shared_sigalgs(s, idx, psign, phash, psignandhash, rsig, rhash);
++}
++NODE_CRYPTO_EXTERN size_t Thin_SSL_get_finished(const SSL *s, void *buf, size_t count) {
++    return SSL_get_finished(s, buf, count);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_renegotiate_pending(const SSL *s) {
++    return SSL_renegotiate_pending(s);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_connect_state(SSL *s) {
++    return SSL_set_connect_state(s);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_verify(X509 *a, EVP_PKEY *r) {
++    return X509_verify(a, r);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_private_key(const X509 *x509, const EVP_PKEY *pkey) {
++    return X509_check_private_key(x509, pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_host(X509 *x, const char *chk, size_t chklen,
++                    unsigned int flags, char **peername) {
++    return X509_check_host(x, chk, chklen, flags, peername);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_email(X509 *x, const char *chk, size_t chklen,
++                     unsigned int flags) {
++    return X509_check_email(x, chk, chklen, flags);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
++                  unsigned int flags) {
++    return X509_check_ip(x, chk, chklen, flags);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_X509_PUBKEY_get(X509_PUBKEY *key) {
++    return X509_PUBKEY_get(key);
++}
++NODE_CRYPTO_EXTERN unsigned long Thin_OpenSSL_version_num(void) {
++    return OpenSSL_version_num();
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
++                                 const unsigned char *in, unsigned int inlen,
++                                 const unsigned char *client,
++                                 unsigned int client_len) {
++    return SSL_select_next_proto(out, outlen, in, inlen, client, client_len);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
++    return SSL_CTX_set_cipher_list(ctx, str);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_digest(const X509 *data, const EVP_MD *type,
++                unsigned char *md, unsigned int *len) {
++    return X509_digest(data, type, md, len);
++}
++NODE_CRYPTO_EXTERN ASN1_INTEGER *Thin_X509_get_serialNumber(X509 *x) {
++    return X509_get_serialNumber(x);
++}
++NODE_CRYPTO_EXTERN  X509_CRL *Thin_PEM_read_bio_X509_CRL(BIO *bp, X509_CRL **x,
++                                 pem_password_cb *cb, void *u) {
++    return PEM_read_bio_X509_CRL(bp, x, cb, u);
++}
++
++NODE_CRYPTO_EXTERN const char *Thin_SSL_CIPHER_get_version(const SSL_CIPHER *c) {
++    return SSL_CIPHER_get_version(c);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_is_server(const SSL *s) {
++    return SSL_is_server(s);
++}
++NODE_CRYPTO_EXTERN const ASN1_TIME *Thin_X509_get0_notAfter(const X509 *x) {
++    return X509_get0_notAfter(x);
++}
++NODE_CRYPTO_EXTERN const ASN1_TIME * Thin_X509_get0_notBefore(const X509 *x) {
++    return X509_get0_notBefore(x);
++}
++NODE_CRYPTO_EXTERN int Thin_ASN1_TIME_print(BIO *fp, const ASN1_TIME *a) {
++    return ASN1_TIME_print(fp, a);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_up_ref(X509_STORE *v) {
++    return X509_STORE_up_ref(v);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_ca(X509 *x) {
++    return X509_check_ca(x);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags) {
++    return X509_check_ip_asc(x, ipasc, flags);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_verify_recover_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_sign(EVP_PKEY_CTX *ctx,
++                  unsigned char *sig, size_t *siglen,
++                  const unsigned char *tbs, size_t tbslen) {
++    return EVP_PKEY_sign(ctx, sig, siglen, tbs, tbslen);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
++                          const unsigned char *salt,
++                          const unsigned char *data, int datal, int count,
++                          unsigned char *key, unsigned char *iv) {
++    return EVP_BytesToKey(type, md, salt, data, datal, count, key, iv);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_block_size(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_block_size(cipher);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_impl_ctx_size(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_impl_ctx_size(cipher);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_key_length(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_key_length(cipher);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_iv_length(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_iv_length(cipher);
++}
++NODE_CRYPTO_EXTERN unsigned long Thin_EVP_CIPHER_flags(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_flags(cipher);
++}
++
++NODE_CRYPTO_EXTERN void Thin_SSL_set_accept_state(SSL *s) {
++    return SSL_set_accept_state(s);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_info_callback(SSL *ssl,
++                           void (*cb) (const SSL *ssl, int type, int val)) {
++    return SSL_set_info_callback(ssl, cb);
++}
++
++NODE_CRYPTO_EXTERN int Thin_SSL_set_ex_data(SSL *ssl, int idx, void *data) {
++    return SSL_set_ex_data(ssl, idx, data);
++}
++NODE_CRYPTO_EXTERN size_t Thin_SSL_get_peer_finished(const SSL *s, void *buf, size_t count) {
++    return SSL_get_peer_finished(s, buf, count);
++}
++
++NODE_CRYPTO_EXTERN const struct dsa_st *Thin_EVP_PKEY_get0_DSA(EVP_PKEY *pkey) {
++    return EVP_PKEY_get0_DSA(pkey);
++}
++
++NODE_CRYPTO_EXTERN void Thin_ASN1_OBJECT_free(ASN1_OBJECT *a) {
++    return ASN1_OBJECT_free(a);
++}
++
++NODE_CRYPTO_EXTERN DH *Thin_DH_new(void) {
++    return DH_new();
++}
++
++NODE_CRYPTO_EXTERN int Thin_BN_is_zero(const BIGNUM *a) {
++    return BN_is_zero(a);
++}
++
++NODE_CRYPTO_EXTERN int Thin_BN_is_one(const BIGNUM *a) {
++    return BN_is_one(a);
++}
++
++NODE_CRYPTO_EXTERN int Thin_DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
++    return DH_set0_pqg(dh, p, q, g);
++}
++
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_get_digestbyname(const char *name) {
++    return EVP_get_digestbyname(name);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
++    return EVP_MD_CTX_copy(out, in);
++}
++
++NODE_CRYPTO_EXTERN unsigned long Thin_ERR_get_error(void) {
++    return ERR_get_error();
++}
++
++NODE_CRYPTO_EXTERN int Thin_CRYPTO_memcmp(const void * in_a, const void * in_b, size_t len) {
++    return CRYPTO_memcmp(in_a, in_b, len);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
++                   const unsigned char *key, const unsigned char *iv,
++                   int enc) {
++    return EVP_CipherInit(ctx, cipher, key, iv, enc);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx,
++                      const EVP_CIPHER *cipher, ENGINE *impl,
++                      const unsigned char *key,
++                      const unsigned char *iv, int enc) {
++    return EVP_CipherInit_ex(ctx, cipher, impl, key, iv, enc);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
++                     int *outl, const unsigned char *in, int inl) {
++    return EVP_CipherUpdate(ctx, out, outl, in, inl);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CipherFinal(EVP_CIPHER_CTX *ctx, unsigned char *outm,
++                    int *outl) {
++    return EVP_CipherFinal(ctx, outm, outl);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm,
++                       int *outl) {
++    return EVP_CipherFinal_ex(ctx, outm, outl);
++}
++
++NODE_CRYPTO_EXTERN BIO *Thin_BIO_new_mem_buf(const void *buf, int len) {
++    return BIO_new_mem_buf(buf, len);
++}
++NODE_CRYPTO_EXTERN HMAC_CTX *Thin_HMAC_CTX_new(void) {
++    return HMAC_CTX_new();
++}
++NODE_CRYPTO_EXTERN void *Thin_ASN1_SCTX_get_app_data(ASN1_SCTX *p) {
++    return ASN1_SCTX_get_app_data(p);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY_CTX *Thin_EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e) {
++    return EVP_PKEY_CTX_new(pkey, e);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY_CTX *Thin_EVP_PKEY_CTX_new_id(int id, ENGINE *e) {
++    return EVP_PKEY_CTX_new_id(id, e);
++}
++
++NODE_CRYPTO_EXTERN void Thin_BIO_set_init(BIO *a, int init) {
++    return BIO_set_init(a, init);
++}
++NODE_CRYPTO_EXTERN void *Thin_BIO_get_data(BIO *a) {
++    return BIO_get_data(a);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_get_shutdown(BIO *a) {
++    return BIO_get_shutdown(a);
++}
++NODE_CRYPTO_EXTERN void Thin_BIO_set_data(BIO *a, void *ptr) {
++    return BIO_set_data(a, ptr);
++}
++NODE_CRYPTO_EXTERN void Thin_ERR_error_string_n(unsigned long e, char *buf, size_t len) {
++    return ERR_error_string_n(e, buf, len);
++}
++NODE_CRYPTO_EXTERN const char *Thin_ERR_lib_error_string(unsigned long e) {
++    return ERR_lib_error_string(e);
++}
++
++NODE_CRYPTO_EXTERN long Thin_SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg) {
++    return SSL_ctrl(ssl, cmd, larg, parg);
++}
++NODE_CRYPTO_EXTERN long Thin_SSL_callback_ctrl(SSL *ssl, int cmd, void (*fn)(void)) {
++    return SSL_callback_ctrl(ssl, cmd, fn);
++}
++NODE_CRYPTO_EXTERN long Thin_SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg) {
++    return SSL_CTX_ctrl(ctx, cmd, larg, parg);
++}
++NODE_CRYPTO_EXTERN long Thin_SSL_CTX_callback_ctrl(SSL_CTX *ctx, int cmd, void (*fn)(void)) {
++    return SSL_CTX_callback_ctrl(ctx, cmd, fn);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_encrypt_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx,
++                     unsigned char *out, size_t *outlen,
++                     const unsigned char *in, size_t inlen) {
++    return EVP_PKEY_encrypt(ctx, out, outlen, in, inlen);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_decrypt_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx,
++                     unsigned char *out, size_t *outlen,
++                     const unsigned char *in, size_t inlen) {
++    return EVP_PKEY_decrypt(ctx, out, outlen, in, inlen);
++}
++NODE_CRYPTO_EXTERN void Thin_RSA_get0_key(const RSA *r,
++                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d) {
++    return RSA_get0_key(r, n, e, d);
++}
++NODE_CRYPTO_EXTERN const struct rsa_st *Thin_EVP_PKEY_get0_RSA(const EVP_PKEY *pkey) {
++    return EVP_PKEY_get0_RSA(pkey);
++}
++NODE_CRYPTO_EXTERN struct rsa_st *Thin_EVP_PKEY_get1_RSA(EVP_PKEY *pkey) {
++    return EVP_PKEY_get1_RSA(pkey);
++}
++
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_set_ex_data(SSL_CTX *ssl, int idx, void *data) {
++    return SSL_CTX_set_ex_data(ssl, idx, data);
++}
++NODE_CRYPTO_EXTERN void *Thin_SSL_CTX_get_ex_data(const SSL_CTX *ssl, int idx) {
++    return SSL_CTX_get_ex_data(ssl, idx);
++}
++
++NODE_CRYPTO_EXTERN void *Thin_CRYPTO_secure_malloc(size_t num, const char *file, int line) {
++    return CRYPTO_secure_malloc(num, file, line);
++}
++
++NODE_CRYPTO_EXTERN int Thin_CRYPTO_secure_malloc_init(size_t sz, int minsize) {
++    return CRYPTO_secure_malloc_init(sz, minsize);
++}
++NODE_CRYPTO_EXTERN int Thin_CRYPTO_secure_malloc_initialized(void) {
++    return CRYPTO_secure_malloc_initialized();
++}
++NODE_CRYPTO_EXTERN void Thin_ENGINE_load_builtin_engines(void) {
++    return ENGINE_load_builtin_engines();
++}
++NODE_CRYPTO_EXTERN int Thin_ERR_load_ENGINE_strings(void) {
++    return ERR_load_ENGINE_strings();
++}
++NODE_CRYPTO_EXTERN int Thin_OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
++    return OPENSSL_init_ssl(opts, settings);
++}
++NODE_CRYPTO_EXTERN int Thin_RAND_bytes(unsigned char *buf, int num) {
++    return RAND_bytes(buf, num);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_set_word(BIGNUM *a, BN_ULONG w) {
++    return BN_set_word(a, w);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx) {
++    return EVP_CIPHER_CTX_block_size(ctx);
++}
++NODE_CRYPTO_EXTERN EVP_CIPHER_CTX *Thin_EVP_CIPHER_CTX_new(void) {
++    return EVP_CIPHER_CTX_new();
++}
++NODE_CRYPTO_EXTERN NETSCAPE_SPKI *Thin_NETSCAPE_SPKI_b64_decode(const char *str, int len) {
++    return NETSCAPE_SPKI_b64_decode(str, len);
++}
++NODE_CRYPTO_EXTERN int Thin_NETSCAPE_SPKI_verify(NETSCAPE_SPKI *a, EVP_PKEY *r) {
++    return NETSCAPE_SPKI_verify(a, r);
++}
++NODE_CRYPTO_EXTERN int Thin_X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int indent) {
++    return X509V3_EXT_print(out, ext, flag, indent);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_get_ext_by_NID(const X509 *x, int nid, int lastpos) {
++    return X509_get_ext_by_NID(x, nid, lastpos);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keylen) {
++    return EVP_PKEY_derive(ctx, key, keylen);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_MD_size(const EVP_MD *md) {
++    return EVP_MD_size(md);
++}
++NODE_CRYPTO_EXTERN X509_STORE *Thin_SSL_CTX_get_cert_store(const SSL_CTX *ctx) {
++    return SSL_CTX_get_cert_store(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x) {
++    return X509_STORE_add_crl(ctx, x);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags) {
++    return X509_STORE_set_flags(ctx, flags);
++}
++NODE_CRYPTO_EXTERN unsigned long Thin_ERR_peek_last_error(void) {
++    return ERR_peek_last_error();
++}
++NODE_CRYPTO_EXTERN int Thin_sk_X509_push(STACK_OF(X509) *sk, X509 *x) {
++    return sk_X509_push(sk, x);
++}
++NODE_CRYPTO_EXTERN STACK_OF(X509) *Thin_sk_X509_new_null() {
++    return sk_X509_new_null();
++}
++NODE_CRYPTO_EXTERN const EC_POINT *Thin_EC_KEY_get0_public_key(const EC_KEY *key) {
++    return EC_KEY_get0_public_key(key);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_PEM_read_bio_X509(BIO *bp, X509 **x, pem_password_cb *cb, void *u) {
++    return PEM_read_bio_X509(bp, x, cb, u);
++}
++NODE_CRYPTO_EXTERN int Thin_PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert, STACK_OF(X509) **ca) {
++    return PKCS12_parse(p12, pass, pkey, cert, ca);
++}
++NODE_CRYPTO_EXTERN const EC_GROUP *Thin_EC_KEY_get0_group(const EC_KEY *key) {
++    return EC_KEY_get0_group(key);
++}
++NODE_CRYPTO_EXTERN const char *Thin_ERR_reason_error_string(unsigned long e) {
++    return ERR_reason_error_string(e);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x) {
++    return SSL_CTX_add_client_CA(ctx, x);
++}
++NODE_CRYPTO_EXTERN const unsigned char *Thin_SSL_SESSION_get_id(const SSL_SESSION *s, unsigned int *len) {
++    return SSL_SESSION_get_id(s, len);
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp) {
++    return i2d_SSL_SESSION(in, pp);
++}
++NODE_CRYPTO_EXTERN SSL_SESSION *Thin_d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp, long length) {
++    return d2i_SSL_SESSION(a, pp, length);
++}
++NODE_CRYPTO_EXTERN const X509V3_EXT_METHOD *Thin_X509V3_EXT_get(X509_EXTENSION *ext) {
++    return X509V3_EXT_get(ext);
++}
++NODE_CRYPTO_EXTERN const X509V3_EXT_METHOD *Thin_X509V3_EXT_get_nid(int nid) {
++    return X509V3_EXT_get_nid(nid);
++}
++NODE_CRYPTO_EXTERN void *Thin_X509V3_EXT_d2i(X509_EXTENSION *ext) {
++    return X509V3_EXT_d2i(ext);
++}
++NODE_CRYPTO_EXTERN X509_NAME *Thin_X509_get_issuer_name(const X509 *a) {
++    return X509_get_issuer_name(a);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
++                       unsigned long flags) {
++    return X509_NAME_print_ex(out, nm, indent, flags);
++}
++NODE_CRYPTO_EXTERN const SSL_CIPHER *Thin_SSL_get_current_cipher(const SSL *s) {
++    return SSL_get_current_cipher(s);
++}
++NODE_CRYPTO_EXTERN const SSL_METHOD *Thin_TLS_server_method(void) {
++    return TLS_server_method();
++}
++NODE_CRYPTO_EXTERN const SSL_METHOD *Thin_TLS_client_method(void) {
++    return TLS_client_method();
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x,
++                                   pem_password_cb *cb, void *u) {
++    return PEM_read_bio_PrivateKey(bp, x, cb, u);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
++                        X509 *x509, STACK_OF(X509) *chain) {
++    return X509_STORE_CTX_init(ctx, store, x509, chain);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x) {
++    return X509_STORE_CTX_get1_issuer(issuer, ctx, x);
++}
++NODE_CRYPTO_EXTERN long Thin_SSL_get_verify_result(const SSL *ssl) {
++    return SSL_get_verify_result(ssl);
++}
++NODE_CRYPTO_EXTERN SSL_SESSION *Thin_SSL_get_session(const SSL *ssl) {
++    return SSL_get_session(ssl);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_SESSION_get0_ticket(const SSL_SESSION *s, const unsigned char **tick,
++                             size_t *len) {
++    return SSL_SESSION_get0_ticket(s, tick, len);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CIPHER_get_auth_nid(const SSL_CIPHER *c) {
++    return SSL_CIPHER_get_auth_nid(c);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_SESSION_get_protocol_version(const SSL_SESSION *s) {
++    return SSL_SESSION_get_protocol_version(s);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_session_reused(const SSL *s) {
++    return SSL_session_reused(s);
++}
++NODE_CRYPTO_EXTERN X509_STORE *Thin_X509_STORE_new(void) {
++    return X509_STORE_new();
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_bits(const EVP_PKEY *pkey) {
++    return EVP_PKEY_bits(pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_load_locations(X509_STORE *ctx,
++                              const char *file, const char *dir) {
++    return X509_STORE_load_locations(ctx, file, dir);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_STORE_set_default_paths(X509_STORE *ctx) {
++    return X509_STORE_set_default_paths(ctx);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_set_cert_cb(SSL *s, int (*cb) (SSL *ssl, void *arg), void *arg) {
++    return SSL_set_cert_cb(s, cb, arg);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_read(SSL *ssl, void *buf, int num) {
++    return SSL_read(ssl, buf, num);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_write(SSL *ssl, const void *buf, int num) {
++    return SSL_write(ssl, buf, num);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_shutdown(SSL *s) {
++    return SSL_shutdown(s);
++}
++NODE_CRYPTO_EXTERN const char *Thin_ERR_func_error_string(unsigned long e) {
++    return ERR_func_error_string(e);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_get_shutdown(const SSL *ssl) {
++    return SSL_get_shutdown(ssl);
++}
++NODE_CRYPTO_EXTERN void Thin_ERR_print_errors(BIO *bp) {
++    return ERR_print_errors(bp);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_get_error(const SSL *s, int ret_code) {
++    return SSL_get_error(s, ret_code);
++}
++NODE_CRYPTO_EXTERN X509_NAME *Thin_X509_get_subject_name(const X509 *a) {
++    return X509_get_subject_name(a);
++}
++NODE_CRYPTO_EXTERN int Thin_PKCS5_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const char *pass, int passlen,
++                            ASN1_TYPE *param, const EVP_CIPHER *cipher,
++                            const EVP_MD *md, int en_de) {
++    return PKCS5_PBE_keyivgen(ctx, pass, passlen, param, cipher, md, en_de);
++}
++NODE_CRYPTO_EXTERN int Thin_PKCS5_PBKDF2_HMAC_SHA1(const char *pass, int passlen,
++                                const unsigned char *salt, int saltlen, int iter,
++                                int keylen, unsigned char *out) {
++    return PKCS5_PBKDF2_HMAC_SHA1(pass, passlen, salt, saltlen, iter, keylen, out);
++}
++NODE_CRYPTO_EXTERN int Thin_PKCS5_PBKDF2_HMAC(const char *pass, int passlen,
++                           const unsigned char *salt, int saltlen, int iter,
++                           const EVP_MD *digest, int keylen, unsigned char *out) {
++    return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter, digest, keylen, out);
++}
++NODE_CRYPTO_EXTERN int Thin_PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const char *pass, int passlen,
++                               ASN1_TYPE *param, const EVP_CIPHER *cipher,
++                               const EVP_MD *md, int en_de) {
++    return PKCS5_v2_PBE_keyivgen(ctx, pass, passlen, param, cipher, md, en_de);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PBE_scrypt(const char *pass, size_t passlen,
++                        const unsigned char *salt, size_t saltlen,
++                        uint64_t N, uint64_t r, uint64_t p, uint64_t maxmem,
++                        unsigned char *key, size_t keylen) {
++    return EVP_PBE_scrypt(pass, passlen, salt, saltlen, N, r, p, maxmem, key, keylen);
++}
++NODE_CRYPTO_EXTERN int Thin_DH_generate_key(DH *dh) {
++    return DH_generate_key(dh);
++}
++
++NODE_CRYPTO_EXTERN void Thin_DH_get0_key(const DH *dh, const BIGNUM **pub_key, const BIGNUM **priv_key) {
++    return DH_get0_key(dh, pub_key, priv_key);
++}
++NODE_CRYPTO_EXTERN int Thin_DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key) {
++    return DH_set0_key(dh, pub_key, priv_key);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_derive_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_base_id(const EVP_PKEY *pkey) {
++    return EVP_PKEY_base_id(pkey);
++}
++
++NODE_CRYPTO_EXTERN void Thin_DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g) {
++    return DSA_get0_pqg(d, p, q, g);
++}
++NODE_CRYPTO_EXTERN int Thin_DSA_set0_pqg(DSA *d, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
++    return DSA_set0_pqg(d, p, q, g);
++}
++NODE_CRYPTO_EXTERN void Thin_DSA_get0_key(const DSA *d, const BIGNUM **pub_key, const BIGNUM **priv_key) {
++    return DSA_get0_key(d, pub_key, priv_key);
++}
++NODE_CRYPTO_EXTERN int Thin_DSA_set0_key(DSA *d, BIGNUM *pub_key, BIGNUM *priv_key) {
++    return DSA_set0_key(d, pub_key, priv_key);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_DSA_get0_p(const DSA *d) {
++    return DSA_get0_p(d);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_DSA_get0_q(const DSA *d) {
++    return DSA_get0_q(d);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_DSA_get0_g(const DSA *d) {
++    return DSA_get0_g(d);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_DSA_get0_pub_key(const DSA *d) {
++    return DSA_get0_pub_key(d);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_DSA_get0_priv_key(const DSA *d) {
++    return DSA_get0_priv_key(d);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_num_bits(const BIGNUM *a) {
++    return BN_num_bits(a);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_id(const EVP_PKEY *pkey) {
++    return EVP_PKEY_id(pkey);
++}
++
++NODE_CRYPTO_EXTERN EVP_MD_CTX *Thin_EVP_MD_CTX_new(void) {
++    return EVP_MD_CTX_new();
++}
++NODE_CRYPTO_EXTERN SSL_CTX *Thin_SSL_get_SSL_CTX(const SSL *ssl) {
++    return SSL_get_SSL_CTX(ssl);
++}
++NODE_CRYPTO_EXTERN const BIO_METHOD *Thin_BIO_s_mem(void) {
++    return BIO_s_mem();
++}
++NODE_CRYPTO_EXTERN X509_EXTENSION *Thin_X509_get_ext(const X509 *x, int loc) {
++    return X509_get_ext(x, loc);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey) {
++    return EVP_PKEY_paramgen(ctx, ppkey);
++}
++
++NODE_CRYPTO_EXTERN int Thin_HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md, ENGINE *impl) {
++    return HMAC_Init_ex(ctx, key, len, md, impl);
++}
++NODE_CRYPTO_EXTERN int Thin_HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len) {
++    return HMAC_Update(ctx, data, len);
++}
++NODE_CRYPTO_EXTERN int Thin_HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len) {
++    return HMAC_Final(ctx, md, len);
++}
++NODE_CRYPTO_EXTERN unsigned char *Thin_HMAC(const EVP_MD *evp_md, const void *key, int key_len,
++                         const unsigned char *d, size_t n, unsigned char *md,
++                         unsigned int *md_len) {
++    return HMAC(evp_md, key, key_len, d, n, md, md_len);
++}
++
++
++NODE_CRYPTO_EXTERN int Thin_BN_cmp(const BIGNUM *a, const BIGNUM *b) {
++    return BN_cmp(a, b);
++}
++NODE_CRYPTO_EXTERN BN_CTX *Thin_BN_CTX_new(void) {
++    return BN_CTX_new();
++}
++NODE_CRYPTO_EXTERN int Thin_BN_is_prime_ex(const BIGNUM *p, int nchecks, BN_CTX *ctx, BN_GENCB *cb) {
++    return BN_is_prime_ex(p, nchecks, ctx, cb);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
++    return SSL_CTX_use_certificate(ctx, x);
++}
++NODE_CRYPTO_EXTERN int Thin_X509_check_issued(X509 *issuer, X509 *subject) {
++    return X509_check_issued(issuer, subject);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_X509_dup(X509 *x509) {
++    return X509_dup(x509);
++}
++NODE_CRYPTO_EXTERN BIO *Thin_BIO_new(const BIO_METHOD *type) {
++    return BIO_new(type);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length) {
++    return d2i_PUBKEY(a, pp, length);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm,
++                            const char *name, BIO *bp, pem_password_cb *cb,
++                            void *u) {
++    return PEM_bytes_read_bio(pdata, plen, pnm, name, bp, cb, u);
++}
++
++NODE_CRYPTO_EXTERN int Thin_BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add, const BIGNUM *rem, BN_GENCB *cb) {
++    return BN_generate_prime_ex(ret, bits, safe, add, rem, cb);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_paramgen_init(ctx);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *x) {
++    return NETSCAPE_SPKI_get_pubkey(x);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_write(BIO *b, const void *data, int dlen) {
++    return BIO_write(b, data, dlen);
++}
++NODE_CRYPTO_EXTERN void Thin_DH_get0_pqg(const DH *dh, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g) {
++    return DH_get0_pqg(dh, p, q, g);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer) {
++    return EVP_PKEY_derive_set_peer(ctx, peer);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_bn2binpad(const BIGNUM *a, unsigned char *to, int tolen) {
++    return BN_bn2binpad(a, to, tolen);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl) {
++    return EVP_DigestInit_ex(ctx, type, impl);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt) {
++    return EVP_DigestUpdate(ctx, d, cnt);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *s) {
++    return EVP_DigestFinal_ex(ctx, md, s);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_Digest(const void *data, size_t count,
++                    unsigned char *md, unsigned int *size,
++                    const EVP_MD *type, ENGINE *impl) {
++    return EVP_Digest(data, count, md, size, type, impl);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestFinalXOF(EVP_MD_CTX *ctx, unsigned char *md, size_t len) {
++    return EVP_DigestFinalXOF(ctx, md, len);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_size(const EVP_PKEY *pkey) {
++    return EVP_PKEY_size(pkey);
++}
++NODE_CRYPTO_EXTERN const EVP_MD *Thin_EVP_MD_CTX_md(const EVP_MD_CTX *ctx) {
++    return EVP_MD_CTX_md(ctx);
++}
++
++NODE_CRYPTO_EXTERN unsigned long Thin_EVP_MD_flags(const EVP_MD *md) {
++    return EVP_MD_flags(md);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_sign_init(ctx);
++}
++NODE_CRYPTO_EXTERN void Thin_EVP_MD_do_all_sorted(void (*fn)(const EVP_MD *ciph, const char *from, const char *to, void *x), void *arg) {
++    return EVP_MD_do_all_sorted(fn, arg);
++}
++
++NODE_CRYPTO_EXTERN int Thin_SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos, unsigned int protos_len) {
++    return SSL_set_alpn_protos(ssl, protos, protos_len);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_SSL_get_peer_certificate(const SSL *s) {
++    return SSL_get_peer_certificate(s);
++}
++
++NODE_CRYPTO_EXTERN void *Thin_X509_get_ext_d2i(const X509 *x, int nid, int *crit, int *idx) {
++    return X509_get_ext_d2i(x, nid, crit, idx);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_X509_get_pubkey(X509 *x) {
++    return X509_get_pubkey(x);
++}
++
++NODE_CRYPTO_EXTERN BIGNUM *Thin_BN_secure_new(void) {
++    return BN_secure_new();
++}
++
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_EVP_PKEY_new(void) {
++    return EVP_PKEY_new();
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_EVP_PKEY_new_mac_key(int type, ENGINE *e, const unsigned char *key, int keylen) {
++    return EVP_PKEY_new_mac_key(type, e, key, keylen);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_EVP_PKEY_new_raw_private_key(int type, ENGINE *e,
++                                            const unsigned char *priv,
++                                            size_t len) {
++    return EVP_PKEY_new_raw_private_key(type, e, priv, len);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_EVP_PKEY_new_raw_public_key(int type, ENGINE *e,
++                                           const unsigned char *pub,
++                                           size_t len) {
++    return EVP_PKEY_new_raw_public_key(type, e, pub, len);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, unsigned char *priv, size_t *len) {
++    return EVP_PKEY_get_raw_private_key(pkey, priv, len);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, unsigned char *pub, size_t *len) {
++    return EVP_PKEY_get_raw_public_key(pkey, pub, len);
++}
++
++NODE_CRYPTO_EXTERN size_t Thin_CRYPTO_secure_used(void) {
++    return CRYPTO_secure_used();
++}
++
++NODE_CRYPTO_EXTERN int Thin_RAND_status(void) {
++    return RAND_status();
++}
++NODE_CRYPTO_EXTERN int Thin_RAND_poll(void) {
++    return RAND_poll();
++}
++NODE_CRYPTO_EXTERN int Thin_X509_up_ref(X509 *x) {
++    return X509_up_ref(x);
++}
++NODE_CRYPTO_EXTERN BIO *Thin_BIO_new_fp(FILE *stream, int close_flag) {
++    return BIO_new_fp(stream, close_flag);
++}
++
++NODE_CRYPTO_EXTERN BIO *Thin_BIO_new_file(const char *filename, const char *mode) {
++    return BIO_new_file(filename, mode);
++}
++
++NODE_CRYPTO_EXTERN OPENSSL_INIT_SETTINGS *Thin_OPENSSL_INIT_new(void) {
++    return OPENSSL_INIT_new();
++}
++NODE_CRYPTO_EXTERN void Thin_OPENSSL_INIT_set_config_file_flags(OPENSSL_INIT_SETTINGS *settings, unsigned long flags) {
++    return OPENSSL_INIT_set_config_file_flags(settings, flags);
++}
++NODE_CRYPTO_EXTERN int Thin_OPENSSL_INIT_set_config_appname(OPENSSL_INIT_SETTINGS *settings, const char *config_appname) {
++    return OPENSSL_INIT_set_config_appname(settings, config_appname);
++}
++
++NODE_CRYPTO_EXTERN void Thin_OPENSSL_INIT_free(OPENSSL_INIT_SETTINGS *settings) {
++    return OPENSSL_INIT_free(settings);
++}
++NODE_CRYPTO_EXTERN int Thin_BIO_get_init(BIO *a) {
++    return BIO_get_init(a);
++}
++
++NODE_CRYPTO_EXTERN X509_STORE_CTX *Thin_X509_STORE_CTX_new(void) {
++    return X509_STORE_CTX_new();
++}
++NODE_CRYPTO_EXTERN X509 *Thin_SSL_get_certificate(const SSL *ssl) {
++    return SSL_get_certificate(ssl);
++}
++
++NODE_CRYPTO_EXTERN STACK_OF(X509) *Thin_SSL_get_peer_cert_chain(const SSL *s) {
++    return SSL_get_peer_cert_chain(s);
++}
++NODE_CRYPTO_EXTERN STACK_OF(SSL_COMP) *Thin_SSL_COMP_get_compression_methods(void) {
++    return SSL_COMP_get_compression_methods();
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_KEY_generate_key(EC_KEY *key) {
++    return EC_KEY_generate_key(key);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub) {
++    return EC_KEY_set_public_key(key, pub);
++}
++
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_EC_KEY_get0_private_key(const EC_KEY *key) {
++    return EC_KEY_get0_private_key(key);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_nid(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_nid(cipher);
++}
++NODE_CRYPTO_EXTERN const EVP_CIPHER *Thin_EVP_CIPHER_CTX_cipher(const EVP_CIPHER_CTX *ctx) {
++    return EVP_CIPHER_CTX_cipher(ctx);
++}
++
++NODE_CRYPTO_EXTERN size_t Thin_SSL_get_client_random(const SSL *ssl, unsigned char *out, size_t outlen) {
++    return SSL_get_client_random(ssl, out, outlen);
++}
++
++NODE_CRYPTO_EXTERN void Thin_ERR_put_error(int lib, int func, int reason, const char *file, int line) {
++    return ERR_put_error(lib, func, reason, file, line);
++}
++
++NODE_CRYPTO_EXTERN void Thin_ERR_set_debug(const char *file, int line, const char *func) {
++    return ERR_set_debug(file, line, func);
++}
++
++NODE_CRYPTO_EXTERN int Thin_ASN1_INTEGER_get_int64(int64_t *pr, const ASN1_INTEGER *a) {
++    return ASN1_INTEGER_get_int64(pr, a);
++}
++
++NODE_CRYPTO_EXTERN size_t Thin_SSL_client_hello_get0_ciphers(SSL *s, const unsigned char **out) {
++    return SSL_client_hello_get0_ciphers(s, out);
++}
++NODE_CRYPTO_EXTERN const SSL_CIPHER *Thin_SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr) {
++    return SSL_CIPHER_find(ssl, ptr);
++}
++
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_ENGINE_load_private_key(ENGINE *e, const char *key_id,
++                                  UI_METHOD *ui_method, void *callback_data) {
++    return ENGINE_load_private_key(e, key_id, ui_method, callback_data);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_ENGINE_load_public_key(ENGINE *e, const char *key_id,
++                                 UI_METHOD *ui_method, void *callback_data) {
++    return ENGINE_load_public_key(e, key_id, ui_method, callback_data);
++}
++NODE_CRYPTO_EXTERN SSL_CTX *Thin_SSL_CTX_new(const SSL_METHOD *meth) {
++    return SSL_CTX_new(meth);
++}
++NODE_CRYPTO_EXTERN const SSL_METHOD *Thin_TLS_method(void) {
++    return TLS_method();
++}
++NODE_CRYPTO_EXTERN long Thin_SSL_CTX_set_timeout(SSL_CTX *ctx, long t) {
++    return SSL_CTX_set_timeout(ctx, t);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_set_session_id_context(SSL_CTX *ctx,
++                                          const unsigned char *sid_ctx,
++                                          unsigned int sid_ctx_len) {
++    return SSL_CTX_set_session_id_context(ctx, sid_ctx, sid_ctx_len);
++}
++
++NODE_CRYPTO_EXTERN unsigned long Thin_SSL_CTX_set_options(SSL_CTX *ctx, unsigned long op) {
++    return SSL_CTX_set_options(ctx, op);
++}
++NODE_CRYPTO_EXTERN STACK_OF(SSL_CIPHER) *Thin_SSL_get_ciphers(const SSL *s) {
++    return SSL_get_ciphers(s);
++}
++NODE_CRYPTO_EXTERN SSL *Thin_SSL_new(SSL_CTX *ctx) {
++    return SSL_new(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_ENGINE_init(ENGINE *e) {
++    return ENGINE_init(e);
++}
++NODE_CRYPTO_EXTERN int Thin_ENGINE_finish(ENGINE *e) {
++    return ENGINE_finish(e);
++}
++NODE_CRYPTO_EXTERN int Thin_SSL_CTX_set_client_cert_engine(SSL_CTX *ctx, ENGINE *e) {
++    return SSL_CTX_set_client_cert_engine(ctx, e);
++}
++NODE_CRYPTO_EXTERN ENGINE *Thin_ENGINE_by_id(const char *id) {
++    return ENGINE_by_id(id);
++}
++
++NODE_CRYPTO_EXTERN int Thin_OPENSSL_INIT_set_config_filename(OPENSSL_INIT_SETTINGS *settings, const char *config_filename) {
++    return OPENSSL_INIT_set_config_filename(settings, config_filename);
++}
++
++NODE_CRYPTO_EXTERN int Thin_ENGINE_ctrl_cmd_string(ENGINE *e, const char *cmd_name, const char *arg, int cmd_optional) {
++    return ENGINE_ctrl_cmd_string(e, cmd_name, arg, cmd_optional);
++}
++NODE_CRYPTO_EXTERN int Thin_OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
++    return OPENSSL_init_crypto(opts, settings);
++}
++NODE_CRYPTO_EXTERN int Thin_ENGINE_set_default(ENGINE *e, unsigned int flags) {
++    return ENGINE_set_default(e, flags);
++}
++
++NODE_CRYPTO_EXTERN const EVP_CIPHER *Thin_EVP_aes_128_cbc(void) {
++    return EVP_aes_128_cbc();
++}
++
++NODE_CRYPTO_EXTERN void Thin_X509_CRL_free(X509_CRL *ctx) {
++    return X509_CRL_free(ctx);
++}
++
++NODE_CRYPTO_EXTERN void Thin_PKCS12_free(PKCS12 *ctx) {
++    return PKCS12_free(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx,
++                                  const EVP_CIPHER *cipher, ENGINE *impl,
++                                  const unsigned char *key,
++                                  const unsigned char *iv) {
++    return EVP_DecryptInit_ex(ctx, cipher, impl, key, iv);
++}
++NODE_CRYPTO_EXTERN DH *Thin_PEM_read_bio_DHparams(BIO *bp, DH **x, pem_password_cb *cb, void *u) {
++    return PEM_read_bio_DHparams(bp, x, cb, u);
++}
++NODE_CRYPTO_EXTERN char *Thin_ERR_error_string(unsigned long e, char *buf) {
++    return ERR_error_string(e, buf);
++}
++NODE_CRYPTO_EXTERN int Thin_DH_generate_parameters_ex(DH *dh, int prime_len, int generator, BN_GENCB *cb) {
++    return DH_generate_parameters_ex(dh, prime_len,generator, cb);
++}
++NODE_CRYPTO_EXTERN int Thin_DH_check(const DH *dh, int *codes) {
++    return DH_check(dh, codes);
++}
++NODE_CRYPTO_EXTERN int Thin_DH_size(const DH *dh) {
++    return DH_size(dh);
++}
++
++NODE_CRYPTO_EXTERN int Thin_DH_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh) {
++    return DH_compute_key(key, pub_key, dh);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
++    return EVP_PKEY_assign(pkey, type, key);
++}
++
++NODE_CRYPTO_EXTERN char *Thin_BN_bn2hex(const BIGNUM *a) {
++    return BN_bn2hex(a);
++}
++NODE_CRYPTO_EXTERN char *Thin_BN_bn2dec(const BIGNUM *a) {
++    return BN_bn2dec(a);
++}
++
++NODE_CRYPTO_EXTERN int Thin_OBJ_sn2nid(const char *s) {
++    return OBJ_sn2nid(s);
++}
++
++NODE_CRYPTO_EXTERN int Thin_DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *codes) {
++    return DH_check_pub_key(dh, pub_key, codes);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
++    return EVP_CIPHER_CTX_ctrl(ctx, type, arg, ptr);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_KEY_check_key(const EC_KEY *key) {
++    return EC_KEY_check_key(key);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_GROUP_get_degree(const EC_GROUP *group) {
++    return EC_GROUP_get_degree(group);
++}
++
++NODE_CRYPTO_EXTERN int Thin_ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
++                     const EC_KEY *ecdh,
++                     void *(*KDF) (const void *in, size_t inlen,
++                                   void *out, size_t *outlen)) {
++    return ECDH_compute_key(out, outlen, pub_key, ecdh, KDF);
++}
++
++NODE_CRYPTO_EXTERN EC_KEY *Thin_EC_KEY_new_by_curve_name(int nid) {
++    return EC_KEY_new_by_curve_name(nid);
++}
++
++NODE_CRYPTO_EXTERN EC_KEY *Thin_EC_KEY_dup(const EC_KEY *src) {
++    return EC_KEY_dup(src);
++}
++NODE_CRYPTO_EXTERN  int Thin_EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv) {
++    return EC_KEY_set_private_key(key, prv);
++}
++
++NODE_CRYPTO_EXTERN size_t Thin_EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *p,
++                          point_conversion_form_t form,
++                          unsigned char *buf, size_t len, BN_CTX *ctx) {
++    return EC_POINT_point2oct(group, p, form, buf, len, ctx);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
++                 const EC_POINT *q, const BIGNUM *m, BN_CTX *ctx) {
++    return EC_POINT_mul(group, r, n, q, m, ctx);
++}
++
++NODE_CRYPTO_EXTERN EC_POINT *Thin_EC_POINT_new(const EC_GROUP *group) {
++    return EC_POINT_new(group);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx,
++                                  const EVP_CIPHER *cipher, ENGINE *impl,
++                                  const unsigned char *key,
++                                  const unsigned char *iv) {
++    return EVP_EncryptInit_ex(ctx, cipher, impl, key, iv);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *c, int pad) {
++    return EVP_CIPHER_CTX_set_padding(c, pad);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_curve_nist2nid(const char *name) {
++    return EC_curve_nist2nid(name);
++}
++
++NODE_CRYPTO_EXTERN const struct ec_key_st *Thin_EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey) {
++    return EVP_PKEY_get0_EC_KEY(pkey);
++}
++NODE_CRYPTO_EXTERN struct ec_key_st *Thin_EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey) {
++    return EVP_PKEY_get1_EC_KEY(pkey);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_POINT_get_affine_coordinates(const EC_GROUP *group, const EC_POINT *p,
++                                    BIGNUM *x, BIGNUM *y, BN_CTX *ctx) {
++    return EC_POINT_get_affine_coordinates(group, p, x, y, ctx);
++}
++
++NODE_CRYPTO_EXTERN size_t Thin_EC_get_builtin_curves(EC_builtin_curve *r, size_t nitems) {
++    return EC_get_builtin_curves(r, nitems);
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_RSA_PUBKEY(const RSA *a, unsigned char **pp) {
++    return i2d_RSA_PUBKEY(a, pp);
++}
++NODE_CRYPTO_EXTERN RSA *Thin_d2i_RSA_PUBKEY(RSA **a, const unsigned char **pp, long length) {
++    return d2i_RSA_PUBKEY(a, pp, length);
++}
++NODE_CRYPTO_EXTERN int Thin_EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
++    return EC_GROUP_get_order(group, order, ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key) {
++    return EVP_PKEY_set1_EC_KEY(pkey, key);
++}
++NODE_CRYPTO_EXTERN int Thin_EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
++                                             BIGNUM *y) {
++    return EC_KEY_set_public_key_affine_coordinates(key, x, y);
++}
++
++NODE_CRYPTO_EXTERN int Thin_i2d_RSAPublicKey_bio(BIO *bp, const RSA *rsa) {
++    return i2d_RSAPublicKey_bio(bp, rsa);
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_PUBKEY_bio(BIO *bp, const EVP_PKEY *pkey) {
++    return i2d_PUBKEY_bio(bp, pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_up_ref(EVP_PKEY *pkey) {
++    return EVP_PKEY_up_ref(pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_RSAPublicKey(BIO *bp, const RSA *x) {
++    return PEM_write_bio_RSAPublicKey(bp, x);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_RSAPrivateKey(BIO *bp, const RSA *x, const EVP_CIPHER *enc,
++                                 unsigned char *kstr, int klen,
++                                 pem_password_cb *cb, void *u) {
++    return PEM_write_bio_RSAPrivateKey(bp, x, enc, kstr, klen, cb, u);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_PKCS8PrivateKey(BIO *bp, const EVP_PKEY *pkey, const EVP_CIPHER *chipher,
++                                  char *kstr, int klen, pem_password_cb *cb, void *u) {
++    return PEM_write_bio_PKCS8PrivateKey(bp, pkey, chipher, kstr, klen, cb, u);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_d2i_PrivateKey(int type, EVP_PKEY **a, const unsigned char **pp,
++                         long length) {
++    return d2i_PrivateKey(type, a, pp, length);
++}
++NODE_CRYPTO_EXTERN PKCS8_PRIV_KEY_INFO *Thin_d2i_PKCS8_PRIV_KEY_INFO_bio(BIO *bp,
++                                                 PKCS8_PRIV_KEY_INFO **p8inf) {
++    return d2i_PKCS8_PRIV_KEY_INFO_bio(bp, p8inf);
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_ECPrivateKey_bio(BIO *bp, const EC_KEY *eckey) {
++    return i2d_ECPrivateKey_bio(bp, eckey);
++}
++NODE_CRYPTO_EXTERN int Thin_EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *p,
++                       const unsigned char *buf, size_t len, BN_CTX *ctx) {
++    return EC_POINT_oct2point(group, p, buf, len, ctx);
++}
++
++NODE_CRYPTO_EXTERN EC_GROUP *Thin_EC_GROUP_new_by_curve_name(int nid) {
++    return EC_GROUP_new_by_curve_name(nid);
++}
++NODE_CRYPTO_EXTERN ASN1_INTEGER *Thin_BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai) {
++    return BN_to_ASN1_INTEGER(bn, ai);
++}
++NODE_CRYPTO_EXTERN BIGNUM *Thin_ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn) {
++    return ASN1_INTEGER_to_BN(ai, bn);
++}
++
++NODE_CRYPTO_EXTERN PKCS12 *Thin_d2i_PKCS12_bio(BIO *bp, PKCS12 **p12) {
++    return d2i_PKCS12_bio(bp, p12);
++}
++
++NODE_CRYPTO_EXTERN void Thin_RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q) {
++    return RSA_get0_factors(r, p, q);
++}
++NODE_CRYPTO_EXTERN void *Thin_EVP_PKEY_get0(const EVP_PKEY *pkey) {
++    return EVP_PKEY_get0(pkey);
++}
++NODE_CRYPTO_EXTERN X509 *Thin_d2i_X509(X509 **p, const unsigned char **in, long len) {
++    return d2i_X509(p, in, len);
++}
++
++NODE_CRYPTO_EXTERN RSA *Thin_RSA_new(void) {
++    return RSA_new();
++}
++
++NODE_CRYPTO_EXTERN int Thin_OBJ_obj2nid(const ASN1_OBJECT *o) {
++    return OBJ_obj2nid(o);
++}
++NODE_CRYPTO_EXTERN void Thin_RSA_get0_crt_params(const RSA *r,
++                         const BIGNUM **dmp1, const BIGNUM **dmq1,
++                         const BIGNUM **iqmp) {
++    return RSA_get0_crt_params(r, dmp1, dmq1, iqmp);
++}
++NODE_CRYPTO_EXTERN int Thin_RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d) {
++    return RSA_set0_key(r, n, e, d);
++}
++NODE_CRYPTO_EXTERN int Thin_RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q) {
++    return RSA_set0_factors(r, p, q);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_set1_RSA(EVP_PKEY *pkey, struct rsa_st *key) {
++    return EVP_PKEY_set1_RSA(pkey, key);
++}
++NODE_CRYPTO_EXTERN const RSA_PSS_PARAMS *Thin_RSA_get0_pss_params(const RSA *r) {
++    return RSA_get0_pss_params(r);
++}
++NODE_CRYPTO_EXTERN int Thin_RSA_set0_crt_params(RSA *r,BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp) {
++    return RSA_set0_crt_params(r, dmp1, dmq1, iqmp);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_verify_init(ctx);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_verify(EVP_PKEY_CTX *ctx,
++                    const unsigned char *sig, size_t siglen,
++                    const unsigned char *tbs, size_t tbslen) {
++    return EVP_PKEY_verify(ctx, sig, siglen, tbs, tbslen);
++}
++
++NODE_CRYPTO_EXTERN PKCS8_PRIV_KEY_INFO *Thin_EVP_PKEY2PKCS8(EVP_PKEY *pkey) {
++    return EVP_PKEY2PKCS8(pkey);
++}
++
++NODE_CRYPTO_EXTERN const char *Thin_OBJ_nid2ln(int n) {
++    return OBJ_nid2ln(n);
++}
++
++NODE_CRYPTO_EXTERN int Thin_i2d_PKCS8_PRIV_KEY_INFO_bio(BIO *bp, PKCS8_PRIV_KEY_INFO *p8inf) {
++    return i2d_PKCS8_PRIV_KEY_INFO_bio(bp, p8inf);
++}
++
++NODE_CRYPTO_EXTERN ECDSA_SIG *Thin_ECDSA_SIG_new(void) {
++    return ECDSA_SIG_new();
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_ECDSA_SIG(const ECDSA_SIG *sig, unsigned char **pp) {
++    return i2d_ECDSA_SIG(sig, pp);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
++                                  const EVP_MD *type, ENGINE *e,
++                                  EVP_PKEY *pkey) {
++    return EVP_DigestSignInit(ctx, pctx, type, e, pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
++                                const EVP_MD *type, ENGINE *e,
++                                EVP_PKEY *pkey) {
++    return EVP_DigestVerifyInit(ctx, pctx, type, e, pkey);
++}
++NODE_CRYPTO_EXTERN int Thin_i2d_PKCS8PrivateKey_bio(BIO *bp, const EVP_PKEY *x, const EVP_CIPHER *enc,
++                            char *kstr, int klen,
++                            pem_password_cb *cb, void *u) {
++    return i2d_PKCS8PrivateKey_bio(bp, x, enc, kstr, klen, cb, u);
++}
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_d2i_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
++                                  void *u) {
++    return d2i_PKCS8PrivateKey_bio(bp, x, cb, u);
++}
++
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_EVP_PKCS82PKEY(const PKCS8_PRIV_KEY_INFO *p8) {
++    return EVP_PKCS82PKEY(p8);
++}
++
++NODE_CRYPTO_EXTERN int Thin_i2d_RSAPrivateKey_bio(BIO *bp, const RSA *rsa) {
++    return i2d_RSAPrivateKey_bio(bp, rsa);
++}
++
++NODE_CRYPTO_EXTERN EVP_PKEY *Thin_d2i_PublicKey(int type, EVP_PKEY **a, const unsigned char **pp,
++                        long length) {
++    return d2i_PublicKey(type, a, pp, length);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_ECPrivateKey(BIO *bp, const ec_key_st *x, const EVP_CIPHER *enc,
++                              unsigned char *kstr, int klen,
++                              pem_password_cb *cb, void *u) {
++    return PEM_write_bio_ECPrivateKey(bp, x, enc, kstr, klen, cb, u);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
++                          size_t *siglen, const unsigned char *tbs,
++                          size_t tbslen) {
++    return EVP_DigestSign(ctx, sigret, siglen, tbs, tbslen);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
++                            size_t siglen, const unsigned char *tbs,
++                            size_t tbslen) {
++    return EVP_DigestVerify(ctx, sigret, siglen, tbs, tbslen);
++}
++NODE_CRYPTO_EXTERN point_conversion_form_t Thin_EC_KEY_get_conv_form(const EC_KEY *key) {
++    return EC_KEY_get_conv_form(key);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_bio_X509(BIO *bp, X509 *x) {
++    return PEM_write_bio_X509(bp, x);
++}
++NODE_CRYPTO_EXTERN int Thin_PEM_write_X509(FILE *fp, X509 *x) {
++    return PEM_write_X509(fp, x);
++}
++
++NODE_CRYPTO_EXTERN ECDSA_SIG *Thin_d2i_ECDSA_SIG(ECDSA_SIG **sig, const unsigned char **pp, long len) {
++    return d2i_ECDSA_SIG(sig, pp, len);
++}
++NODE_CRYPTO_EXTERN void Thin_ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps) {
++    return ECDSA_SIG_get0(sig, pr, ps);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_ECDSA_SIG_get0_r(const ECDSA_SIG *sig) {
++    return ECDSA_SIG_get0_r(sig);
++}
++NODE_CRYPTO_EXTERN const BIGNUM *Thin_ECDSA_SIG_get0_s(const ECDSA_SIG *sig) {
++    return ECDSA_SIG_get0_s(sig);
++}
++NODE_CRYPTO_EXTERN int Thin_ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
++    return ECDSA_SIG_set0(sig, r, s);
++}
++NODE_CRYPTO_EXTERN STACK_OF(X509_NAME) *Thin_SSL_CTX_get_client_CA_list(const SSL_CTX *s) {
++    return SSL_CTX_get_client_CA_list(s);
++}
++NODE_CRYPTO_EXTERN int Thin_ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in) {
++    return ASN1_STRING_to_UTF8(out, in);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_DigestSignFinal(EVP_MD_CTX *ctx, unsigned char *sigret, size_t *siglen) {
++    return EVP_DigestSignFinal(ctx, sigret, siglen);
++}
++
++NODE_CRYPTO_EXTERN int Thin_i2d_X509(X509 *x, unsigned char **buf) {
++    return i2d_X509(x, buf);
++}
++
++NODE_CRYPTO_EXTERN const char *Thin_EC_curve_nid2nist(int nid) {
++    return EC_curve_nid2nist(nid);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EC_GROUP_get_curve_name(const EC_GROUP *group) {
++    return EC_GROUP_get_curve_name(group);
++}
++NODE_CRYPTO_EXTERN void Thin_SSL_CTX_set_client_cert_cb(SSL_CTX *ctx,
++                                int (*client_cert_cb) (SSL *ssl, X509 **x509,
++                                                       EVP_PKEY **pkey))
++{
++    return SSL_CTX_set_client_cert_cb(ctx, client_cert_cb);
++}
++NODE_CRYPTO_EXTERN unsigned char *Thin_SHA1(const unsigned char *d, size_t n, unsigned char *md) {
++    return SHA1(d, n, md);
++}
++
++NODE_CRYPTO_EXTERN int Thin_sk_X509_NAME_num(STACK_OF(X509_NAME)* sk) {
++    return sk_X509_NAME_num(sk);
++}
++NODE_CRYPTO_EXTERN X509_NAME *Thin_sk_X509_NAME_value(const stack_st_X509_NAME *sk, int i) {
++    return sk_X509_NAME_value(sk, i);
++}
++NODE_CRYPTO_EXTERN STACK_OF(X509_NAME) *Thin_SSL_get_client_CA_list(const SSL *s) {
++    return SSL_get_client_CA_list(s);
++}
++NODE_CRYPTO_EXTERN char *Thin_X509_NAME_oneline(const X509_NAME *a, char *buf, int size) {
++    return X509_NAME_oneline(a, buf, size);
++}
++NODE_CRYPTO_EXTERN int Thin_BN_print(BIO *bio, const BIGNUM *a) {
++    return BN_print(bio, a);
++}
++
++NODE_CRYPTO_EXTERN int Thin_BIO_printf(BIO *bio, const char *format, ...) {
++    int ret;
++    va_list args;
++    va_start(args, format);
++    ret = BIO_vprintf(bio, format, args);
++    va_end(args);
++    return ret;
++}
++NODE_CRYPTO_EXTERN void Thin_ERR_print_errors_cb(int (*cb) (const char *str, size_t len, void *u), void *u) {
++    return ERR_print_errors_cb(cb, u);
++}
++
++NODE_CRYPTO_EXTERN OSSL_PROVIDER *Thin_OSSL_PROVIDER_load(OSSL_LIB_CTX *libctx, const char *name) {
++    return OSSL_PROVIDER_load(libctx, name);
++}
++NODE_CRYPTO_EXTERN int Thin_OSSL_PROVIDER_unload(OSSL_PROVIDER *prov) {
++    return OSSL_PROVIDER_unload(prov);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_default_properties_is_fips_enabled(OSSL_LIB_CTX *libctx) {
++    return EVP_default_properties_is_fips_enabled(libctx);
++}
++
++NODE_CRYPTO_EXTERN BIGNUM *Thin_BN_get_rfc2409_prime_768(BIGNUM *bn) {
++    return BN_get_rfc2409_prime_768(bn);
++}
++
++NODE_CRYPTO_EXTERN BIGNUM *Thin_BN_get_rfc2409_prime_1024(BIGNUM *bn) {
++    return BN_get_rfc2409_prime_1024(bn);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EVP_MD_free(EVP_MD *md) {
++    return EVP_MD_free(md);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_eq(const EVP_PKEY *a, const EVP_PKEY *b) {
++    return EVP_PKEY_eq(a, b);
++}
++
++NODE_CRYPTO_EXTERN EVP_CIPHER *Thin_EVP_CIPHER_fetch(OSSL_LIB_CTX *ctx, const char *algorithm, const char *properties) {
++    return EVP_CIPHER_fetch(ctx, algorithm, properties);
++}
++
++NODE_CRYPTO_EXTERN const char *Thin_EVP_CIPHER_get0_name(const EVP_CIPHER *cipher) {
++    return EVP_CIPHER_get0_name(cipher);
++}
++
++NODE_CRYPTO_EXTERN EVP_MD *Thin_EVP_MD_fetch(OSSL_LIB_CTX *ctx, const char *algorithm, const char *properties) {
++    return EVP_MD_fetch(ctx, algorithm, properties);
++}
++
++NODE_CRYPTO_EXTERN const char *Thin_EVP_MD_get0_name(const EVP_MD *md) {
++    return EVP_MD_get0_name(md);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable) {
++    return EVP_default_properties_enable_fips(libctx, enable);
++}
++
++NODE_CRYPTO_EXTERN void Thin_EVP_CIPHER_free(EVP_CIPHER *cipher) {
++    return EVP_CIPHER_free(cipher);
++}
++NODE_CRYPTO_EXTERN int Thin_EVP_CIPHER_CTX_get_nid(const EVP_CIPHER_CTX *ctx) {
++    return EVP_CIPHER_CTX_get_nid(ctx);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value) {
++    return EVP_PKEY_CTX_ctrl_str(ctx, type, value);
++}
++
++NODE_CRYPTO_EXTERN const BIO_METHOD *Thin_BIO_s_secmem(void) {
++    return BIO_s_secmem();
++}
++
++NODE_CRYPTO_EXTERN int Thin_RAND_bytes_ex(OSSL_LIB_CTX *ctx, unsigned char *buf, size_t num, unsigned int strength) {
++    return RAND_bytes_ex(ctx, buf, num, strength);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_check(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_check(ctx);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_MD_names_do_all(const EVP_MD *md, void (*fn)(const char *name, void *data), void *data) {
++    return EVP_MD_names_do_all(md, fn, data);
++}
++
++NODE_CRYPTO_EXTERN int Thin_EVP_PKEY_public_check_quick(EVP_PKEY_CTX *ctx) {
++    return EVP_PKEY_public_check_quick(ctx);
++}
++
++NODE_CRYPTO_EXTERN int Thin_OSSL_PROVIDER_available(OSSL_LIB_CTX *ctx, const char *name) {
++    return OSSL_PROVIDER_available(ctx, name);
++}
++NODE_CRYPTO_EXTERN int Thin_OSSL_PROVIDER_self_test(const OSSL_PROVIDER *prov) {
++    return OSSL_PROVIDER_self_test(prov);
++}
+\ No newline at end of file
+diff --git a/src/crypto/crypto_wrapper.h b/src/crypto/crypto_wrapper.h
+new file mode 100644
+index 0000000000..a7e06c06a6
+--- /dev/null
++++ b/src/crypto/crypto_wrapper.h
+@@ -0,0 +1,1158 @@
++
++#ifndef SRC_CRYPTO_CRYPTO_INL_H_
++#define SRC_CRYPTO_CRYPTO_INL_H_
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#include <openssl/ossl_typ.h>
++#include <openssl/bn.h>
++#include <openssl/aes.h>
++#include <openssl/ssl.h>
++#include <openssl/err.h>
++#include <openssl/engine.h>
++#include <openssl/crypto.h>
++#include <openssl/evp.h>
++#include <openssl/tls1.h>
++#include <openssl/rand.h>
++#include <openssl/x509.h>
++#include <openssl/x509v3.h>
++#include <openssl/dh.h>
++#include <openssl/pkcs12.h>
++#include <openssl/ec.h>
++#include <openssl/safestack.h>
++#include <openssl/provider.h>
++
++
++// #ifndef OPENSSL_IS_BORINGSSL
++ #include <openssl/kdf.h>
++// #endif
++
++#include <openssl/rsa.h>
++#include <openssl/dsa.h>
++
++#ifndef OPENSSL_NO_ENGINE
++#  include <openssl/engine.h>
++#endif  // !OPENSSL_NO_ENGINE
++
++// // The FIPS-related functions are only available
++// // when the OpenSSL itself was compiled with FIPS support.
++#if defined(OPENSSL_FIPS) && OPENSSL_VERSION_MAJOR < 3
++#  include <openssl/fips.h>
++#endif  // OPENSSL_FIPS
++
++# ifdef  __cplusplus
++}
++# endif
++
++#define Thin_EVP_DigestSignUpdate(a,b,c)     Thin_EVP_DigestUpdate(a,b,c)
++
++#define Thin_EVP_CIPHER_mode(e)              (Thin_EVP_CIPHER_flags(e) & EVP_CIPH_MODE)
++#define Thin_EVP_CIPHER_CTX_mode(c)         Thin_EVP_CIPHER_mode(Thin_EVP_CIPHER_CTX_cipher(c))
++
++#define Thin_EVP_PKEY_CTX_hkdf_mode(pctx, mode) \
++        Thin_EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, \
++                              EVP_PKEY_CTRL_HKDF_MODE, mode, NULL)
++
++#define Thin_EVP_PKEY_assign_EC_KEY(pkey,eckey) \
++        Thin_EVP_PKEY_assign((pkey),EVP_PKEY_EC, (char *)(eckey))
++
++#define Thin_EVP_PKEY_CTX_set_ec_param_enc(ctx, flag) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_EC, \
++                                EVP_PKEY_OP_PARAMGEN|EVP_PKEY_OP_KEYGEN, \
++                                EVP_PKEY_CTRL_EC_PARAM_ENC, flag, NULL)
++
++#define Thin_EVP_PKEY_CTX_set_signature_md(ctx, md) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_TYPE_SIG,  \
++                                        EVP_PKEY_CTRL_MD, 0, (void *)(md))
++#define Thin_EVP_PKEY_CTX_add1_hkdf_info(pctx, info, infolen) \
++        Thin_EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, \
++                              EVP_PKEY_CTRL_HKDF_INFO, infolen, (void *)(info))
++
++#define Thin_EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx, nid) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_EC, \
++                                EVP_PKEY_OP_PARAMGEN|EVP_PKEY_OP_KEYGEN, \
++                                EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID, nid, NULL)
++#define Thin_EVP_PKEY_CTX_set1_hkdf_key(pctx, key, keylen) \
++        Thin_EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, \
++                              EVP_PKEY_CTRL_HKDF_KEY, keylen, (void *)(key))
++
++#define Thin_EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt, saltlen) \
++        Thin_EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, \
++                              EVP_PKEY_CTRL_HKDF_SALT, saltlen, (void *)(salt))
++
++#define Thin_EVPerr(f,r)       Thin_ERR_put_error(ERR_LIB_EVP,(f),(r),OPENSSL_FILE,OPENSSL_LINE)
++#define Thin_EVP_PKEY_CTX_set_ec_param_enc(ctx, flag) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_EC, \
++                                EVP_PKEY_OP_PARAMGEN|EVP_PKEY_OP_KEYGEN, \
++                                EVP_PKEY_CTRL_EC_PARAM_ENC, flag, NULL)
++
++#define Thin_BIO_reset(b)            (int)Thin_BIO_ctrl(b,BIO_CTRL_RESET,0,NULL)
++#define Thin_BIO_eof(b)              (int)Thin_BIO_ctrl(b,BIO_CTRL_EOF,0,NULL)
++#define Thin_BIO_set_close(b,c)      (int)Thin_BIO_ctrl(b,BIO_CTRL_SET_CLOSE,(c),NULL)
++#define Thin_BIO_get_close(b)        (int)Thin_BIO_ctrl(b,BIO_CTRL_GET_CLOSE,0,NULL)
++#define Thin_BIO_pending(b)          (int)Thin_BIO_ctrl(b,BIO_CTRL_PENDING,0,NULL)
++#define Thin_BIO_wpending(b)         (int)Thin_BIO_ctrl(b,BIO_CTRL_WPENDING,0,NULL)
++
++#define Thin_EVP_PKEY_assign_DH(pkey,dh) \
++        Thin_EVP_PKEY_assign((pkey),EVP_PKEY_DH, (char *)(dh))
++
++#define Thin_EVP_PKEY_CTX_set_dsa_paramgen_bits(ctx, nbits) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DSA, EVP_PKEY_OP_PARAMGEN, \
++                                EVP_PKEY_CTRL_DSA_PARAMGEN_BITS, nbits, NULL)
++
++#define Thin_SSL_set_app_data(s,arg) \
++        (Thin_SSL_set_ex_data(s,0,(char *)(arg)))
++#define Thin_EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, len) \
++        Thin_RSA_pkey_ctx_ctrl(ctx, (EVP_PKEY_OP_SIGN|EVP_PKEY_OP_VERIFY), \
++                          EVP_PKEY_CTRL_RSA_PSS_SALTLEN, len, NULL)
++
++#define Thin_SSL_CTX_set1_groups_list(ctx, s) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_GROUPS_LIST,0,(char *)(s))
++#define Thin_SSL_CTX_get0_chain_certs(ctx,px509) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_GET_CHAIN_CERTS,0,px509)
++
++#define Thin_SSL_CTX_get_min_proto_version(ctx) \
++        Thin_SSL_CTX_ctrl(ctx, SSL_CTRL_GET_MIN_PROTO_VERSION, 0, NULL)
++
++#define Thin_SSL_CTX_set1_curves_list(ctx, s) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_GROUPS_LIST,0,(char *)(s))
++
++#define Thin_SSL_set1_verify_cert_store(s,st) \
++        Thin_SSL_ctrl(s,SSL_CTRL_SET_VERIFY_CERT_STORE,1,(char *)(st))
++
++#define Thin_SSL_CTX_set_tmp_dh(ctx,dh) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_TMP_DH,0,(char *)(dh))
++
++#define Thin_SSL_set_tlsext_host_name(s,name) \
++        Thin_SSL_ctrl(s,SSL_CTRL_SET_TLSEXT_HOSTNAME,TLSEXT_NAMETYPE_host_name,\
++                (void *)name)
++#define Thin_SSL_CTX_get_max_proto_version(ctx) \
++        Thin_SSL_CTX_ctrl(ctx, SSL_CTRL_GET_MAX_PROTO_VERSION, 0, NULL)
++
++#define Thin_SSL_set_msg_callback_arg(ssl, arg) \
++        Thin_SSL_ctrl((ssl), SSL_CTRL_SET_MSG_CALLBACK_ARG, 0, (arg))
++
++#define Thin_SSL_set_mode(ssl,op) \
++        Thin_SSL_ctrl((ssl),SSL_CTRL_MODE,(op),NULL)
++
++# define Thin_SSL_CTX_get_tlsext_status_cb(ssl, cb) \
++        Thin_SSL_CTX_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_CB,0,(void *)cb)
++# define Thin_SSL_CTX_set_tlsext_status_cb(ssl, cb) \
++        Thin_SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB,\
++                (void (*)(void))cb)
++
++# define Thin_SSL_CTX_get_tlsext_status_arg(ssl, arg) \
++        Thin_SSL_CTX_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_CB_ARG,0,arg)
++# define Thin_SSL_CTX_set_tlsext_status_arg(ssl, arg) \
++        Thin_SSL_CTX_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_CB_ARG,0,arg)
++
++# define Thin_SSL_get_peer_tmp_key(s, pk) \
++        Thin_SSL_ctrl(s,SSL_CTRL_GET_PEER_TMP_KEY,0,pk)
++#define Thin_SSL_get_server_tmp_key(s, pk) \
++        Thin_SSL_ctrl(s,SSL_CTRL_GET_PEER_TMP_KEY,0,pk)
++
++#define Thin_SSL_set1_chain(s,sk) \
++        Thin_SSL_ctrl(s,SSL_CTRL_CHAIN,1,(char *)(sk))
++#define Thin_SSL_CTX_set_session_cache_mode(ctx,m) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_SESS_CACHE_MODE,m,NULL)
++
++#define Thin_SSL_get_tlsext_status_ocsp_resp(ssl, arg) \
++        Thin_SSL_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_OCSP_RESP,0,arg)
++
++#define Thin_SSL_CTX_set_tlsext_ticket_key_cb(ssl, cb) \
++        Thin_SSL_CTX_callback_ctrl(ssl,SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB,\
++                (void (*)(void))cb)
++#define Thin_SSL_set_tlsext_status_ocsp_resp(ssl, arg, arglen) \
++        Thin_SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_OCSP_RESP,arglen,arg)
++
++#define Thin_SSL_CTX_set_min_proto_version(ctx, version) \
++        Thin_SSL_CTX_ctrl(ctx, SSL_CTRL_SET_MIN_PROTO_VERSION, version, NULL)
++#define Thin_SSL_CTX_set_max_proto_version(ctx, version) \
++        Thin_SSL_CTX_ctrl(ctx, SSL_CTRL_SET_MAX_PROTO_VERSION, version, NULL)
++#define Thin_SSL_CTX_set1_sigalgs_list(ctx, s) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_SIGALGS_LIST,0,(char *)(s))
++#define Thin_SSL_CTX_set_tlsext_servername_callback(ctx, cb) \
++        Thin_SSL_CTX_callback_ctrl(ctx,SSL_CTRL_SET_TLSEXT_SERVERNAME_CB,\
++                (void (*)(void))cb)
++
++#define Thin_SSL_CTX_clear_mode(ctx,op) \
++        Thin_SSL_CTX_ctrl((ctx),SSL_CTRL_CLEAR_MODE,(op),NULL)
++
++#define Thin_SSL_CTX_get_app_data(ctx) \
++        (Thin_SSL_CTX_get_ex_data(ctx,0))
++#define Thin_SSL_CTX_set_app_data(ctx,arg) \
++        (Thin_SSL_CTX_set_ex_data(ctx,0, (char *)(arg)))
++#define Thin_OPENSSL_secure_clear_free(addr, num) \
++        Thin_CRYPTO_secure_clear_free(addr, num, OPENSSL_FILE, OPENSSL_LINE)
++
++#define Thin_OPENSSL_secure_malloc(num) \
++        Thin_CRYPTO_secure_malloc(num, OPENSSL_FILE, OPENSSL_LINE)
++
++#define Thin_EVP_PKEY_CTX_set_rsa_pss_keygen_mgf1_md(ctx, md) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA_PSS, EVP_PKEY_OP_KEYGEN, \
++                          EVP_PKEY_CTRL_RSA_MGF1_MD, 0, (void *)(md))
++#define Thin_EVP_PKEY_CTX_set_rsa_pss_keygen_md(ctx, md) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA_PSS,  \
++                          EVP_PKEY_OP_KEYGEN, EVP_PKEY_CTRL_MD,  \
++                          0, (void *)(md))
++#define Thin_BIO_set_retry_read(b) \
++        Thin_BIO_set_flags(b, (BIO_FLAGS_READ|BIO_FLAGS_SHOULD_RETRY))
++
++#define Thin_SSL_get_tlsext_status_type(ssl) \
++        Thin_SSL_ctrl(ssl,SSL_CTRL_GET_TLSEXT_STATUS_REQ_TYPE,0,NULL)
++#define Thin_SSL_set_tlsext_status_type(ssl, type) \
++        Thin_SSL_ctrl(ssl,SSL_CTRL_SET_TLSEXT_STATUS_REQ_TYPE,type,NULL)
++#define Thin_SSL_set_max_send_fragment(ssl,m) \
++        Thin_SSL_ctrl(ssl,SSL_CTRL_SET_MAX_SEND_FRAGMENT,m,NULL)
++
++#define Thin_EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, md) \
++        Thin_RSA_pkey_ctx_ctrl(ctx, EVP_PKEY_OP_TYPE_SIG | EVP_PKEY_OP_TYPE_CRYPT, \
++                          EVP_PKEY_CTRL_RSA_MGF1_MD, 0, (void *)(md))
++#define Thin_EVP_PKEY_CTX_set_rsa_pss_keygen_saltlen(ctx, len) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA_PSS, EVP_PKEY_OP_KEYGEN, \
++                          EVP_PKEY_CTRL_RSA_PSS_SALTLEN, len, NULL)
++#define Thin_EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) \
++        Thin_RSA_pkey_ctx_ctrl(ctx, EVP_PKEY_OP_KEYGEN, \
++                          EVP_PKEY_CTRL_RSA_KEYGEN_BITS, bits, NULL)
++
++
++#define Thin_OPENSSL_clear_free(addr, num) \
++        Thin_CRYPTO_clear_free(addr, num, OPENSSL_FILE, OPENSSL_LINE)
++
++#define Thin_SSL_CTX_add1_chain_cert(ctx,x509) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_CHAIN_CERT,1,(char *)(x509))
++#define Thin_SSL_CTX_clear_extra_chain_certs(ctx) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS,0,NULL)
++#define Thin_EVP_PKEY_CTX_set_rsa_keygen_pubexp(ctx, pubexp) \
++        Thin_RSA_pkey_ctx_ctrl(ctx, EVP_PKEY_OP_KEYGEN, \
++                          EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, pubexp)
++#define Thin_EVP_PKEY_CTX_set_rsa_oaep_md(ctx, md) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,  \
++                          EVP_PKEY_CTRL_RSA_OAEP_MD, 0, (void *)(md))
++#define Thin_OPENSSL_memdup(str, s) \
++        Thin_CRYPTO_memdup((str), s, OPENSSL_FILE, OPENSSL_LINE)
++#define Thin_EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, l, llen) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,  \
++                          EVP_PKEY_CTRL_RSA_OAEP_LABEL, llen, (void *)(l))
++
++#define Thin_EVP_CIPHER_mode(e) \
++        (Thin_EVP_CIPHER_flags(e) & EVP_CIPH_MODE)
++#define Thin_EVP_MD_CTX_size(e) \
++        Thin_EVP_MD_size(Thin_EVP_MD_CTX_md(e))
++
++#define Thin_BIO_clear_retry_flags(b) \
++        Thin_BIO_clear_flags(b, (BIO_FLAGS_RWS|BIO_FLAGS_SHOULD_RETRY))
++
++#if OPENSSL_API_COMPAT < 0x10100000L
++# define Thin_EVP_CIPHER_CTX_init(c) Thin_EVP_CIPHER_CTX_reset(c)
++# endif
++
++#define Thin_EVP_get_cipherbynid(a) \
++        Thin_EVP_get_cipherbyname(Thin_OBJ_nid2sn(a))
++
++#define Thin_BIO_set_mem_eof_return(b,v) \
++        Thin_BIO_ctrl(b,BIO_C_SET_BUF_MEM_EOF_RETURN,v,NULL)
++
++
++#define Thin_EVP_PKEY_CTX_set_hkdf_md(pctx, md) \
++        Thin_EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_DERIVE, \
++                            EVP_PKEY_CTRL_HKDF_MD, 0, (void *)(md))
++
++#define Thin_EVP_PKEY_CTX_set_rsa_padding(ctx, pad) \
++        Thin_RSA_pkey_ctx_ctrl(ctx, -1, EVP_PKEY_CTRL_RSA_PADDING, pad, NULL)
++
++#define Thin_SSL_get_app_data(s)    (Thin_SSL_get_ex_data(s,0))
++
++#define Thin_BIO_reset(b)            (int)Thin_BIO_ctrl(b,BIO_CTRL_RESET,0,NULL)
++#define Thin_BN_num_bytes(a)   ((Thin_BN_num_bits(a)+7)/8)
++
++#define Thin_BIO_get_mem_ptr(b,pp) \
++        Thin_BIO_ctrl(b,BIO_C_GET_BUF_MEM_PTR,0, (char *)(pp))
++
++#define Thin_EVP_PKEY_CTX_set_dh_paramgen_prime_len(ctx, len) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN, \
++                        EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, len, NULL)
++
++#define Thin_EVP_PKEY_CTX_set_dh_paramgen_generator(ctx, gen) \
++        Thin_EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN, \
++                        EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR, gen, NULL)
++
++# define Thin_EVP_CIPHER_CTX_nid Thin_EVP_CIPHER_CTX_get_nid
++
++# define Thin_SSL_CTX_set_dh_auto(ctx, onoff) \
++        Thin_SSL_CTX_ctrl(ctx,SSL_CTRL_SET_DH_AUTO,onoff,NULL)
++
++// # define STACK_OF(type) struct stack_st_##type
++// # define EVP_GCM_TLS_TAG_LEN                             16
++// # define TLS1_3_VERSION                  0x0304
++
++// # define ERR_GET_REASON(l)       (int)( (l)         & 0xFFFL)
++
++void Thin_X509_free(X509 *x);
++void Thin_BIO_free_all(BIO *a);
++void Thin_SSL_CTX_free(SSL_CTX *);
++void Thin_SSL_SESSION_free(SSL_SESSION *ses);
++
++void Thin_SSL_free(SSL *ssl);
++
++void Thin_PKCS8_PRIV_KEY_INFO_free(PKCS8_PRIV_KEY_INFO*);
++
++void Thin_EVP_PKEY_free(EVP_PKEY *pkey);
++
++
++void Thin_EVP_PKEY_CTX_free(EVP_PKEY_CTX *ctx);
++void Thin_EVP_MD_CTX_free(EVP_MD_CTX *ctx);
++
++void Thin_EC_KEY_free(EC_KEY *key);
++
++BIGNUM *Thin_BN_new(void);
++void Thin_BN_free(BIGNUM *bn);
++void Thin_BN_clear_free(BIGNUM *a);
++
++void Thin_BN_CTX_free(BN_CTX *ctx);
++void Thin_NETSCAPE_SPKI_free(NETSCAPE_SPKI *spki);
++
++void Thin_EC_GROUP_free(EC_GROUP *group);
++void Thin_EC_POINT_free(EC_POINT *point);
++
++void Thin_DH_free(DH *dh);
++void Thin_ECDSA_SIG_free(ECDSA_SIG *sig);
++void Thin_HMAC_CTX_free(HMAC_CTX *ctx);
++void Thin_EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx);
++void Thin_RSA_free(RSA *rsa);
++
++void Thin_DSA_free(DSA *dsa);
++void Thin_DSA_SIG_free(DSA_SIG *sig);
++
++
++void Thin_OPENSSL_free(void *addr);
++int Thin_SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
++
++void Thin_ERR_clear_error(void);
++void Thin_SSL_CTX_set_cert_store(SSL_CTX *, X509_STORE *);
++int Thin_X509_STORE_add_cert(X509_STORE *ctx, X509 *x);
++int Thin_ERR_pop_to_mark(void);
++int Thin_ERR_set_mark(void);
++
++int Thin_ENGINE_free(ENGINE *e);
++
++void *Thin_OPENSSL_malloc(size_t num);
++void *Thin_OPENSSL_realloc(void *addr, size_t num);
++
++
++int Thin_EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
++int Thin_EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
++
++int Thin_FIPS_mode(void);
++int Thin_FIPS_mode_set(int r);
++
++BIGNUM *Thin_BN_bin2bn(const unsigned char *s, int len, BIGNUM *ret);
++
++void Thin_ERR_print_errors_fp(FILE *fp);
++
++unsigned long Thin_ERR_peek_error(void);
++
++const struct dsa_st *Thin_EVP_PKEY_get0_DSA(EVP_PKEY *pkey);
++
++void Thin_ASN1_OBJECT_free(ASN1_OBJECT *a);
++
++DH *Thin_DH_new(void);
++int Thin_BN_is_zero(const BIGNUM *a);
++
++int Thin_BN_is_one(const BIGNUM *a);
++
++int Thin_DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
++
++const EVP_MD *Thin_EVP_get_digestbyname(const char *name);
++
++int Thin_EVP_MD_CTX_copy(EVP_MD_CTX *out, const EVP_MD_CTX *in);
++
++unsigned long Thin_ERR_get_error(void);
++
++int Thin_CRYPTO_memcmp(const void * in_a, const void * in_b, size_t len);
++
++//
++int Thin_EVP_CipherInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
++                   const unsigned char *key, const unsigned char *iv,
++                   int enc);
++int Thin_EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx,
++                      const EVP_CIPHER *cipher, ENGINE *impl,
++                      const unsigned char *key,
++                      const unsigned char *iv, int enc);
++int Thin_EVP_CipherUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
++                     int *outl, const unsigned char *in, int inl);
++int Thin_EVP_CipherFinal(EVP_CIPHER_CTX *ctx, unsigned char *outm,
++                    int *outl);
++int Thin_EVP_CipherFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm,
++                       int *outl);
++
++BIO *Thin_BIO_new_mem_buf(const void *buf, int len);
++HMAC_CTX *Thin_HMAC_CTX_new(void);
++void *Thin_ASN1_SCTX_get_app_data(ASN1_SCTX *p);
++EVP_PKEY_CTX *Thin_EVP_PKEY_CTX_new(EVP_PKEY *pkey, ENGINE *e);
++EVP_PKEY_CTX *Thin_EVP_PKEY_CTX_new_id(int id, ENGINE *e);
++
++long Thin_SSL_ctrl(SSL *ssl, int cmd, long larg, void *parg);
++long Thin_SSL_callback_ctrl(SSL *, int, void (*)(void));
++long Thin_SSL_CTX_ctrl(SSL_CTX *ctx, int cmd, long larg, void *parg);
++long Thin_SSL_CTX_callback_ctrl(SSL_CTX *, int, void (*)(void));
++
++int Thin_EVP_PKEY_encrypt_init(EVP_PKEY_CTX *ctx);
++int Thin_EVP_PKEY_encrypt(EVP_PKEY_CTX *ctx,
++                     unsigned char *out, size_t *outlen,
++                     const unsigned char *in, size_t inlen);
++int Thin_EVP_PKEY_decrypt_init(EVP_PKEY_CTX *ctx);
++int Thin_EVP_PKEY_decrypt(EVP_PKEY_CTX *ctx,
++                     unsigned char *out, size_t *outlen,
++                     const unsigned char *in, size_t inlen);
++void Thin_RSA_get0_key(const RSA *r,
++                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
++const struct rsa_st *Thin_EVP_PKEY_get0_RSA(const EVP_PKEY *pkey);
++struct rsa_st *Thin_EVP_PKEY_get1_RSA(EVP_PKEY *pkey);
++
++
++BIO_METHOD *Thin_BIO_meth_new(int type, const char *name);
++int Thin_BIO_meth_set_write(BIO_METHOD *biom,
++                       int (*write) (BIO *, const char *, int));
++int Thin_BIO_meth_set_read(BIO_METHOD *biom,
++                      int (*read) (BIO *, char *, int));
++int Thin_BIO_meth_set_puts(BIO_METHOD *biom,
++                      int (*puts) (BIO *, const char *));
++int Thin_BIO_meth_set_gets(BIO_METHOD *biom,
++                      int (*gets) (BIO *, char *, int));
++int Thin_BIO_meth_set_ctrl(BIO_METHOD *biom,
++                      long (*ctrl) (BIO *, int, long, void *));
++int Thin_BIO_meth_set_create(BIO_METHOD *biom, int (*create) (BIO *));
++int Thin_BIO_meth_set_destroy(BIO_METHOD *biom, int (*destroy) (BIO *));
++const char *Thin_SSL_CIPHER_get_name(const SSL_CIPHER *c);
++SSL_CTX_keylog_cb_func Thin_SSL_CTX_get_keylog_callback(const SSL_CTX *ctx);
++
++int Thin_SSL_set_session(SSL *to, SSL_SESSION *session);
++SSL_SESSION *Thin_d2i_SSL_SESSION(SSL_SESSION **a, const unsigned char **pp,
++                             long length);
++const X509V3_EXT_METHOD *Thin_X509V3_EXT_get(X509_EXTENSION *ext);
++const X509V3_EXT_METHOD *Thin_X509V3_EXT_get_nid(int nid);
++int Thin_X509_NAME_print_ex(BIO *out, const X509_NAME *nm, int indent,
++                       unsigned long flags);
++X509_NAME *Thin_X509_get_subject_name(const X509 *a);
++const SSL_CIPHER *Thin_SSL_get_current_cipher(const SSL *s);
++void *Thin_X509V3_EXT_d2i(X509_EXTENSION *ext);
++X509_NAME *Thin_X509_get_issuer_name(const X509 *a);
++SSL_SESSION *Thin_SSL_get_session(const SSL *ssl);
++long Thin_SSL_get_verify_result(const SSL *ssl);
++void Thin_SSL_SESSION_get0_ticket(const SSL_SESSION *s, const unsigned char **tick,
++                             size_t *len);
++int Thin_SSL_CIPHER_get_auth_nid(const SSL_CIPHER *c);
++int Thin_SSL_session_reused(const SSL *s);
++int Thin_SSL_SESSION_get_protocol_version(const SSL_SESSION *s);
++X509_STORE *Thin_X509_STORE_new(void);
++int Thin_X509_STORE_load_locations(X509_STORE *ctx,
++                              const char *file, const char *dir);
++int Thin_X509_STORE_set_default_paths(X509_STORE *ctx);
++void Thin_SSL_set_cert_cb(SSL *s, int (*cb) (SSL *ssl, void *arg), void *arg);
++int Thin_SSL_read(SSL *ssl, void *buf, int num);
++int Thin_SSL_write(SSL *ssl, const void *buf, int num);
++int Thin_SSL_shutdown(SSL *s);
++int Thin_SSL_get_shutdown(const SSL *ssl);
++int Thin_SSL_get_error(const SSL *s, int ret_code);
++void Thin_ERR_print_errors(BIO *bp);
++const char *Thin_ERR_func_error_string(unsigned long e);
++const SSL_METHOD *Thin_TLS_server_method(void);
++const SSL_METHOD *Thin_TLS_client_method(void);
++EVP_PKEY *Thin_PEM_read_bio_PrivateKey(BIO *bp, EVP_PKEY **x,
++                                   pem_password_cb *cb, void *u);
++int Thin_X509_STORE_CTX_init(X509_STORE_CTX *ctx, X509_STORE *store,
++                        X509 *x509, STACK_OF(X509) *chain);
++int Thin_X509_STORE_CTX_get1_issuer(X509 **issuer, X509_STORE_CTX *ctx, X509 *x);
++int Thin_EVP_PKEY_bits(const EVP_PKEY *pkey);
++void Thin_BIO_set_init(BIO *a, int init);
++void *Thin_BIO_get_data(BIO *a);
++int Thin_BIO_get_shutdown(BIO *a);
++void Thin_BIO_set_data(BIO *a, void *ptr);
++void Thin_ERR_error_string_n(unsigned long e, char *buf, size_t len);
++const char *Thin_ERR_lib_error_string(unsigned long e);
++void *Thin_CRYPTO_secure_malloc(size_t num, const char *file, int line);
++int Thin_CRYPTO_secure_malloc_init(size_t sz, int minsize);
++int Thin_CRYPTO_secure_malloc_initialized(void);
++void Thin_ENGINE_load_builtin_engines(void);
++int Thin_ERR_load_ENGINE_strings(void);
++int Thin_OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
++int Thin_RAND_bytes(unsigned char *buf, int num);
++int Thin_BN_set_word(BIGNUM *a, BN_ULONG w);
++int Thin_EVP_CIPHER_CTX_block_size(const EVP_CIPHER_CTX *ctx);
++EVP_CIPHER_CTX *Thin_EVP_CIPHER_CTX_new(void);
++NETSCAPE_SPKI *Thin_NETSCAPE_SPKI_b64_decode(const char *str, int len);
++int Thin_NETSCAPE_SPKI_verify(NETSCAPE_SPKI *a, EVP_PKEY *r);
++int Thin_X509V3_EXT_print(BIO *out, X509_EXTENSION *ext, unsigned long flag, int indent);
++int Thin_X509_get_ext_by_NID(const X509 *x, int nid, int lastpos);
++int Thin_EVP_PKEY_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keylen);
++int Thin_EVP_MD_size(const EVP_MD *md);
++X509_STORE *Thin_SSL_CTX_get_cert_store(const SSL_CTX *);
++const unsigned char *Thin_SSL_SESSION_get_id(const SSL_SESSION *s, unsigned int *len);
++int Thin_i2d_SSL_SESSION(SSL_SESSION *in, unsigned char **pp);
++
++/* PKCS5 password based encryption */
++int Thin_PKCS5_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const char *pass, int passlen,
++                            ASN1_TYPE *param, const EVP_CIPHER *cipher,
++                            const EVP_MD *md, int en_de);
++int Thin_PKCS5_PBKDF2_HMAC_SHA1(const char *pass, int passlen,
++                                const unsigned char *salt, int saltlen, int iter,
++                                int keylen, unsigned char *out);
++int Thin_PKCS5_PBKDF2_HMAC(const char *pass, int passlen,
++                           const unsigned char *salt, int saltlen, int iter,
++                           const EVP_MD *digest, int keylen, unsigned char *out);
++int Thin_PKCS5_v2_PBE_keyivgen(EVP_CIPHER_CTX *ctx, const char *pass, int passlen,
++                               ASN1_TYPE *param, const EVP_CIPHER *cipher,
++                               const EVP_MD *md, int en_de);
++int Thin_EVP_PBE_scrypt(const char *pass, size_t passlen,
++                        const unsigned char *salt, size_t saltlen,
++                        uint64_t N, uint64_t r, uint64_t p, uint64_t maxmem,
++                        unsigned char *key, size_t keylen);
++int Thin_DH_generate_key(DH *dh);
++
++void Thin_DH_get0_key(const DH *dh, const BIGNUM **pub_key, const BIGNUM **priv_key);
++int Thin_DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
++
++int Thin_EVP_PKEY_derive_init(EVP_PKEY_CTX *ctx);
++int Thin_EVP_PKEY_base_id(const EVP_PKEY *pkey);
++
++void Thin_DSA_get0_pqg(const DSA *d, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g);
++int Thin_DSA_set0_pqg(DSA *d, BIGNUM *p, BIGNUM *q, BIGNUM *g);
++void Thin_DSA_get0_key(const DSA *d, const BIGNUM **pub_key, const BIGNUM **priv_key);
++int Thin_DSA_set0_key(DSA *d, BIGNUM *pub_key, BIGNUM *priv_key);
++const BIGNUM *Thin_DSA_get0_p(const DSA *d);
++const BIGNUM *Thin_DSA_get0_q(const DSA *d);
++const BIGNUM *Thin_DSA_get0_g(const DSA *d);
++const BIGNUM *Thin_DSA_get0_pub_key(const DSA *d);
++const BIGNUM *Thin_DSA_get0_priv_key(const DSA *d);
++int Thin_BN_num_bits(const BIGNUM *a);
++int Thin_EVP_PKEY_id(const EVP_PKEY *pkey);
++
++EVP_MD_CTX *Thin_EVP_MD_CTX_new(void);
++SSL_CTX *Thin_SSL_get_SSL_CTX(const SSL *ssl);
++const BIO_METHOD *Thin_BIO_s_mem(void);
++X509_EXTENSION *Thin_X509_get_ext(const X509 *x, int loc);
++
++int Thin_EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
++
++int Thin_HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len, const EVP_MD *md, ENGINE *impl);
++int Thin_HMAC_Update(HMAC_CTX *ctx, const unsigned char *data, size_t len);
++int Thin_HMAC_Final(HMAC_CTX *ctx, unsigned char *md, unsigned int *len);
++unsigned char *Thin_HMAC(const EVP_MD *evp_md, const void *key, int key_len,
++                         const unsigned char *d, size_t n, unsigned char *md,
++                         unsigned int *md_len);
++
++
++int Thin_BN_cmp(const BIGNUM *a, const BIGNUM *b);
++BN_CTX *Thin_BN_CTX_new(void);
++int Thin_BN_is_prime_ex(const BIGNUM *p, int nchecks, BN_CTX *ctx, BN_GENCB *cb);
++int Thin_SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x);
++int Thin_X509_check_issued(X509 *issuer, X509 *subject);
++X509 *Thin_X509_dup(X509 *x509);
++BIO *Thin_BIO_new(const BIO_METHOD *type);
++EVP_PKEY *Thin_d2i_PUBKEY(EVP_PKEY **a, const unsigned char **pp, long length);
++int Thin_PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm,
++                            const char *name, BIO *bp, pem_password_cb *cb,
++                            void *u);
++
++int Thin_BN_generate_prime_ex(BIGNUM *ret, int bits, int safe, const BIGNUM *add, const BIGNUM *rem, BN_GENCB *cb);
++
++int Thin_EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx);
++EVP_PKEY *Thin_NETSCAPE_SPKI_get_pubkey(NETSCAPE_SPKI *x);
++int Thin_BIO_write(BIO *b, const void *data, int dlen);
++void Thin_DH_get0_pqg(const DH *dh, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g);
++int Thin_EVP_PKEY_derive_set_peer(EVP_PKEY_CTX *ctx, EVP_PKEY *peer);
++int Thin_BN_bn2binpad(const BIGNUM *a, unsigned char *to, int tolen);
++
++int Thin_EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *impl);
++int Thin_EVP_DigestUpdate(EVP_MD_CTX *ctx, const void *d, size_t cnt);
++int Thin_EVP_DigestFinal_ex(EVP_MD_CTX *ctx, unsigned char *md, unsigned int *s);
++int Thin_EVP_Digest(const void *data, size_t count,
++                    unsigned char *md, unsigned int *size,
++                    const EVP_MD *type, ENGINE *impl);
++int Thin_EVP_DigestFinalXOF(EVP_MD_CTX *ctx, unsigned char *md, size_t len);
++
++int Thin_EVP_PKEY_size(const EVP_PKEY *pkey);
++const EVP_MD *Thin_EVP_MD_CTX_md(const EVP_MD_CTX *ctx);
++
++unsigned long Thin_EVP_MD_flags(const EVP_MD *md);
++
++int Thin_EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
++void Thin_EVP_MD_do_all_sorted(void (*fn)(const EVP_MD *ciph, const char *from, const char *to, void *x), void *arg);
++
++
++int Thin_SSL_set_alpn_protos(SSL *ssl, const unsigned char *protos, unsigned int protos_len);
++X509 *Thin_SSL_get_peer_certificate(const SSL *s);
++
++void *Thin_X509_get_ext_d2i(const X509 *x, int nid, int *crit, int *idx);
++EVP_PKEY *Thin_X509_get_pubkey(X509 *x);
++
++BIGNUM *Thin_BN_secure_new(void);
++
++EVP_PKEY *Thin_EVP_PKEY_new(void);
++EVP_PKEY *Thin_EVP_PKEY_new_mac_key(int type, ENGINE *e, const unsigned char *key, int keylen);
++EVP_PKEY *Thin_EVP_PKEY_new_raw_private_key(int type, ENGINE *e,
++                                            const unsigned char *priv,
++                                            size_t len);
++EVP_PKEY *Thin_EVP_PKEY_new_raw_public_key(int type, ENGINE *e,
++                                           const unsigned char *pub,
++                                           size_t len);
++int Thin_EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, unsigned char *priv, size_t *len);
++int Thin_EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, unsigned char *pub, size_t *len);
++
++size_t Thin_CRYPTO_secure_used(void);
++
++int Thin_RAND_status(void);
++int Thin_RAND_poll(void);
++int Thin_X509_up_ref(X509 *x);
++
++BIO *Thin_BIO_new_fp(FILE *stream, int close_flag);
++BIO *Thin_BIO_new_file(const char *filename, const char *mode);
++
++OPENSSL_INIT_SETTINGS *Thin_OPENSSL_INIT_new(void);
++void Thin_OPENSSL_init(void);
++int Thin_OPENSSL_INIT_set_config_filename(OPENSSL_INIT_SETTINGS *settings, const char *config_filename);
++int Thin_OPENSSL_init_crypto(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings);
++void Thin_OPENSSL_INIT_set_config_file_flags(OPENSSL_INIT_SETTINGS *settings, unsigned long flags);
++int Thin_OPENSSL_INIT_set_config_appname(OPENSSL_INIT_SETTINGS *settings, const char *config_appname);
++void Thin_OPENSSL_INIT_free(OPENSSL_INIT_SETTINGS *settings);
++int Thin_BIO_get_init(BIO *a);
++
++X509_STORE_CTX *Thin_X509_STORE_CTX_new(void);
++X509 *Thin_SSL_get_certificate(const SSL *ssl);
++
++STACK_OF(X509) *Thin_SSL_get_peer_cert_chain(const SSL *s);
++STACK_OF(SSL_COMP) *Thin_SSL_COMP_get_compression_methods(void);
++
++
++int Thin_EVP_CIPHER_nid(const EVP_CIPHER *cipher);
++const EVP_CIPHER *Thin_EVP_CIPHER_CTX_cipher(const EVP_CIPHER_CTX *ctx);
++
++size_t Thin_SSL_get_client_random(const SSL *ssl, unsigned char *out, size_t outlen);
++
++void Thin_ERR_put_error(int lib, int func, int reason, const char *file, int line);
++void Thin_ERR_set_debug(const char *file, int line, const char *func);
++
++int Thin_ASN1_INTEGER_get_int64(int64_t *pr, const ASN1_INTEGER *a);
++
++size_t Thin_SSL_client_hello_get0_ciphers(SSL *s, const unsigned char **out);
++const SSL_CIPHER *Thin_SSL_CIPHER_find(SSL *ssl, const unsigned char *ptr);
++
++EVP_PKEY *Thin_ENGINE_load_private_key(ENGINE *e, const char *key_id,
++                                  UI_METHOD *ui_method, void *callback_data);
++EVP_PKEY *Thin_ENGINE_load_public_key(ENGINE *e, const char *key_id,
++                                 UI_METHOD *ui_method, void *callback_data);
++int Thin_SSL_CTX_set_session_id_context(SSL_CTX *ctx,
++                                          const unsigned char *sid_ctx,
++                                          unsigned int sid_ctx_len);
++long Thin_SSL_CTX_set_timeout(SSL_CTX *ctx, long t);
++const SSL_METHOD *Thin_TLS_method(void);
++unsigned long Thin_SSL_CTX_set_options(SSL_CTX *ctx, unsigned long op);
++SSL_CTX *Thin_SSL_CTX_new(const SSL_METHOD *meth);
++STACK_OF(SSL_CIPHER) *Thin_SSL_get_ciphers(const SSL *s);
++SSL *Thin_SSL_new(SSL_CTX *ctx);
++int Thin_ENGINE_init(ENGINE *e);
++int Thin_ENGINE_finish(ENGINE *e);
++int Thin_SSL_CTX_set_client_cert_engine(SSL_CTX *ctx, ENGINE *e);
++ENGINE *Thin_ENGINE_by_id(const char *id);
++//
++
++int Thin_ENGINE_ctrl_cmd_string(ENGINE *e, const char *cmd_name, const char *arg, int cmd_optional);
++int Thin_ENGINE_set_default(ENGINE *e, unsigned int flags);
++
++int Thin_SSL_CTX_set_ex_data(SSL_CTX *ssl, int idx, void *data);
++void *Thin_SSL_CTX_get_ex_data(const SSL_CTX *ssl, int idx);
++void Thin_CRYPTO_secure_clear_free(void *ptr, size_t num,
++                              const char *file, int line);
++
++const char *Thin_SSL_get_servername(const SSL *s, const int type);
++int Thin_SSL_CTX_set_ciphersuites(SSL_CTX *ctx, const char *str);
++
++void *Thin_CRYPTO_memdup(const void *str, size_t siz, const char *file, int line);
++int Thin_RSA_pkey_ctx_ctrl(EVP_PKEY_CTX *ctx, int optype, int cmd, int p1, void *p2);
++void Thin_CRYPTO_clear_free(void *ptr, size_t num, const char *file, int line);
++
++void Thin_SSL_CTX_set_keylog_callback(SSL_CTX *ctx, SSL_CTX_keylog_cb_func cb);
++void Thin_SSL_CTX_sess_set_new_cb(SSL_CTX *ctx,
++                             int (*new_session_cb) (struct ssl_st *ssl,
++                                                    SSL_SESSION *sess));
++void Thin_SSL_CTX_sess_set_get_cb(SSL_CTX *ctx,
++                             SSL_SESSION *(*get_session_cb) (struct ssl_st
++                                                             *ssl,
++                                                             const unsigned char
++                                                             *data, int len,
++                                                             int *copy));
++void Thin_SSL_set_bio(SSL *s, BIO *rbio, BIO *wbio);
++
++
++void Thin_SSL_set_verify(SSL *s, int mode, SSL_verify_cb callback);
++
++void Thin_SSL_set_msg_callback(SSL *ssl,
++                          void (*cb) (int write_p, int version,
++                                      int content_type, const void *buf,
++                                      size_t len, SSL *ssl, void *arg));
++
++
++void Thin_SSL_trace(int write_p, int version, int content_type,
++               const void *buf, size_t len, SSL *ssl, void *arg);
++
++
++SSL_CTX *Thin_SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx);
++int Thin_SSL_use_psk_identity_hint(SSL *s, const char *identity_hint);
++void Thin_SSL_set_psk_server_callback(SSL *ssl, SSL_psk_server_cb_func cb);
++void Thin_SSL_set_psk_client_callback(SSL *ssl, SSL_psk_client_cb_func cb);
++
++STACK_OF(X509_NAME) *Thin_SSL_dup_CA_list(const STACK_OF(X509_NAME) *sk);
++void Thin_SSL_set_client_CA_list(SSL *s, STACK_OF(X509_NAME) *name_list);
++
++void Thin_SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
++                                SSL_CTX_alpn_select_cb_func cb,
++                                void *arg);
++
++int Thin_EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
++                      int cmd, int p1, void *p2);
++
++const EVP_CIPHER *Thin_EVP_get_cipherbyname(const char *name);
++int Thin_SSL_use_certificate(SSL *ssl, X509 *x);
++int Thin_SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey);
++X509 *Thin_SSL_CTX_get0_certificate(const SSL_CTX *ctx);
++EVP_PKEY *Thin_SSL_CTX_get0_privatekey(const SSL_CTX *ctx);
++
++int Thin_SSL_client_hello_get0_ext(SSL *s, unsigned int type,
++                              const unsigned char **out, size_t *outlen);
++const char *Thin_X509_verify_cert_error_string(long n);
++
++X509 *Thin_PEM_read_bio_X509_AUX(BIO *bp, X509 **x, pem_password_cb *cb, void *u);
++
++int Thin_PKCS12_parse(PKCS12 *p12, const char *pass, EVP_PKEY **pkey, X509 **cert, STACK_OF(X509) **ca);
++struct ec_key_st *Thin_EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
++const EC_GROUP *Thin_EC_KEY_get0_group(const EC_KEY *key);
++const char *Thin_ERR_reason_error_string(unsigned long e);
++int Thin_SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x);
++
++void Thin_sk_SSL_COMP_zero(STACK_OF(SSL_COMP) *sk);
++
++int Thin_sk_ASN1_OBJECT_num(const struct stack_st_ASN1_OBJECT *sk);
++int Thin_sk_X509_num(const struct stack_st_X509 *sk);
++const EC_POINT *Thin_EC_KEY_get0_public_key(const EC_KEY *key);
++
++unsigned long Thin_ERR_peek_last_error(void);
++int Thin_sk_X509_push(STACK_OF(X509) *sk, X509 *x);
++int Thin_X509_STORE_add_crl(X509_STORE *ctx, X509_CRL *x);
++int Thin_X509_STORE_set_flags(X509_STORE *ctx, unsigned long flags);
++
++STACK_OF(X509) *Thin_sk_X509_new(sk_X509_compfunc fn);
++STACK_OF(X509) *Thin_sk_X509_new_null();
++X509 *Thin_PEM_read_bio_X509(BIO *bp, X509 **x, pem_password_cb *cb, void *u);
++
++const ASN1_OBJECT *Thin_sk_ASN1_OBJECT_value(const struct stack_st_ASN1_OBJECT *sk, int i);
++void Thin_sk_ASN1_OBJECT_pop_free(STACK_OF(ASN1_OBJECT)* sk, void (*fn)(asn1_object_st *));
++
++int Thin_sk_X509_NAME_num(STACK_OF(X509_NAME)* sk);
++x509_st *Thin_sk_X509_value(const struct stack_st_X509 *sk, int i);
++void Thin_sk_X509_pop_free(STACK_OF(X509) *sk, void (*fn)(x509_st *));
++
++const SSL_CIPHER *Thin_sk_SSL_CIPHER_value(const struct stack_st_SSL_CIPHER *sk, int i);
++
++int Thin_i2t_ASN1_OBJECT(char *buf, int buf_len, const ASN1_OBJECT *a);
++
++int Thin_sk_ACCESS_DESCRIPTION_num(STACK_OF(ACCESS_DESCRIPTION)* sk);
++ACCESS_DESCRIPTION *Thin_sk_ACCESS_DESCRIPTION_value(const struct stack_st_ACCESS_DESCRIPTION *sk, int i);
++void Thin_ACCESS_DESCRIPTION_free(ACCESS_DESCRIPTION *p);
++void Thin_sk_ACCESS_DESCRIPTION_pop_free(STACK_OF(ACCESS_DESCRIPTION) *sk, void (*fn)(ACCESS_DESCRIPTION *));
++
++x509_st *Thin_sk_X509_delete(STACK_OF(X509) *sk, int i);
++
++void Thin_sk_CONF_VALUE_pop_free(STACK_OF(CONF_VALUE) *sk, void (*fn)(CONF_VALUE *));
++
++int Thin_OBJ_obj2txt(char *buf, int buf_len, const ASN1_OBJECT *a, int no_name);
++
++int Thin_EVP_CIPHER_CTX_set_key_length(EVP_CIPHER_CTX *x, int keylen);
++
++const char *Thin_SSL_CIPHER_standard_name(const SSL_CIPHER *c);
++
++void Thin_EVP_CIPHER_CTX_set_flags(EVP_CIPHER_CTX *ctx, int flags);
++
++int Thin_BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
++
++int Thin_sk_GENERAL_NAME_num(STACK_OF(GENERAL_NAME)* sk);
++GENERAL_NAME *Thin_sk_GENERAL_NAME_value(const struct stack_st_GENERAL_NAME *sk, int i);
++void Thin_GENERAL_NAME_free(GENERAL_NAME *p);
++void Thin_sk_GENERAL_NAME_pop_free(STACK_OF(GENERAL_NAME) *sk, void (*fn)(GENERAL_NAME *));
++
++void Thin_X509V3_EXT_val_prn(BIO *out, STACK_OF(CONF_VALUE) *val, int indent, int ml);
++STACK_OF(CONF_VALUE) *Thin_i2v_GENERAL_NAME(X509V3_EXT_METHOD *method, GENERAL_NAME *gen, STACK_OF(CONF_VALUE) *ret);
++
++void Thin_BIO_set_flags(BIO *b, int flags);
++void Thin_BIO_clear_flags(BIO *b, int flags);
++
++int Thin_sk_SSL_CIPHER_num(STACK_OF(SSL_CIPHER)* ciphers);
++
++X509_NAME *Thin_sk_X509_NAME_value(const stack_st_X509_NAME *sk, int i);
++
++unsigned long Thin_EVP_CIPHER_flags(const EVP_CIPHER *cipher);
++
++void *Thin_OPENSSL_sk_value(const OPENSSL_STACK *, int);
++size_t Thin_SSL_get_finished(const SSL *s, void *buf, size_t count);
++size_t Thin_SSL_get_peer_finished(const SSL *s, void *buf, size_t count);
++int Thin_SSL_renegotiate_pending(const SSL *s);
++int Thin_EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *c);
++void Thin_SSL_set_connect_state(SSL *s);
++void Thin_SSL_set_accept_state(SSL *s);
++
++void Thin_BIO_set_shutdown(BIO *a, int shut);
++void Thin_SSL_get0_alpn_selected(const SSL *ssl, const unsigned char **data,
++                            unsigned int *len);
++int Thin_SSL_export_keying_material(SSL *s, unsigned char *out, size_t olen,
++                                      const char *label, size_t llen,
++                                      const unsigned char *context,
++                                      size_t contextlen, int use_context);
++int Thin_SSL_get_shared_sigalgs(SSL *s, int idx,
++                           int *psign, int *phash, int *psignandhash,
++                           unsigned char *rsig, unsigned char *rhash);
++int Thin_X509_verify(X509 *a, EVP_PKEY *r);
++int Thin_X509_check_private_key(const X509 *x509, const EVP_PKEY *pkey);
++EVP_PKEY *Thin_X509_PUBKEY_get(X509_PUBKEY *key);
++unsigned long Thin_OpenSSL_version_num(void);
++const char *Thin_SSL_CIPHER_get_version(const SSL_CIPHER *c);
++int Thin_SSL_select_next_proto(unsigned char **out, unsigned char *outlen,
++                                 const unsigned char *in, unsigned int inlen,
++                                 const unsigned char *client,
++                                 unsigned int client_len);
++int Thin_X509_digest(const X509 *data, const EVP_MD *type,
++                unsigned char *md, unsigned int *len);
++ASN1_INTEGER *Thin_X509_get_serialNumber(X509 *x);
++X509_CRL *Thin_PEM_read_bio_X509_CRL(BIO *bp, X509_CRL **x,
++                                 pem_password_cb *cb, void *u);
++const ASN1_TIME *Thin_X509_get0_notAfter(const X509 *x);
++const ASN1_TIME * Thin_X509_get0_notBefore(const X509 *x);
++int Thin_SSL_CTX_set_cipher_list(SSL_CTX *, const char *str);
++int Thin_X509_check_ca(X509 *x);
++int Thin_SSL_is_server(const SSL *s);
++int Thin_SSL_renegotiate(SSL *s);
++int Thin_ASN1_TIME_print(BIO *fp, const ASN1_TIME *a);
++int Thin_X509_check_host(X509 *x, const char *chk, size_t chklen,
++                    unsigned int flags, char **peername);
++int Thin_X509_check_email(X509 *x, const char *chk, size_t chklen,
++                     unsigned int flags);
++int Thin_X509_check_ip(X509 *x, const unsigned char *chk, size_t chklen,
++                  unsigned int flags);
++int Thin_X509_check_ip_asc(X509 *x, const char *ipasc, unsigned int flags);
++int Thin_X509_STORE_up_ref(X509_STORE *v);
++const char *Thin_SSL_get_version(const SSL *s);
++long Thin_BIO_ctrl(BIO *bp, int cmd, long larg, void *parg);
++int Thin_X509_NAME_get_index_by_NID(X509_NAME *name, int nid, int lastpos);
++int Thin_OBJ_txt2nid(const char *s);
++X509_NAME_ENTRY *Thin_X509_NAME_get_entry(const X509_NAME *name, int loc);
++ASN1_STRING * Thin_X509_NAME_ENTRY_get_data(const X509_NAME_ENTRY *ne);
++int Thin_PEM_write_bio_PUBKEY(BIO *bp, const EVP_PKEY *x);
++const unsigned char *Thin_ASN1_STRING_get0_data(const ASN1_STRING *x);
++
++void *Thin_SSL_get_ex_data(const SSL *ssl, int idx);
++int Thin_SSL_set_ex_data(SSL *ssl, int idx, void *data);
++void Thin_SSL_set_info_callback(SSL *ssl,
++                           void (*cb) (const SSL *ssl, int type, int val));
++
++int Thin_EVP_PKEY_verify_recover_init(EVP_PKEY_CTX *ctx);
++
++int Thin_EVP_PKEY_sign(EVP_PKEY_CTX *ctx,
++                  unsigned char *sig, size_t *siglen,
++                  const unsigned char *tbs, size_t tbslen);
++
++int Thin_EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
++                          const unsigned char *salt,
++                          const unsigned char *data, int datal, int count,
++                          unsigned char *key, unsigned char *iv);
++int Thin_EVP_CIPHER_block_size(const EVP_CIPHER *cipher);
++int Thin_EVP_CIPHER_impl_ctx_size(const EVP_CIPHER *cipher);
++int Thin_EVP_CIPHER_key_length(const EVP_CIPHER *cipher);
++int Thin_EVP_CIPHER_iv_length(const EVP_CIPHER *cipher);
++unsigned long Thin_EVP_CIPHER_flags(const EVP_CIPHER *cipher);
++void Thin_EVP_CIPHER_do_all_sorted(void (*fn)
++                               (const EVP_CIPHER *ciph, const char *from,
++                                const char *to, void *x), void *arg);
++int Thin_EVP_PKEY_verify_recover(EVP_PKEY_CTX *ctx,
++                            unsigned char *rout, size_t *routlen,
++                            const unsigned char *sig, size_t siglen);
++void Thin_X509_STORE_CTX_free(X509_STORE_CTX *ctx);
++void Thin_X509_CRL_free(X509_CRL *ctx);
++void Thin_PKCS12_free(PKCS12 *ctx);
++
++int Thin_EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx,
++                                  const EVP_CIPHER *cipher, ENGINE *impl,
++                                  const unsigned char *key,
++                                  const unsigned char *iv);
++
++const EVP_MD *Thin_EVP_md5(void);
++const BIGNUM *Thin_BN_value_one(void);
++const char *Thin_OBJ_nid2sn(int n);
++BN_ULONG Thin_BN_get_word(const BIGNUM *a);
++int Thin_BN_lshift(BIGNUM *r, const BIGNUM *a, int n);
++
++
++const EVP_MD *Thin_EVP_sha1(void);
++const EVP_MD *Thin_EVP_sha224(void);
++const EVP_MD *Thin_EVP_sha256(void);
++const EVP_MD *Thin_EVP_sha384(void);
++const EVP_MD *Thin_EVP_sha512(void);
++const EVP_MD *Thin_EVP_sha512_224(void);
++const EVP_MD *Thin_EVP_sha512_256(void);
++const EVP_MD *Thin_EVP_sha3_224(void);
++const EVP_MD *Thin_EVP_sha3_256(void);
++const EVP_MD *Thin_EVP_sha3_384(void);
++const EVP_MD *Thin_EVP_sha3_512(void);
++const EVP_MD *Thin_EVP_shake128(void);
++const EVP_MD *Thin_EVP_shake256(void);
++
++int Thin_EC_GROUP_order_bits(const EC_GROUP *group);
++void Thin_X509V3_conf_free(CONF_VALUE *val);
++
++
++const EVP_CIPHER *Thin_EVP_aes_128_cbc(void);
++
++DH *Thin_PEM_read_bio_DHparams(BIO *bp, DH **x, pem_password_cb *cb, void *u);
++char *Thin_ERR_error_string(unsigned long e, char *buf);
++int Thin_DH_generate_parameters_ex(DH *dh, int prime_len, int generator,
++                              BN_GENCB *cb);
++
++int Thin_DH_check(const DH *dh, int *codes);
++int Thin_DH_size(const DH *dh);
++int Thin_DH_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh);
++
++
++int Thin_EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
++
++int Thin_DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
++
++char *Thin_BN_bn2hex(const BIGNUM *a);
++char *Thin_BN_bn2dec(const BIGNUM *a);
++
++int Thin_OBJ_sn2nid(const char *s);
++
++
++int Thin_DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *codes);
++
++int Thin_EVP_CIPHER_CTX_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr);
++
++int Thin_EC_KEY_check_key(const EC_KEY *key);
++
++int Thin_EC_GROUP_get_degree(const EC_GROUP *group);
++
++int Thin_ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
++                     const EC_KEY *ecdh,
++                     void *(*KDF) (const void *in, size_t inlen,
++                                   void *out, size_t *outlen));
++
++EC_KEY *Thin_EC_KEY_new_by_curve_name(int nid);
++
++int Thin_EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
++
++int Thin_EC_KEY_generate_key(EC_KEY *key);
++
++EC_KEY *Thin_EC_KEY_dup(const EC_KEY *src);
++
++int Thin_EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
++
++const BIGNUM *Thin_EC_KEY_get0_private_key(const EC_KEY *key);
++
++size_t Thin_EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *p,
++                          point_conversion_form_t form,
++                          unsigned char *buf, size_t len, BN_CTX *ctx);
++
++int Thin_EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *n,
++                 const EC_POINT *q, const BIGNUM *m, BN_CTX *ctx);
++
++EC_POINT *Thin_EC_POINT_new(const EC_GROUP *group);
++
++int Thin_EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx,
++                                  const EVP_CIPHER *cipher, ENGINE *impl,
++                                  const unsigned char *key,
++                                  const unsigned char *iv);
++
++int Thin_EVP_CIPHER_CTX_set_padding(EVP_CIPHER_CTX *c, int pad);
++
++int Thin_EC_curve_nist2nid(const char *name);
++
++const struct ec_key_st *Thin_EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey);
++struct ec_key_st *Thin_EVP_PKEY_get1_EC_KEY(EVP_PKEY *pkey);
++
++int Thin_EC_POINT_get_affine_coordinates(const EC_GROUP *group, const EC_POINT *p,
++                                    BIGNUM *x, BIGNUM *y, BN_CTX *ctx);
++int Thin_EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, unsigned char *pub,
++                                size_t *len);
++
++size_t Thin_EC_get_builtin_curves(EC_builtin_curve *r, size_t nitems);
++
++int Thin_i2d_RSA_PUBKEY(const RSA *a, unsigned char **pp);
++RSA *Thin_d2i_RSA_PUBKEY(RSA **a, const unsigned char **pp, long length);
++
++int Thin_EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx);
++
++int Thin_EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key);
++
++int Thin_EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
++                                             BIGNUM *y);
++int Thin_i2d_RSAPublicKey_bio(BIO *bp, const RSA *rsa);
++
++int Thin_i2d_PUBKEY_bio(BIO *bp, const EVP_PKEY *pkey);
++
++int Thin_EVP_PKEY_up_ref(EVP_PKEY *pkey);
++
++int Thin_PEM_write_bio_RSAPublicKey(BIO *bp, const RSA *x);
++
++int Thin_PEM_write_bio_RSAPrivateKey(BIO *bp, const RSA *x, const EVP_CIPHER *enc,
++                                 unsigned char *kstr, int klen,
++                                 pem_password_cb *cb, void *u);
++
++int Thin_PEM_write_bio_PKCS8PrivateKey(BIO *, const EVP_PKEY *, const EVP_CIPHER *,
++                                  char *, int, pem_password_cb *, void *);
++
++EVP_PKEY *Thin_d2i_PrivateKey(int type, EVP_PKEY **a, const unsigned char **pp,
++                         long length);
++PKCS8_PRIV_KEY_INFO *Thin_d2i_PKCS8_PRIV_KEY_INFO_bio(BIO *bp,
++                                                 PKCS8_PRIV_KEY_INFO **p8inf);
++
++int Thin_i2d_ECPrivateKey_bio(BIO *bp, const EC_KEY *eckey);
++
++int Thin_EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *p,
++                       const unsigned char *buf, size_t len, BN_CTX *ctx);
++
++ASN1_INTEGER *Thin_BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai);
++BIGNUM *Thin_ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai, BIGNUM *bn);
++
++EC_GROUP *Thin_EC_GROUP_new_by_curve_name(int nid);
++
++PKCS12 *Thin_d2i_PKCS12_bio(BIO *bp, PKCS12 **p12);
++
++void Thin_RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q);
++
++void *Thin_EVP_PKEY_get0(const EVP_PKEY *pkey);
++
++int Thin_i2d_X509(X509 *x, unsigned char **buf);
++
++X509 *Thin_d2i_X509(X509 **p, const unsigned char **in, long len);
++
++const char *Thin_EC_curve_nid2nist(int nid);
++
++int Thin_EC_GROUP_get_curve_name(const EC_GROUP *group);
++
++int Thin_OBJ_obj2nid(const ASN1_OBJECT *o);
++int Thin_RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
++int Thin_RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q);
++
++RSA *Thin_RSA_new(void);
++int Thin_EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
++int Thin_EVP_PKEY_verify(EVP_PKEY_CTX *ctx,
++                    const unsigned char *sig, size_t siglen,
++                    const unsigned char *tbs, size_t tbslen);
++
++void Thin_RSA_get0_crt_params(const RSA *r,
++                         const BIGNUM **dmp1, const BIGNUM **dmq1,
++                         const BIGNUM **iqmp);
++
++int Thin_EVP_PKEY_set1_RSA(EVP_PKEY *pkey, struct rsa_st *key);
++const RSA_PSS_PARAMS *Thin_RSA_get0_pss_params(const RSA *r);
++
++int Thin_RSA_set0_crt_params(RSA *r,BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp);
++
++PKCS8_PRIV_KEY_INFO *Thin_EVP_PKEY2PKCS8(EVP_PKEY *pkey);
++
++const char *Thin_OBJ_nid2ln(int n);
++
++int Thin_i2d_PKCS8_PRIV_KEY_INFO_bio(BIO *bp, PKCS8_PRIV_KEY_INFO *p8inf);
++
++ECDSA_SIG *Thin_ECDSA_SIG_new(void);
++
++int Thin_i2d_ECDSA_SIG(const ECDSA_SIG *sig, unsigned char **pp);
++
++int Thin_EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
++                                  const EVP_MD *type, ENGINE *e,
++                                  EVP_PKEY *pkey);
++
++int Thin_EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
++                                const EVP_MD *type, ENGINE *e,
++                                EVP_PKEY *pkey);
++int Thin_i2d_PKCS8PrivateKey_bio(BIO *bp, const EVP_PKEY *x, const EVP_CIPHER *enc,
++                            char *kstr, int klen,
++                            pem_password_cb *cb, void *u);
++EVP_PKEY *Thin_d2i_PKCS8PrivateKey_bio(BIO *bp, EVP_PKEY **x, pem_password_cb *cb,
++                                  void *u);
++
++EVP_PKEY *Thin_EVP_PKCS82PKEY(const PKCS8_PRIV_KEY_INFO *p8);
++
++int Thin_i2d_RSAPrivateKey_bio(BIO *bp, const RSA *rsa);
++
++EVP_PKEY *Thin_d2i_PublicKey(int type, EVP_PKEY **a, const unsigned char **pp,
++                        long length);
++
++int Thin_PEM_write_bio_ECPrivateKey(BIO *bp, const ec_key_st *x, const EVP_CIPHER *enc,
++                              unsigned char *kstr, int klen,
++                              pem_password_cb *cb, void *u);
++ 
++int Thin_EVP_DigestSign(EVP_MD_CTX *ctx, unsigned char *sigret,
++                          size_t *siglen, const unsigned char *tbs,
++                          size_t tbslen);
++int Thin_EVP_DigestVerify(EVP_MD_CTX *ctx, const unsigned char *sigret,
++                            size_t siglen, const unsigned char *tbs,
++                            size_t tbslen);
++point_conversion_form_t Thin_EC_KEY_get_conv_form(const EC_KEY *key);
++
++int Thin_PEM_write_bio_X509(BIO *bp, X509 *x);
++int Thin_PEM_write_X509(FILE *fp, X509 *x);
++
++ECDSA_SIG *Thin_d2i_ECDSA_SIG(ECDSA_SIG **sig, const unsigned char **pp, long len);
++void Thin_ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **pr, const BIGNUM **ps);
++const BIGNUM *Thin_ECDSA_SIG_get0_r(const ECDSA_SIG *sig);
++const BIGNUM *Thin_ECDSA_SIG_get0_s(const ECDSA_SIG *sig);
++int Thin_ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
++
++STACK_OF(X509_NAME) *Thin_SSL_CTX_get_client_CA_list(const SSL_CTX *s);
++int Thin_ASN1_STRING_to_UTF8(unsigned char **out, const ASN1_STRING *in);
++
++int Thin_EVP_DigestSignFinal(EVP_MD_CTX *ctx, unsigned char *sigret, size_t *siglen);
++void Thin_SSL_CTX_set_client_cert_cb(SSL_CTX *ctx,
++                                int (*client_cert_cb) (SSL *ssl, X509 **x509,
++                                                       EVP_PKEY **pkey));
++
++STACK_OF(X509_NAME) *Thin_SSL_get_client_CA_list(const SSL *s);
++char *Thin_X509_NAME_oneline(const X509_NAME *a, char *buf, int size);
++
++unsigned char *Thin_SHA1(const unsigned char *d, size_t n, unsigned char *md);
++
++int Thin_BN_print(BIO *bio, const BIGNUM *a);
++int Thin_BIO_printf(BIO *bio, const char *format, ...);
++void Thin_ERR_print_errors_cb(int (*cb) (const char *str, size_t len, void *u), void *u);
++
++OSSL_PROVIDER *Thin_OSSL_PROVIDER_load(OSSL_LIB_CTX *, const char *name);
++int Thin_OSSL_PROVIDER_unload(OSSL_PROVIDER *prov);
++
++int Thin_EVP_default_properties_is_fips_enabled(OSSL_LIB_CTX *libctx);
++BIGNUM *Thin_BN_get_rfc2409_prime_768(BIGNUM *bn);
++BIGNUM *Thin_BN_get_rfc2409_prime_1024(BIGNUM *bn);
++
++void Thin_EVP_MD_free(EVP_MD *md);
++int Thin_EVP_PKEY_eq(const EVP_PKEY *a, const EVP_PKEY *b);
++EVP_CIPHER *Thin_EVP_CIPHER_fetch(OSSL_LIB_CTX *ctx, const char *algorithm, const char *properties);
++const char *Thin_EVP_CIPHER_get0_name(const EVP_CIPHER *cipher);
++void Thin_EVP_CIPHER_free(EVP_CIPHER *cipher);
++EVP_MD *Thin_EVP_MD_fetch(OSSL_LIB_CTX *ctx, const char *algorithm, const char *properties);
++const char *Thin_EVP_MD_get0_name(const EVP_MD *md);
++int Thin_EVP_default_properties_enable_fips(OSSL_LIB_CTX *libctx, int enable);
++int Thin_EVP_CIPHER_CTX_get_nid(const EVP_CIPHER_CTX *ctx);
++
++int Thin_EVP_PKEY_CTX_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value);
++
++const BIO_METHOD *Thin_BIO_s_secmem(void);
++
++int Thin_RAND_bytes_ex(OSSL_LIB_CTX *ctx, unsigned char *buf, size_t num, unsigned int strength);
++
++int Thin_EVP_PKEY_check(EVP_PKEY_CTX *ctx);
++int Thin_EVP_MD_names_do_all(const EVP_MD *md, void (*fn)(const char *name, void *data), void *data);
++
++int Thin_EVP_PKEY_public_check_quick(EVP_PKEY_CTX *ctx);
++int Thin_OSSL_PROVIDER_available(OSSL_LIB_CTX *, const char *name);
++int Thin_OSSL_PROVIDER_self_test(const OSSL_PROVIDER *prov);
++
++#endif // SRC_CRYPTO_CRYPTO_INL_H_
+\ No newline at end of file
+-- 
+2.25.1
+

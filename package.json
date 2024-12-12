@@ -12,7 +12,7 @@
     "@electron/lint-roller": "^2.4.0",
     "@electron/typescript-definitions": "^9.0.0",
     "@octokit/rest": "^20.0.2",
-    "@primer/octicons": "^10.0.0",
+    "@primer/octicons": "^19.14.0",
     "@types/minimist": "^1.2.5",
     "@types/node": "^22.7.7",
     "@types/semver": "^7.5.8",

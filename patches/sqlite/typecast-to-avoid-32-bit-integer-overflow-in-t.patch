@@ -1,0 +1,26 @@
+From 548ed66c9462e1d70f045e663ef9034b063bd10a Mon Sep 17 00:00:00 2001
+From: Lin Cheng <lin_cheng@dell.com>
+Date: Mon, 12 May 2025 07:05:38 +0000
+Subject: [PATCH] Add a typecast to avoid 32-bit integer overflow in the
+ concat_ws() function with an enormous separator values and many arguments.
+
+---
+ src/func.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/func.c b/src/func.c
+index 58ef4fef9c..c9a96af107 100644
+--- a/src/func.c
++++ b/src/func.c
+@@ -1570,7 +1570,7 @@ static void concatFuncCore(
+   for(i=0; i<argc; i++){
+     n += sqlite3_value_bytes(argv[i]);
+   }
+-  n += (argc-1)*nSep;
++  n += (argc-1)*(i64)nSep;
+   z = sqlite3_malloc64(n+1);
+   if( z==0 ){
+     sqlite3_result_error_nomem(context);
+-- 
+2.25.1
+
